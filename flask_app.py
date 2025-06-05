@@ -76,13 +76,14 @@ def webhook():
         print("Assistant run timeout")
         return jsonify({"error": "Assistant run timeout"}), 500
 
-    # Получение ответа ассистента
-    messages = openai.beta.threads.messages.list(thread_id=thread_id)
-    assistant_reply = ""
-    for msg in reversed(messages.data):
-        if msg.role == "assistant":
-            assistant_reply = msg.content[0].text.value
-            break
+    # Получение ответов только из текущего run
+run_messages = openai.beta.threads.messages.list(thread_id=thread_id)
+assistant_reply = ""
+
+for msg in reversed(run_messages.data):
+    if msg.role == "assistant" and msg.run_id == run.id:
+        assistant_reply = msg.content[0].text.value
+        break
 
     print(f"Sending reply to chat {chat_id}: {assistant_reply}")
 
