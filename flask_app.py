@@ -6,188 +6,154 @@ import json
 
 app = Flask(__name__)
 
-# Настройки OpenAI и Telegram
 openai.api_key = os.getenv("OPENAI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-
-# Настройки JSONBin.io для хранения thread_id
-JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")  # например: "6841468c8960c979a5a57459"
-JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")  # ключ с правами записи
+JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
+JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 
 JSONBIN_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
-
 HEADERS = {
     "X-Master-Key": JSONBIN_API_KEY,
     "Content-Type": "application/json"
 }
 
-# Кнопки меню
-MENU_BUTTONS = [
-    ["Помощь", "О нас"],
-    ["Сбросить диалог", "Условия"],
-    ["Вопрос-ответ"]
-]
-
-def get_user_threads():
-    """Загружаем данные с JSONBin (chat_id -> thread_id)"""
+# Загрузка истории пользователей из JSONBin
+def load_user_threads():
     try:
-        r = requests.get(JSONBIN_URL + "/latest", headers=HEADERS)
-        if r.status_code == 200:
-            return r.json()["record"]
+        response = requests.get(JSONBIN_URL, headers=HEADERS)
+        if response.status_code == 200:
+            return response.json()["record"]
     except Exception as e:
-        print("Ошибка при загрузке thread_id из JSONBin:", e)
+        print("Ошибка при загрузке thread_id:", e)
     return {}
 
-def save_user_threads(data):
-    """Сохраняем данные в JSONBin"""
+# Сохранение истории пользователей в JSONBin
+def save_user_threads(threads):
     try:
-        r = requests.put(JSONBIN_URL, headers=HEADERS, json=data)
-        return r.status_code == 200 or r.status_code == 201
+        requests.put(JSONBIN_URL, headers=HEADERS, json=threads)
     except Exception as e:
-        print("Ошибка при сохранении thread_id в JSONBin:", e)
-        return False
+        print("Ошибка при сохранении thread_id:", e)
 
-user_threads = get_user_threads()
-
-def send_menu(chat_id):
-    keyboard = {
-        "keyboard": MENU_BUTTONS,
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
-    send_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": "Выберите опцию из меню:",
-        "reply_markup": keyboard
-    }
-    requests.post(send_url, json=payload)
-
-def send_message(chat_id, text):
-    send_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    keyboard = {
-        "keyboard": MENU_BUTTONS,
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "reply_markup": keyboard
-    }
-    requests.post(send_url, json=payload)
-
-def load_text(filename):
+# Загрузка текста из файла
+def load_text(name):
     try:
-        with open(f"texts/{filename}", "r", encoding="utf-8") as f:
+        with open(f"texts/{name}.txt", "r", encoding="utf-8") as f:
             return f.read()
-    except FileNotFoundError:
-        return "Текст не найден."
+    except:
+        return "Текст временно недоступен."
+
+# Отправка меню с кнопками
+def set_menu(chat_id):
+    menu_buttons = [
+        [{"text": "Помощь"}, {"text": "О нас"}],
+        [{"text": "Сбросить диалог"}, {"text": "Условия"}],
+        [{"text": "Вопрос-ответ"}]
+    ]
+    payload = {
+        "chat_id": chat_id,
+        "reply_markup": {"keyboard": menu_buttons, "resize_keyboard": True, "one_time_keyboard": False}
+    }
+    requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", json=payload)
+
+user_threads = {}
+
+@app.before_first_request
+def initialize_threads():
+    global user_threads
+    user_threads = load_user_threads()
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json()
-    if not update:
-        return jsonify({"status": "no update"}), 400
+    if not update or "message" not in update:
+        return jsonify({"status": "no message"}), 400
 
-    message = update.get("message")
-    if not message:
-        return jsonify({"status": "no message"}), 200
-
+    message = update["message"]
     chat_id = message["chat"]["id"]
-    user_text = message.get("text", "").strip()
+    user_message = message.get("text", "").strip()
 
-    if not user_text:
-        send_menu(chat_id)
-        return jsonify({"status": "no text"}), 200
+    set_menu(chat_id)
 
-    # Обработка пунктов меню (тексты из файлов)
-    if user_text == "Помощь":
-        text = load_text("help.txt")
-        send_message(chat_id, text)
-        return jsonify({"status": "help sent"}), 200
-    elif user_text == "О нас":
-        text = load_text("about.txt")
-        send_message(chat_id, text)
-        return jsonify({"status": "about sent"}), 200
-    elif user_text == "Условия":
-        text = load_text("terms.txt")
-        send_message(chat_id, text)
-        return jsonify({"status": "terms sent"}), 200
-    elif user_text == "Вопрос-ответ":
-        text = load_text("faq.txt")
-        send_message(chat_id, text)
-        return jsonify({"status": "faq sent"}), 200
-    elif user_text == "Сбросить диалог":
-        # Сброс истории пользователя
+    if user_message == "/start":
+        reply_text = (
+            "Привет! Меня зовут Ила — я твой виртуальный психолог и наставник по саморазвитию.\n"
+            "Проект EmpathAI создан, чтобы помочь тебе обрести осознанность, разобраться в чувствах "
+            "и справиться с внутренними трудностями.\n"
+            "Ты можешь свободно делиться тем, что на душе — я здесь, чтобы поддержать тебя и помочь найти внутреннюю опору. 🌿"
+        )
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": chat_id, "text": reply_text}
+        )
+        return jsonify({"status": "ok"}), 200
+
+    if user_message.lower() == "/reset" or user_message.lower() == "сбросить диалог":
         if str(chat_id) in user_threads:
-            user_threads.pop(str(chat_id))
+            del user_threads[str(chat_id)]
             save_user_threads(user_threads)
-        reset_msg = load_text("reset.txt")
-        send_message(chat_id, reset_msg)
-        return jsonify({"status": "reset done"}), 200
-    elif user_text == "/reset":
-        # То же действие для команды /reset
-        if str(chat_id) in user_threads:
-            user_threads.pop(str(chat_id))
-            save_user_threads(user_threads)
-        reset_msg = load_text("reset.txt")
-        send_message(chat_id, reset_msg)
-        return jsonify({"status": "reset done"}), 200
+            reply_text = load_text("reset")
+        else:
+            reply_text = "История уже пуста."
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": chat_id, "text": reply_text}
+        )
+        return jsonify({"status": "reset"}), 200
 
-    # Работа с OpenAI Assistant и thread_id
+    menu_responses = {
+        "помощь": "help",
+        "о нас": "about",
+        "условия": "terms",
+        "вопрос-ответ": "faq"
+    }
+
+    key = user_message.lower()
+    if key in menu_responses:
+        reply_text = load_text(menu_responses[key])
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": chat_id, "text": reply_text}
+        )
+        return jsonify({"status": "menu"}), 200
+
     thread_id = user_threads.get(str(chat_id))
     if not thread_id:
-        # Создаём новый thread
-        try:
-            thread = openai.beta.threads.create()
-            thread_id = thread.id
-            user_threads[str(chat_id)] = thread_id
-            save_user_threads(user_threads)
-        except Exception as e:
-            print("Ошибка при создании треда:", e)
-            send_message(chat_id, "Ошибка сервера, попробуйте позже.")
-            return jsonify({"status": "error"}), 500
+        thread = openai.beta.threads.create()
+        thread_id = thread.id
+        user_threads[str(chat_id)] = thread_id
+        save_user_threads(user_threads)
 
-    try:
-        # Отправляем сообщение пользователя в тред
-        openai.beta.threads.messages.create(
-            thread_id=thread_id,
-            role="user",
-            content=user_text
+    openai.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=user_message
+    )
+
+    run = openai.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=ASSISTANT_ID
+    )
+
+    while True:
+        run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+        if run_status.status == "completed":
+            break
+        elif run_status.status in ["failed", "cancelled", "expired"]:
+            return jsonify({"error": "Assistant run failed"}), 500
+
+    messages = openai.beta.threads.messages.list(thread_id=thread_id)
+    assistant_reply = ""
+    for msg in reversed(messages.data):
+        if msg.role == "assistant":
+            assistant_reply = msg.content[0].text.value
+            break
+
+    if assistant_reply:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": chat_id, "text": assistant_reply}
         )
-        # Запускаем ассистента
-        run = openai.beta.threads.runs.create(
-            thread_id=thread_id,
-            assistant_id=ASSISTANT_ID
-        )
-        # Ожидаем завершения run
-        while True:
-            run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-            if run_status.status == "completed":
-                break
-            elif run_status.status in ["failed", "cancelled", "expired"]:
-                send_message(chat_id, "Ошибка при обработке запроса. Попробуйте позже.")
-                return jsonify({"status": "run failed"}), 500
-
-        # Получаем ответ ассистента
-        messages = openai.beta.threads.messages.list(thread_id=thread_id)
-        assistant_reply = ""
-        for msg in reversed(messages.data):
-            if msg.role == "assistant":
-                assistant_reply = msg.content[0].text.value
-                break
-
-        if assistant_reply:
-            send_message(chat_id, assistant_reply)
-        else:
-            send_message(chat_id, "Извините, я не смог ответить на ваш вопрос.")
-
-    except Exception as e:
-        print("Ошибка при общении с OpenAI:", e)
-        send_message(chat_id, "Ошибка сервера, попробуйте позже.")
-        return jsonify({"status": "error"}), 500
 
     return jsonify({"status": "ok"}), 200
 
