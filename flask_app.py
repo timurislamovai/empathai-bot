@@ -42,14 +42,10 @@ def load_history(user_id):
 
 def save_history(user_id, history):
     try:
-        response = requests.get(
-            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest",
-            headers={"X-Master-Key": JSONBIN_API_KEY}
-        )
-        response.raise_for_status()
-        all_data = response.json().get("record", {})
-        all_data[user_id] = history
-
+        # Ограничиваем историю до 10 сообщений
+        history = history[-10:] if len(history) > 10 else history
+        all_data = {user_id: history}  # Сохраняем только данные пользователя
+        print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data)}")  # Отладка
         update = requests.put(
             f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
             headers={
@@ -60,8 +56,7 @@ def save_history(user_id, history):
         )
         update.raise_for_status()
     except Exception as e:
-        print(f"[!] Ошибка сохранения истории: {e}")
-
+        print(f"[!] Ошибка сохранения истории: {e}, Response: {update.text if 'update' in locals() else 'No response'}")
 def reset_history(user_id):
     save_history(user_id, [])
 
