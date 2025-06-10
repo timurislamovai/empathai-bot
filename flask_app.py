@@ -3,7 +3,7 @@ import json
 import requests
 from flask import Flask, request, jsonify
 from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, filters
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 import openai
 
 app = Flask(__name__)
@@ -21,8 +21,7 @@ bot = Bot(token=TELEGRAM_BOT_TOKEN)
 # Папка с текстами
 TEXT_FOLDER = "texts"
 
-# Функции для работы с jsonbin.io
-
+# Функции для работы с JSONBin.io
 def load_history(user_id):
     try:
         response = requests.get(
@@ -66,7 +65,7 @@ def save_history(user_id, history):
 def reset_history(user_id):
     save_history(user_id, [])
 
-# Загрузка текстов для разделов
+# Загрузка текстов для меню
 def load_text(name):
     try:
         with open(f"{TEXT_FOLDER}/{name}.txt", "r", encoding="utf-8") as f:
@@ -74,7 +73,7 @@ def load_text(name):
     except FileNotFoundError:
         return "Извините, информация временно недоступна."
 
-# Генерация ответа через OpenAI Assistant
+# Генерация ответа через Open AI
 def generate_response(user_id, message_text):
     history = load_history(user_id)
     history.append({"role": "user", "content": message_text})
@@ -113,12 +112,12 @@ def generate_response(user_id, message_text):
     save_history(user_id, history)
     return reply
 
-# Меню
+# Нижнее меню (новые названия кнопок)
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton("🆘 Помощь"), KeyboardButton("ℹ️ О нас")],
-        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("📄 Условия")],
-        [KeyboardButton("❓ Вопрос-ответ")]
+        [KeyboardButton("Инструкция"), KeyboardButton("О Сервисе")],
+        [KeyboardButton("Сбросить диалог"), KeyboardButton("Пользовательское соглашение")],
+        [KeyboardButton("Гид по боту")]
     ],
     resize_keyboard=True,
     one_time_keyboard=False
@@ -127,28 +126,30 @@ main_menu = ReplyKeyboardMarkup(
 @app.route(f"/webhook", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot)
+    if not update or not update.effective_chat:
+        return jsonify({"status": "error", "message": "Invalid update"})
+
     chat_id = str(update.effective_chat.id)
-    text = update.message.text.strip() if update.message.text else ""
+    text = update.message.text.strip() if update.message and update.message.text else ""
 
     if text == "/start":
         welcome = (
-            "Привет! Я Ила — виртуальный психолог и наставник по саморазвитию.\n\n"
-            "Я создан в рамках проекта EmpathAI, чтобы поддерживать тебя, "
-            "помогать справляться с тревогой и находить ответы на важные вопросы.\n\n"
-            "Выбирай пункт меню или просто напиши мне."
+            "Привет! Я Ила — твой виртуальный психолог и наставник по саморазвитию.\n\n"
+            "Я здесь, чтобы помочь справляться с тревогой, стрессом и найти ответы на важные вопросы.\n\n"
+            "Выбери пункт меню или напиши мне."
         )
         bot.send_message(chat_id=chat_id, text=welcome, reply_markup=main_menu)
         return jsonify({"status": "ok"})
 
-    elif text == "🆘 Помощь":
-        bot.send_message(chat_id=chat_id, text=load_text("help"), reply_markup=main_menu)
-    elif text == "ℹ️ О нас":
-        bot.send_message(chat_id=chat_id, text=load_text("about"), reply_markup=main_menu)
-    elif text == "📄 Условия":
-        bot.send_message(chat_id=chat_id, text=load_text("terms"), reply_markup=main_menu)
-    elif text == "❓ Вопрос-ответ":
+    elif text == "Инструкция":
+        bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=main_menu)
+    elif text == "О Сервисе":
+        bot.send_message(chat_id=chat_id, text=load_text("info"), reply_markup=main_menu)
+    elif text == "Пользовательское соглашение":
+        bot.send_message(chat_id=chat_id, text=load_text("rules"), reply_markup=main_menu)
+    elif text == "Гид по боту":
         bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=main_menu)
-    elif text == "🔄 Сбросить диалог":
+    elif text == "Сбросить диалог":
         reset_history(chat_id)
         bot.send_message(chat_id=chat_id, text=load_text("reset"), reply_markup=main_menu)
     else:
