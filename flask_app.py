@@ -170,13 +170,13 @@ def webhook():
         return jsonify(success=True)
 
     elif message_text == "🧠 Инструкция":
-        bot.send_message(chat_id=chat_id, text=load_text("instruction"), reply_markup=keyboard)
+        bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=keyboard)
     elif message_text == "ℹ️ О Сервисе":
-        bot.send_message(chat_id=chat_id, text=load_text("about"), reply_markup=keyboard)
+        bot.send_message(chat_id=chat_id, text=load_text("info"), reply_markup=keyboard)
     elif message_text == "📜 Пользовательское соглашение":
-        bot.send_message(chat_id=chat_id, text=load_text("terms"), reply_markup=keyboard)
+        bot.send_message(chat_id=chat_id, text=load_text("rules"), reply_markup=keyboard)
     elif message_text == "❓ Гид по боту":
-        bot.send_message(chat_id=chat_id, text=load_text("guide"), reply_markup=keyboard)
+        bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=keyboard)
     elif message_text == "🔄 Сбросить диалог":
         if user_data:
             user_data["history"] = []
@@ -208,4 +208,5 @@ def webhook():
         if not access_granted:
             bot.send_message(chat_id=chat_id, text=load_text("trial_expired"), reply_markup=keyboard)
         else:
-            reply, user_data = generate_response(user_id, message
+            reply, user_data = generate_response(user_id, message_text, user_data)
+
