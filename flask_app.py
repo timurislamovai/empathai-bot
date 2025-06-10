@@ -1,4 +1,4 @@
-# flask_app.py с поддержкой пробного периода и подписки
+# flask_app.py с сохранением оригинального меню и добавлением пробного периода и подписки
 import os
 import json
 import requests
@@ -69,11 +69,14 @@ def check_access(user_id):
             "start_date": today,
             "last_date": today,
             "daily_count": 0,
-            "subscription_status": "trial"
+            "subscription_status": "trial_pending"
         }
 
     if user_data.get("subscription_status") == "premium":
         return True, user_data, all_data
+
+    if user_data.get("subscription_status") != "trial":
+        return False, user_data, all_data
 
     start_date = datetime.fromisoformat(user_data["start_date"])
     if (now - start_date).days >= TRIAL_DAYS:
@@ -133,11 +136,11 @@ def generate_response(user_id, message_text, user_data):
         print(f"[!] Ошибка OpenAI: {e}")
         return "Произошла ошибка при обращении к GPT.", user_data
 
-@app.route("/webhook", methods=["POST"])
+@app.route("/", methods=["GET"])
 def home():
     return "EmpathAI работает и ожидает Telegram-запросов."
 
-@app.route("/", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json()
     chat_id = update["message"]["chat"]["id"]
@@ -145,40 +148,64 @@ def webhook():
     message_text = update["message"].get("text", "")
 
     user_data, all_data = load_user(user_id)
+
     keyboard_buttons = [
-        [KeyboardButton("Помощь"), KeyboardButton("О нас")],
-        [KeyboardButton("Купить подписку")],
-        [KeyboardButton("Сбросить диалог")]
+        [KeyboardButton("🧠 Инструкция"), KeyboardButton("ℹ️ О Сервисе")],
+        [KeyboardButton("📜 Пользовательское соглашение"), KeyboardButton("❓ Гид по боту")],
+        [KeyboardButton("🔄 Сбросить диалог")]
     ]
-    if not user_data or user_data.get("subscription_status") != "premium":
-        keyboard_buttons[1].insert(0, KeyboardButton("Бесплатный период"))
+
+    if not user_data or user_data.get("subscription_status") in [None, "trial_pending"]:
+        keyboard_buttons.append([KeyboardButton("🆓 Начать бесплатный период")])
+    keyboard_buttons.append([KeyboardButton("💳 Купить подписку")])
 
     keyboard = ReplyKeyboardMarkup(
         keyboard=keyboard_buttons,
         resize_keyboard=True
     )
 
-    if message_text == "Помощь":
-        bot.send_message(chat_id=chat_id, text=load_text("help"), reply_markup=keyboard)
-    elif message_text == "О нас":
+    if message_text == "/start":
+        welcome = load_text("start")
+        bot.send_message(chat_id=chat_id, text=welcome, reply_markup=keyboard)
+        return jsonify(success=True)
+
+    elif message_text == "🧠 Инструкция":
+        bot.send_message(chat_id=chat_id, text=load_text("instruction"), reply_markup=keyboard)
+    elif message_text == "ℹ️ О Сервисе":
         bot.send_message(chat_id=chat_id, text=load_text("about"), reply_markup=keyboard)
-    elif message_text == "Бесплатный период":
-        bot.send_message(chat_id=chat_id, text=load_text("trial_info"), reply_markup=keyboard)
-    elif message_text == "Купить подписку":
-        bot.send_message(chat_id=chat_id, text=load_text("subscribe"), reply_markup=keyboard)
-    elif message_text == "Сбросить диалог":
+    elif message_text == "📜 Пользовательское соглашение":
+        bot.send_message(chat_id=chat_id, text=load_text("terms"), reply_markup=keyboard)
+    elif message_text == "❓ Гид по боту":
+        bot.send_message(chat_id=chat_id, text=load_text("guide"), reply_markup=keyboard)
+    elif message_text == "🔄 Сбросить диалог":
         if user_data:
             user_data["history"] = []
             user_data["daily_count"] = 0
             save_user(user_id, user_data, all_data)
         bot.send_message(chat_id=chat_id, text="Диалог очищен. Начнем заново?", reply_markup=keyboard)
+    elif message_text == "🆓 Начать бесплатный период":
+        if not user_data:
+            user_data = {
+                "history": [],
+                "start_date": datetime.utcnow().date().isoformat(),
+                "last_date": datetime.utcnow().date().isoformat(),
+                "daily_count": 0,
+                "subscription_status": "trial"
+            }
+        else:
+            user_data["subscription_status"] = "trial"
+            user_data["start_date"] = datetime.utcnow().date().isoformat()
+            user_data["last_date"] = datetime.utcnow().date().isoformat()
+            user_data["daily_count"] = 0
+
+        save_user(user_id, user_data, all_data)
+        bot.send_message(chat_id=chat_id, text=load_text("trial_info"), reply_markup=keyboard)
+
+    elif message_text == "💳 Купить подписку":
+        bot.send_message(chat_id=chat_id, text=load_text("subscribe"), reply_markup=keyboard)
     else:
         access_granted, user_data, all_data = check_access(user_id)
         if not access_granted:
             bot.send_message(chat_id=chat_id, text=load_text("trial_expired"), reply_markup=keyboard)
         else:
-            reply, user_data = generate_response(user_id, message_text, user_data)
-            save_user(user_id, user_data, all_data)
-            bot.send_message(chat_id=chat_id, text=reply, reply_markup=keyboard)
-
-    return jsonify(success=True)
+            reply, user_data = generate_response(user_id, message
