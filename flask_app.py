@@ -18,8 +18,15 @@ ASSISTANT_ID = os.environ.get("OPENAI_ASSISTANT_ID")
 JSONBIN_API_KEY = os.environ.get("JSONBIN_API_KEY")
 JSONBIN_BIN_ID = os.environ.get("JSONBIN_BIN_ID")
 
+# 🔽 Временные отладочные print() — увидишь в логах Render
+print("DEBUG: TELEGRAM_BOT_TOKEN =", TELEGRAM_BOT_TOKEN)
+print("DEBUG: OPENAI_API_KEY =", OPENAI_API_KEY)
+print("DEBUG: ASSISTANT_ID =", ASSISTANT_ID)
+print("DEBUG: JSONBIN_API_KEY =", JSONBIN_API_KEY)
+print("DEBUG: JSONBIN_BIN_ID =", JSONBIN_BIN_ID)
+
 # Проверка
-if not TELEGRAM_TOKEN or not OPENAI_API_KEY or not ASSISTANT_ID:
+if not all([TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, ASSISTANT_ID, JSONBIN_API_KEY, JSONBIN_BIN_ID]):
     raise ValueError("Одно или несколько обязательных значений переменных окружения не заданы.")
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
