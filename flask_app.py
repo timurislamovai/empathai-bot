@@ -115,9 +115,9 @@ def generate_response(user_id, message_text):
 # Нижнее меню (новые названия кнопок)
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton("Инструкция"), KeyboardButton("О Сервисе")],
-        [KeyboardButton("Сбросить диалог"), KeyboardButton("Пользовательское соглашение")],
-        [KeyboardButton("Гид по боту")]
+        [KeyboardButton("🧠 Инструкция"), KeyboardButton("ℹ️ О Сервисе")],
+        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("📜 Пользовательское соглашение")],
+        [KeyboardButton("❓ Гид по боту")]
     ],
     resize_keyboard=True,
     one_time_keyboard=False
