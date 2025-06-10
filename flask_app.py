@@ -12,7 +12,7 @@ import requests
 app = Flask(__name__)
 
 # Переменные окружения
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ASSISTANT_ID = os.environ.get("OPENAI_ASSISTANT_ID")
 JSONBIN_API_KEY = os.environ.get("JSONBIN_API_KEY")
