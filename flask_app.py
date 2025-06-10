@@ -77,16 +77,17 @@ def generate_response(user_id, message_text):
     
     history = load_history(user_id)
     history.append({"role": "user", "content": message_text})
-    print(f"[DEBUG] История перед отправкой в Open AI: {json.dumps(history, ensure_ascii=False)}")  # Отладка
+    print(f"[DEBUG] История перед отправкой в Open AI: {json.dumps(history, ensure_ascii=False)}")
 
     openai.api_key = OPENAI_API_KEY
     try:
         thread = openai.beta.threads.create()
         thread_id = thread.id
+        print(f"[DEBUG] Создан thread_id: {thread_id}")
 
         for msg in history:
             if not msg["content"] or msg["content"].strip() == "":
-                continue  # Пропускаем пустые сообщения
+                continue
             openai.beta.threads.messages.create(
                 thread_id=thread_id,
                 role=msg["role"],
@@ -97,13 +98,15 @@ def generate_response(user_id, message_text):
             thread_id=thread_id,
             assistant_id=ASSISTANT_ID
         )
+        print(f"[DEBUG] Создан run_id: {run.id}")
 
         while True:
             status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            print(f"[DEBUG] Статус run: {status.status}")
             if status.status == "completed":
                 break
             elif status.status in ["failed", "cancelled", "expired"]:
-                return "Извините, произошла ошибка. Попробуйте позже."
+                return f"Извините, произошла ошибка (статус: {status.status}). Попробуйте позже."
 
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
         reply = ""
@@ -114,6 +117,7 @@ def generate_response(user_id, message_text):
 
         history.append({"role": "assistant", "content": reply})
         save_history(user_id, history)
+        print(f"[DEBUG] Ответ от Open AI: {reply}")
         return reply
     except Exception as e:
         print(f"[!] Ошибка Open AI: {e}")
