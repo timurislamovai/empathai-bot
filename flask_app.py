@@ -5,24 +5,28 @@ from datetime import datetime, timedelta
 from flask import Flask, request
 from telebot import types
 import telebot
+import openai
 
 from utils import load_text, load_user_data, save_user_data
 
-# Flask app
+# Инициализация Flask
 app = Flask(__name__)
 
-# Telegram Bot Init
+# Константы и ключи
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+ASSISTANT_ID = os.environ.get("OPENAI_ASSISTANT_ID")
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
 
 bot = telebot.TeleBot(TOKEN)
 
-# Constants
 FREE_TRIAL_DAYS = 7
 DAILY_MESSAGE_LIMIT = 15
 
 # Главное меню
+
 def get_main_menu():
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.row("🧠 Инструкция", "❓ Гид по боту")
@@ -31,16 +35,18 @@ def get_main_menu():
     keyboard.row("💳 Купить подписку")
     return keyboard
 
+
 def get_keyboard_for_user(is_new_user):
     keyboard = get_main_menu()
     if is_new_user:
         keyboard.row("🆓 Начать бесплатный период")
     return keyboard
 
-# Обработка обновлений
+
+# Асинхронная обработка сообщений
 async def handle_update(update):
     message = update.message
-    if not message or not message.text:
+    if not message:
         return
 
     chat_id = message.chat.id
@@ -48,48 +54,79 @@ async def handle_update(update):
     message_text = message.text.strip()
 
     user_data = load_user_data(user_id)
-    is_new_user = not user_data
+    thread_id = user_data.get("thread_id")
 
-    keyboard = get_keyboard_for_user(is_new_user)
-
-    # Обработка кнопок
     if message_text == "/start" or message_text == "🆓 Начать бесплатный период":
-        user_data = {
-            "start_date": datetime.utcnow().isoformat(),
-            "messages_sent": 0
-        }
-        save_user_data(user_id, user_data)
-        reply = (
-            "👋 Привет! Добро пожаловать в EmpathAI — твоего личного помощника в трудные моменты.\n\n"
-            "🧠 Я готов выслушать, поддержать и помочь тебе разобраться в себе.\n"
-            "Можешь задать вопрос или выбрать действие из меню."
+        welcome_text = (
+            "👋 Добро пожаловать в EmpathAI — твоего личного психолога и наставника.\n"
+            "Бесплатный пробный период активен. Задай свой первый вопрос."
         )
-    elif message_text == "🧠 Инструкция":
-        reply = load_text("support")
-    elif message_text == "❓ Гид по боту":
-        reply = load_text("faq")
-    elif message_text == "ℹ️ О Сервисе":
-        reply = load_text("info")
-    elif message_text == "📜 Пользовательское соглашение":
-        reply = load_text("rules")
-    elif message_text == "🔄 Сбросить диалог":
-        save_user_data(user_id, {})
-        reply = load_text("reset")
-    elif message_text == "💳 Купить подписку":
-        reply = "💳 Возможности подписки появятся скоро. Следи за обновлениями!"
+        bot.send_message(chat_id, welcome_text, reply_markup=get_main_menu())
+        return
+
+    if message_text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе", "📜 Пользовательское соглашение", "🔄 Сбросить диалог"]:
+        filename_map = {
+            "🧠 Инструкция": "support",
+            "❓ Гид по боту": "faq",
+            "ℹ️ О Сервисе": "info",
+            "📜 Пользовательское соглашение": "rules",
+            "🔄 Сбросить диалог": "reset"
+        }
+        filename = filename_map.get(message_text)
+
+        if filename == "reset":
+            user_data.pop("thread_id", None)
+            save_user_data(user_id, user_data)
+
+        text = load_text(filename)
+        bot.send_message(chat_id, text, reply_markup=get_main_menu())
+        return
+
+    if not thread_id:
+        thread = openai.beta.threads.create()
+        thread_id = thread.id
+        user_data["thread_id"] = thread_id
+        save_user_data(user_id, user_data)
+
+    openai.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=message_text
+    )
+
+    run = openai.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=ASSISTANT_ID
+    )
+
+    while True:
+        run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+        if run_status.status == "completed":
+            break
+        elif run_status.status in ("failed", "cancelled", "expired"):
+            bot.send_message(chat_id, "❌ Произошла ошибка. Попробуй позже.")
+            return
+        await asyncio.sleep(1)
+
+    messages = openai.beta.threads.messages.list(thread_id=thread_id)
+    for msg in reversed(messages.data):
+        if msg.role == "assistant":
+            answer = msg.content[0].text.value
+            break
     else:
-        reply = "🤖 Я тебя слушаю. Напиши свой вопрос или выбери действие из меню."
+        answer = "🤖 Не удалось получить ответ. Попробуй позже."
 
-    await asyncio.to_thread(bot.send_message, chat_id, reply, reply_markup=keyboard)
+    await bot.send_message(chat_id, answer, reply_markup=get_main_menu())
 
-# Webhook обработка
+
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = types.Update.de_json(request.get_json(force=True))
     asyncio.run(handle_update(update))
     return "OK", 200
 
-# Запуск локально или на Render
+# Локальный запуск
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
