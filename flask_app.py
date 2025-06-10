@@ -70,42 +70,52 @@ def load_text(name):
 
 # Генерация ответа через Open AI
 def generate_response(user_id, message_text):
+    if not message_text or message_text.strip() == "":
+        return "Пожалуйста, напиши что-нибудь, чтобы я мог ответить! 😊"
+    
     history = load_history(user_id)
     history.append({"role": "user", "content": message_text})
+    print(f"[DEBUG] История перед отправкой в Open AI: {json.dumps(history, ensure_ascii=False)}")  # Отладка
 
     openai.api_key = OPENAI_API_KEY
-    thread = openai.beta.threads.create()
-    thread_id = thread.id
+    try:
+        thread = openai.beta.threads.create()
+        thread_id = thread.id
 
-    for msg in history:
-        openai.beta.threads.messages.create(
+        for msg in history:
+            if not msg["content"] or msg["content"].strip() == "":
+                continue  # Пропускаем пустые сообщения
+            openai.beta.threads.messages.create(
+                thread_id=thread_id,
+                role=msg["role"],
+                content=msg["content"]
+            )
+
+        run = openai.beta.threads.runs.create(
             thread_id=thread_id,
-            role=msg["role"],
-            content=msg["content"]
+            assistant_id=ASSISTANT_ID
         )
 
-    run = openai.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=ASSISTANT_ID
-    )
+        while True:
+            status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            if status.status == "completed":
+                break
+            elif status.status in ["failed", "cancelled", "expired"]:
+                return "Извините, произошла ошибка. Попробуйте позже."
 
-    while True:
-        status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-        if status.status == "completed":
-            break
-        elif status.status in ["failed", "cancelled", "expired"]:
-            return "Извините, произошла ошибка. Попробуйте позже."
+        messages = openai.beta.threads.messages.list(thread_id=thread_id)
+        reply = ""
+        for msg in reversed(messages.data):
+            if msg.role == "assistant":
+                reply = msg.content[0].text.value
+                break
 
-    messages = openai.beta.threads.messages.list(thread_id=thread_id)
-    reply = ""
-    for msg in reversed(messages.data):
-        if msg.role == "assistant":
-            reply = msg.content[0].text.value
-            break
-
-    history.append({"role": "assistant", "content": reply})
-    save_history(user_id, history)
-    return reply
+        history.append({"role": "assistant", "content": reply})
+        save_history(user_id, history)
+        return reply
+    except Exception as e:
+        print(f"[!] Ошибка Open AI: {e}")
+        return "Извините, что-то пошло не так. Попробуйте ещё раз!"
 
 # Нижнее меню (новые названия кнопок)
 main_menu = ReplyKeyboardMarkup(
