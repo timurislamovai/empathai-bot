@@ -30,8 +30,8 @@ def load_user_data(user_id):
         )
         response.raise_for_status()
         data = response.json()
-        # Обрабатываем возможную вложенность
         all_data = data.get("record", {})
+        # Обрабатываем вложенные "record"
         while isinstance(all_data.get("record"), dict):
             all_data = all_data["record"]
         user_data = all_data.get(user_id, {
@@ -49,17 +49,7 @@ def load_user_data(user_id):
 
 def save_user_data(user_id, user_data):
     try:
-        response = requests.get(
-            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest",
-            headers={"X-Master-Key": JSONBIN_API_KEY}
-        )
-        response.raise_for_status()
-        data = response.json()
-        # Обрабатываем возможную вложенность
-        all_data = data.get("record", {})
-        while isinstance(all_data.get("record"), dict):
-            all_data = all_data["record"]
-        all_data[user_id] = user_data
+        all_data = {user_id: user_data}  # Формируем чистую структуру
         print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data, ensure_ascii=False)}")
         update = requests.put(
             f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
@@ -67,7 +57,7 @@ def save_user_data(user_id, user_data):
                 "X-Master-Key": JSONBIN_API_KEY,
                 "Content-Type": "application/json"
             },
-            json=all_data  # Отправляем напрямую, без ключа "record"
+            json=all_data
         )
         update.raise_for_status()
         print(f"[DEBUG] Успешно сохранено в JSONBin.io, Response: {update.text}")
@@ -75,6 +65,16 @@ def save_user_data(user_id, user_data):
     except Exception as e:
         print(f"[!] Ошибка сохранения данных: {e}, Response: {update.text if 'update' in locals() else 'No response'}")
         return False
+
+def reset_user_data(user_id):
+    user_data = {
+        "free_trial_start": None,
+        "messages_today": 0,
+        "last_message_date": None,
+        "is_subscribed": False,
+        "history": []
+    }
+    save_user_data(user_id, user_data)
 
 def reset_history(user_id):
     user_data = load_user_data(user_id)
@@ -237,14 +237,22 @@ def webhook():
 
     user_data = load_user_data(chat_id)
     print(f"[DEBUG] User data: {json.dumps(user_data, ensure_ascii=False)}")
+    
+    # Сброс данных, если структура сломана
+    if "record" in user_data:
+        print(f"[DEBUG] Сломанная структура данных, сбрасываем для user_id {chat_id}")
+        reset_user_data(chat_id)
+        user_data = load_user_data(chat_id)
+    
     menu = trial_menu if not user_data.get("free_trial_start") else main_menu
 
     if text == "/start":
+        reset_user_data(chat_id)  # Сбрасываем данные при /start для чистоты
         welcome = (
             "Привет! Я Ила — твой виртуальный психолог и наставник по саморазвитию.\n\n"
             "Получи 7 дней бесплатного периода (15 сообщений в день)! Нажми 🆓 Начать бесплатный период или напиши мне."
         )
-        bot.send_message(chat_id=chat_id, text=welcome, reply_markup=menu)
+        bot.send_message(chat_id=chat_id, text=welcome, reply_markup=trial_menu)
     elif text == "🆓 Начать бесплатный период":
         if not user_data.get("free_trial_start"):
             user_data["free_trial_start"] = datetime.now().strftime("%Y-%m-%d")
@@ -268,7 +276,7 @@ def webhook():
         bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=menu)
     elif text == "🔄 Сбросить диалог":
         reset_history(chat_id)
-        bot.send_message(chat_id=chat_id, text=load_text("reset"), reply_markup=menu)
+        bot.send_message(chat_id=chat_id, text=load_text("reset"), reply_markup=main_menu)
     else:
         answer, custom_menu = generate_response(chat_id, text)
         bot.send_message(chat_id=chat_id, text=answer, reply_markup=custom_menu or menu)
