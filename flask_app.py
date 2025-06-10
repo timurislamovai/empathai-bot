@@ -104,6 +104,9 @@ async def handle_update(update):
     save_user_data(user_id, user_data)
     await bot.send_message(chat_id, reply, reply_markup=keyboard)
 
+# Flask-приложение
+app = Flask(__name__)
+
 # Webhook обработка
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -115,3 +118,4 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
