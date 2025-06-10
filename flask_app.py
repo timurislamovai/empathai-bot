@@ -110,7 +110,7 @@ app = Flask(__name__)
 # Webhook обработка
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    update = types.Update.de_json(request.get_json(force=True), bot)
+    update = types.Update.de_json(request.get_json(force=True))  # ✅ исправлено
     asyncio.run(handle_update(update))
     return "OK", 200
 
