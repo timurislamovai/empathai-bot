@@ -1,5 +1,5 @@
-import json
 import os
+import json
 
 USER_DATA_FILE = "users.json"
 
@@ -13,15 +13,15 @@ def load_text(filename):
 def load_user_data(user_id):
     if os.path.exists(USER_DATA_FILE):
         with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-            all_data = json.load(f)
-            return all_data.get(user_id, {})  # вернуть данные конкретного пользователя
+            data = json.load(f)
+            return data.get(user_id, {})
     return {}
 
-def save_user_data(user_id, data):
-    all_data = {}
+def save_user_data(user_id, user_entry):
+    data = {}
     if os.path.exists(USER_DATA_FILE):
         with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-            all_data = json.load(f)
-    all_data[user_id] = data  # обновить данные пользователя
+            data = json.load(f)
+    data[user_id] = user_entry
     with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(all_data, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
