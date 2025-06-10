@@ -90,35 +90,44 @@ def check_limits(user_id):
         user_data["messages_today"] = 0
         user_data["last_message_date"] = today
     
-    # Проверка триала
+    # Проверка подписки
     if user_data["is_subscribed"]:
-        return True, user_data, "Вы подписчик, лимитов нет! 😊"
+        return True, user_data, "Вы подписчик, лимитов нет! 😊", None
     
+    # Проверка триала
     if user_data["free_trial_start"] is None:
-        return False, user_data, "Нажми 🆓 Начать бесплатный период, чтобы получить 7 дней и 15 сообщений в день!"
+        return False, user_data, "Получи 7 дней бесплатного периода (15 сообщений в день)! Нажми 🆓 Начать бесплатный период.", ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton("🆓 Начать бесплатный период")]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
     
     trial_start = datetime.strptime(user_data["free_trial_start"], "%Y-%m-%d")
     trial_end = trial_start + timedelta(days=7)
     if datetime.now() > trial_end:
-        return False, user_data, "Твой бесплатный период закончился. 💳 Купить подписку?"
+        return False, user_data, "Твой бесплатный период закончился. 💳 Купить подписку?", ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton("💳 Купить подписку")]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
     
     if user_data["messages_today"] >= 15:
-        return False, user_data, f"Лимит 15 сообщений сегодня достигнут. 💳 Купить подписку? Осталось {trial_end.strftime('%Y-%m-%d')} до конца триала."
+        return False, user_data, f"Лимит 15 сообщений сегодня достигнут. 💳 Купить подписку? Триал до {trial_end.strftime('%Y-%m-%d')}.", ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton("💳 Купить подписку")]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
     
-    return True, user_data, f"Осталось {15 - user_data['messages_today']} сообщений сегодня."
+    return True, user_data, f"Осталось {15 - user_data['messages_today']} сообщений сегодня.", None
 
 # Генерация ответа через Open AI
 def generate_response(user_id, message_text):
     if not message_text or message_text.strip() == "":
         return "Пожалуйста, напиши что-нибудь, чтобы я мог ответить! 😊", None
     
-    can_respond, user_data, limit_message = check_limits(user_id)
+    can_respond, user_data, limit_message, custom_menu = check_limits(user_id)
     if not can_respond:
-        return limit_message, ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton("💳 Купить подписку")]],
-            resize_keyboard=True,
-            one_time_keyboard=True
-        )
+        return limit_message, custom_menu
     
     history = user_data["history"]
     history.append({"role": "user", "content": message_text})
@@ -205,13 +214,13 @@ def webhook():
     text = update.message.text.strip() if update.message and update.message.text else ""
 
     user_data = load_user_data(chat_id)
-    menu = main_menu if user_data.get("free_trial_start") else trial_menu
+    print(f"[DEBUG] User data: {json.dumps(user_data, ensure_ascii=False)}")
+    menu = trial_menu if not user_data.get("free_trial_start") else main_menu
 
     if text == "/start":
         welcome = (
             "Привет! Я Ила — твой виртуальный психолог и наставник по саморазвитию.\n\n"
-            "Я здесь, чтобы помочь справляться с тревогой, стрессом и найти ответы на важные вопросы.\n\n"
-            "Получи 7 дней бесплатного периода (15 сообщений в день)! Выбери пункт меню или напиши мне."
+            "Получи 7 дней бесплатного периода (15 сообщений в день)! Нажми 🆓 Начать бесплатный период или напиши мне."
         )
         bot.send_message(chat_id=chat_id, text=welcome, reply_markup=menu)
     elif text == "🆓 Начать бесплатный период":
