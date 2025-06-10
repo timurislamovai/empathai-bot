@@ -1,173 +1,169 @@
+# flask_app.py с поддержкой пробного периода и подписки
 import os
 import json
 import requests
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
-from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 import openai
+import time
 
 app = Flask(__name__)
 
-# Переменные окружения
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 
-# Инициализация бота
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
-
-# Папка с текстами
 TEXT_FOLDER = "texts"
 
-# Функции для работы с JSONBin.io
-def load_history(user_id):
+TRIAL_DAYS = 7
+TRIAL_DAILY_LIMIT = 15
+
+def load_all_data():
     try:
         response = requests.get(
             f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest",
             headers={"X-Master-Key": JSONBIN_API_KEY}
         )
         response.raise_for_status()
-        all_data = response.json().get("record", {})
-        user_data = all_data.get(user_id, [])
-        if isinstance(user_data, list):
-            return user_data
-        else:
-            print(f"[!] История пользователя {user_id} не список, сбрасываю.")
-            return []
+        return response.json().get("record", {})
     except Exception as e:
-        print(f"[!] Ошибка загрузки истории: {e}")
-        return []
+        print(f"[!] Ошибка загрузки данных: {e}")
+        return {}
 
-def save_history(user_id, history):
+def save_all_data(data):
     try:
-        history = history[-10:] if len(history) > 10 else history
-        all_data = {user_id: history}
-        print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data, ensure_ascii=False)}")
-        print(f"[DEBUG] URL: https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}")
-        print(f"[DEBUG] Headers: {{'X-Master-Key': '***', 'Content-Type': 'application/json'}}")
-        update = requests.put(
+        response = requests.put(
             f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
             headers={
                 "X-Master-Key": JSONBIN_API_KEY,
                 "Content-Type": "application/json"
             },
-            json={"record": all_data}
+            json={"record": data}
         )
-        update.raise_for_status()
-        print(f"[DEBUG] Успешно сохранено в JSONBin.io, Response: {update.text}")
+        response.raise_for_status()
         return True
     except Exception as e:
-        print(f"[!] Ошибка сохранения истории: {e}, Response: {update.text if 'update' in locals() else 'No response'}")
+        print(f"[!] Ошибка сохранения: {e}")
         return False
 
-def reset_history(user_id):
-    save_history(user_id, [])
+def load_user(user_id):
+    data = load_all_data()
+    return data.get(user_id, None), data
 
-# Загрузка текстов для меню
+def save_user(user_id, user_data, full_data):
+    full_data[user_id] = user_data
+    return save_all_data(full_data)
+
+def check_access(user_id):
+    user_data, all_data = load_user(user_id)
+    today = datetime.utcnow().date().isoformat()
+    now = datetime.utcnow()
+
+    if not user_data:
+        user_data = {
+            "history": [],
+            "start_date": today,
+            "last_date": today,
+            "daily_count": 0,
+            "subscription_status": "trial"
+        }
+
+    if user_data.get("subscription_status") == "premium":
+        return True, user_data, all_data
+
+    start_date = datetime.fromisoformat(user_data["start_date"])
+    if (now - start_date).days >= TRIAL_DAYS:
+        return False, user_data, all_data
+
+    if user_data["last_date"] != today:
+        user_data["last_date"] = today
+        user_data["daily_count"] = 0
+
+    if user_data["daily_count"] >= TRIAL_DAILY_LIMIT:
+        return False, user_data, all_data
+
+    return True, user_data, all_data
+
+def update_history(user_data, message):
+    user_data["history"].append(message)
+    user_data["history"] = user_data["history"][-10:]
+    user_data["daily_count"] += 1
+    return user_data
+
 def load_text(name):
     try:
         with open(f"{TEXT_FOLDER}/{name}.txt", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "Извините, информация временно недоступна."
+        return "Информация временно недоступна."
 
-# Генерация ответа через Open AI
-def generate_response(user_id, message_text):
-    if not message_text or message_text.strip() == "":
-        return "Пожалуйста, напиши что-нибудь, чтобы я мог ответить! 😊"
-    
-    history = load_history(user_id)
-    history.append({"role": "user", "content": message_text})
-    print(f"[DEBUG] История перед отправкой в Open AI: {json.dumps(history, ensure_ascii=False)}")
+def generate_response(user_id, message_text, user_data):
+    if not message_text.strip():
+        return "Пожалуйста, напиши что-нибудь 😊"
 
+    user_data = update_history(user_data, {"role": "user", "content": message_text})
     openai.api_key = OPENAI_API_KEY
+
     try:
-        thread = openai.beta.threads.create()
-        thread_id = thread.id
-        print(f"[DEBUG] Создан thread_id: {thread_id}")
-
-        for msg in history:
-            if not msg["content"] or msg["content"].strip() == "":
-                continue
-            openai.beta.threads.messages.create(
-                thread_id=thread_id,
-                role=msg["role"],
-                content=msg["content"]
-            )
-
-        run = openai.beta.threads.runs.create(
-            thread_id=thread_id,
-            assistant_id=ASSISTANT_ID
-        )
-        print(f"[DEBUG] Создан run_id: {run.id}")
+        thread = openai.beta.threads.create(messages=user_data["history"])
+        run = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
 
         while True:
-            status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-            print(f"[DEBUG] Статус run: {status.status}")
-            if status.status == "completed":
+            run_status = openai.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+            if run_status.status == "completed":
                 break
-            elif status.status in ["failed", "cancelled", "expired"]:
-                return f"Извините, произошла ошибка (status: {status.status}). Попробуйте позже."
+            time.sleep(1)
 
-        messages = openai.beta.threads.messages.list(thread_id=thread_id)
-        reply = ""
-        for msg in reversed(messages.data):
-            if msg.role == "assistant":
-                reply = msg.content[0].text.value
-                break
-
-        history.append({"role": "assistant", "content": reply})
-        save_history(user_id, history)
-        print(f"[DEBUG] Ответ от Open AI: {reply}")
-        return reply
+        messages = openai.beta.threads.messages.list(thread_id=thread.id)
+        reply = messages.data[0].content[0].text.value
+        user_data = update_history(user_data, {"role": "assistant", "content": reply})
+        return reply, user_data
     except Exception as e:
-        print(f"[!] Ошибка Open AI: {e}")
-        return "Извините, что-то пошло не так. Попробуйте ещё раз!"
+        print(f"[!] Ошибка OpenAI: {e}")
+        return "Произошла ошибка при обращении к GPT.", user_data
 
-# Нижнее меню
-main_menu = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton("🧠 Инструкция"), KeyboardButton("ℹ️ О Сервисе")],
-        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("📜 Пользовательское соглашение")],
-        [KeyboardButton("❓ Гид по боту")]
-    ],
-    resize_keyboard=True,
-    one_time_keyboard=False
-)
-
-@app.route(f"/webhook", methods=["POST"])
+@app.route("/", methods=["POST"])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    if not update or not update.effective_chat:
-        return jsonify({"status": "error", "message": "Invalid update"})
+    update = request.get_json()
+    chat_id = update["message"]["chat"]["id"]
+    user_id = str(chat_id)
+    message_text = update["message"].get("text", "")
 
-    chat_id = str(update.effective_chat.id)
-    text = update.message.text.strip() if update.message and update.message.text else ""
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton("Помощь"), KeyboardButton("О нас")],
+            [KeyboardButton("Бесплатный период"), KeyboardButton("Купить подписку")],
+            [KeyboardButton("Сбросить диалог")]
+        ],
+        resize_keyboard=True
+    )
 
-    if text == "/start":
-        welcome = (
-            "Привет! Я Ила — твой виртуальный психолог и наставник по саморазвитию.\n\n"
-            "Я здесь, чтобы помочь справляться с тревогой, стрессом и найти ответы на важные вопросы.\n\n"
-            "Выбери пункт меню или напиши мне."
-        )
-        bot.send_message(chat_id=chat_id, text=welcome, reply_markup=main_menu)
-    elif text == "🧠 Инструкция":
-        bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=main_menu)
-    elif text == "ℹ️ О Сервисе":
-        bot.send_message(chat_id=chat_id, text=load_text("info"), reply_markup=main_menu)
-    elif text == "📜 Пользовательское соглашение":
-        bot.send_message(chat_id=chat_id, text=load_text("rules"), reply_markup=main_menu)
-    elif text == "❓ Гид по боту":
-        bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=main_menu)
-    elif text == "🔄 Сбросить диалог":
-        reset_history(chat_id)
-        bot.send_message(chat_id=chat_id, text=load_text("reset"), reply_markup=main_menu)
+    if message_text == "Помощь":
+        bot.send_message(chat_id=chat_id, text=load_text("help"), reply_markup=keyboard)
+    elif message_text == "О нас":
+        bot.send_message(chat_id=chat_id, text=load_text("about"), reply_markup=keyboard)
+    elif message_text == "Бесплатный период":
+        bot.send_message(chat_id=chat_id, text=load_text("trial_info"), reply_markup=keyboard)
+    elif message_text == "Купить подписку":
+        bot.send_message(chat_id=chat_id, text=load_text("subscribe"), reply_markup=keyboard)
+    elif message_text == "Сбросить диалог":
+        user_data, all_data = load_user(user_id)
+        if user_data:
+            user_data["history"] = []
+            user_data["daily_count"] = 0
+            save_user(user_id, user_data, all_data)
+        bot.send_message(chat_id=chat_id, text="Диалог очищен. Начнем заново?", reply_markup=keyboard)
     else:
-        answer = generate_response(chat_id, text)
-        bot.send_message(chat_id=chat_id, text=answer, reply_markup=main_menu)
+        access_granted, user_data, all_data = check_access(user_id)
+        if not access_granted:
+            bot.send_message(chat_id=chat_id, text=load_text("trial_expired"), reply_markup=keyboard)
+        else:
+            reply, user_data = generate_response(user_id, message_text, user_data)
+            save_user(user_id, user_data, all_data)
+            bot.send_message(chat_id=chat_id, text=reply, reply_markup=keyboard)
 
-    return jsonify({"status": "ok"})
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify(success=True)
