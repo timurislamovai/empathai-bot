@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import time
 from flask import Flask, request, jsonify
 from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
 import openai
@@ -31,7 +32,6 @@ def load_user_data(user_id):
         response.raise_for_status()
         data = response.json()
         all_data = data.get("record", {})
-        # Обрабатываем вложенные "record"
         while isinstance(all_data.get("record"), dict):
             all_data = all_data["record"]
         user_data = all_data.get(user_id, {
@@ -41,7 +41,6 @@ def load_user_data(user_id):
             "is_subscribed": False,
             "history": []
         })
-        # Проверяем, если user_data — список (старая структура)
         if isinstance(user_data, list):
             print(f"[DEBUG] Обнаружен старый формат данных для user_id {user_id}, сбрасываем")
             user_data = {
@@ -49,7 +48,7 @@ def load_user_data(user_id):
                 "messages_today": 0,
                 "last_message_date": None,
                 "is_subscribed": False,
-                "history": user_data  # Сохраняем старую историю
+                "history": user_data
             }
             save_user_data(user_id, user_data)
         print(f"[DEBUG] Загружены данные для user_id {user_id}: {json.dumps(user_data, ensure_ascii=False)}")
@@ -60,7 +59,7 @@ def load_user_data(user_id):
 
 def save_user_data(user_id, user_data):
     try:
-        all_data = {user_id: user_data}  # Чистая структура
+        all_data = {user_id: user_data}
         print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data, ensure_ascii=False)}")
         update = requests.put(
             f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
@@ -106,17 +105,14 @@ def check_limits(user_id):
     today = datetime.now().strftime("%Y-%m-%d")
     print(f"[DEBUG] Проверка лимитов для user_id {user_id}, today: {today}")
     
-    # Сброс счётчика сообщений, если новый день
     if user_data["last_message_date"] != today:
         user_data["messages_today"] = 0
         user_data["last_message_date"] = today
         save_user_data(user_id, user_data)
     
-    # Проверка подписки
     if user_data["is_subscribed"]:
         return True, user_data, "Вы подписчик, лимитов нет! 😊", None
     
-    # Проверка триала
     if user_data["free_trial_start"] is None:
         return False, user_data, "Получи 7 дней бесплатного периода (15 сообщений в день)! Нажми 🆓 Начать бесплатный период.", ReplyKeyboardMarkup(
             keyboard=[[KeyboardButton("🆓 Начать бесплатный период")]],
@@ -163,10 +159,14 @@ def generate_response(user_id, message_text):
         return limit_message, custom_menu
     
     history = user_data["history"]
-    history.append({"role": "user", "content": message_text})
-    user_data["history"] = history[-10:]  # Ограничение истории
-    user_data["messages_today"] += 1
-    save_user_data(user_id, user_data)
+    # Проверяем, нет ли дубликата сообщения
+    if not history or history[-1]["content"] != message_text:
+        history.append({"role": "user", "content": message_text})
+        user_data["history"] = history[-10:]
+        user_data["messages_today"] += 1
+        save_user_data(user_id, user_data)
+    else:
+        print(f"[DEBUG] Дубликат сообщения '{message_text}', пропускаем добавление")
     
     print(f"[DEBUG] История перед отправкой в Open AI: {json.dumps(history, ensure_ascii=False)}")
     openai.api_key = OPENAI_API_KEY
@@ -175,7 +175,7 @@ def generate_response(user_id, message_text):
         thread_id = thread.id
         print(f"[DEBUG] Создан thread_id: {thread_id}")
 
-        for msg in history:
+        for msg in history[-5:]:  # Ограничиваем историю 5 сообщениями
             if not msg["content"] or msg["content"].strip() == "":
                 continue
             openai.beta.threads.messages.create(
@@ -190,13 +190,19 @@ def generate_response(user_id, message_text):
         )
         print(f"[DEBUG] Создан run_id: {run.id}")
 
-        while True:
+        timeout = 30  # Таймаут 30 секунд
+        start_time = time.time()
+        while time.time() - start_time < timeout:
             status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
             print(f"[DEBUG] Статус run: {status.status}")
             if status.status == "completed":
                 break
             elif status.status in ["failed", "cancelled", "expired"]:
                 return f"Извините, произошла ошибка (status: {status.status}). Попробуйте позже.", None
+            time.sleep(1)
+        else:
+            print(f"[!] Таймаут ожидания Open AI")
+            return "Извините, ответ от сервера задерживается. Попробуйте ещё раз!", None
 
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
         reply = ""
@@ -205,14 +211,24 @@ def generate_response(user_id, message_text):
                 reply = msg.content[0].text.value
                 break
 
-        history.append({"role": "assistant", "content": reply})
-        user_data["history"] = history[-10:]
-        save_user_data(user_id, user_data)
-        print(f"[DEBUG] Ответ от Open AI: {reply}")
-        return f"{reply}\n\n{limit_message}", None
+        if reply:
+            history.append({"role": "assistant", "content": reply})
+            user_data["history"] = history[-10:]
+            save_user_data(user_id, user_data)
+            print(f"[DEBUG] Ответ от Open AI: {reply}")
+            return f"{reply}\n\n{limit_message}", None
+        else:
+            return "Извините, не удалось получить ответ. Попробуйте ещё раз!", None
     except Exception as e:
         print(f"[!] Ошибка Open AI: {e}")
         return "Извините, что-то пошло не так. Попробуйте ещё раз!", None
+    finally:
+        # Очистка треда (если API позволяет)
+        try:
+            openai.beta.threads.delete(thread_id=thread_id)
+            print(f"[DEBUG] Тред {thread_id} удалён")
+        except Exception as e:
+            print(f"[!] Ошибка удаления треда: {e}")
 
 # Нижнее меню
 main_menu = ReplyKeyboardMarkup(
