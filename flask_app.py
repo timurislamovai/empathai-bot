@@ -182,7 +182,7 @@ def webhook():
             user_data["history"] = []
             user_data["daily_count"] = 0
             save_user(user_id, user_data, all_data)
-        bot.send_message(chat_id=chat_id, text="Диалог очищен. Начнем заново?", reply_markup=keyboard)
+        bot.send_message(chat_id=chat_id, text="🔄 История диалога сброшена! Бот начинает новый разговор, но твои прошлые сообщения остаются видимыми. Теперь можешь задавать свежие вопросы! 😊", reply_markup=keyboard)
     elif message_text == "🆓 Начать бесплатный период":
         if not user_data:
             user_data = {
