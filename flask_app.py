@@ -1,20 +1,19 @@
 import os
 import json
 import asyncio
-from datetime import datetime, timedelta
 from flask import Flask, request
 from telebot import types
 import telebot
 import requests
 
-# === 🔍 Отладочный вывод переменных окружения ===
+# 🔍 Отладочный вывод
 print("DEBUG: TELEGRAM_BOT_TOKEN =", os.getenv("TELEGRAM_BOT_TOKEN"))
 print("DEBUG: OPENAI_API_KEY =", os.getenv("OPENAI_API_KEY"))
 print("DEBUG: ASSISTANT_ID =", os.getenv("ASSISTANT_ID"))
 print("DEBUG: JSONBIN_API_KEY =", os.getenv("JSONBIN_API_KEY"))
 print("DEBUG: JSONBIN_BIN_ID =", os.getenv("JSONBIN_BIN_ID"))
 
-# === 💥 Прерывание, если какие-то переменные не заданы ===
+# 💥 Проверка обязательных переменных
 if not all([
     os.getenv("TELEGRAM_BOT_TOKEN"),
     os.getenv("OPENAI_API_KEY"),
@@ -24,20 +23,18 @@ if not all([
 ]):
     raise ValueError("❌ Одно или несколько обязательных значений переменных окружения не заданы.")
 
-# === 📦 Загружаем переменные окружения ===
+# Инициализация Flask и бота
+app = Flask(__name__)
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 
-# === 🚀 Flask-приложение ===
-app = Flask(__name__)
-
-# === 🤖 Инициализация Telegram-бота ===
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
-# === 📱 Клавиатура меню ===
+# 📱 Клавиатура
 def get_main_menu():
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.row("🧠 Инструкция", "❓ Гид по боту")
@@ -45,7 +42,7 @@ def get_main_menu():
     keyboard.row("🔄 Сбросить диалог", "💳 Купить подписку")
     return keyboard
 
-# === 📁 Работа с JSONBin.io ===
+# 📂 Работа с JSONBin
 def load_user_data():
     url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
     headers = {"X-Master-Key": JSONBIN_API_KEY}
@@ -63,7 +60,7 @@ def save_user_data(data):
     }
     requests.put(url, headers=headers, json=data)
 
-# === ⚙️ Обработка обновления ===
+# 🤖 Асинхронная обработка
 async def handle_update(update):
     message = update.message
     if not message:
@@ -76,7 +73,7 @@ async def handle_update(update):
     user_data = load_user_data()
     user_entry = user_data.get(user_id, {"start_date": None, "used_messages": 0})
 
-    # === 📎 Обработка кнопок ===
+    # 🔘 Обработка кнопок
     if text == "🔄 Сбросить диалог":
         user_entry["thread_id"] = None
         await send_message(chat_id, "Диалог сброшен. Начните новый запрос.", get_main_menu())
@@ -100,7 +97,7 @@ async def handle_update(update):
         await send_message(chat_id, content, get_main_menu())
         return
 
-    # === 💬 OpenAI Assistant API ===
+    # 🧠 OpenAI (Assistant API)
     thread_id = user_entry.get("thread_id")
 
     if not thread_id:
@@ -108,10 +105,22 @@ async def handle_update(update):
             "Authorization": f"Bearer {OPENAI_API_KEY}",
             "OpenAI-Beta": "assistants=v1"
         })
-        thread_id = r.json()["id"]
+
+        if r.status_code != 200:
+            print("❌ Ошибка создания thread:", r.status_code, r.text)
+            await send_message(chat_id, "Ошибка создания диалога. Попробуйте позже.", get_main_menu())
+            return
+
+        thread_json = r.json()
+        thread_id = thread_json.get("id")
+        if not thread_id:
+            print("❌ Thread без ID:", thread_json)
+            await send_message(chat_id, "Не удалось создать диалог.", get_main_menu())
+            return
+
         user_entry["thread_id"] = thread_id
 
-    # Отправка сообщения
+    # 📩 Отправка запроса
     requests.post(
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers={
@@ -122,7 +131,6 @@ async def handle_update(update):
         json={"role": "user", "content": text}
     )
 
-    # Запуск ассистента
     run_resp = requests.post(
         f"https://api.openai.com/v1/threads/{thread_id}/runs",
         headers={
@@ -135,7 +143,7 @@ async def handle_update(update):
 
     run_id = run_resp.json()["id"]
 
-    # Ожидание завершения
+    # ⏳ Ожидание завершения
     status = "in_progress"
     while status in ["queued", "in_progress"]:
         await asyncio.sleep(1)
@@ -148,7 +156,7 @@ async def handle_update(update):
         )
         status = r.json()["status"]
 
-    # Получение ответа
+    # 📥 Получение ответа
     messages_resp = requests.get(
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers={
@@ -160,22 +168,22 @@ async def handle_update(update):
     last_message = messages_resp.json()["data"][0]["content"][0]["text"]["value"]
     await send_message(chat_id, last_message, get_main_menu())
 
-    # Сохранение
+    # 💾 Сохранение
     user_data[user_id] = user_entry
     save_user_data(user_data)
 
-# === 📤 Отправка сообщений ===
+# 📤 Отправка сообщения
 async def send_message(chat_id, text, keyboard=None):
     bot.send_message(chat_id, text, reply_markup=keyboard)
 
-# === 🌐 Обработка Webhook ===
+# 🌐 Вебхук
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = types.Update.de_json(request.get_json(force=True))
     asyncio.run(handle_update(update))
     return "OK", 200
 
-# === 🚀 Локальный запуск ===
+# 🔧 Запуск локально
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
