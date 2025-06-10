@@ -1,11 +1,29 @@
 import os
+
+# 🔍 Отладочный вывод переменных окружения:
+print("DEBUG: TELEGRAM_BOT_TOKEN =", os.getenv("TELEGRAM_BOT_TOKEN"))
+print("DEBUG: OPENAI_API_KEY =", os.getenv("OPENAI_API_KEY"))
+print("DEBUG: ASSISTANT_ID =", os.getenv("ASSISTANT_ID"))
+print("DEBUG: JSONBIN_API_KEY =", os.getenv("JSONBIN_API_KEY"))
+print("DEBUG: JSONBIN_BIN_ID =", os.getenv("JSONBIN_BIN_ID"))
+
+# 💥 Прерываем, если чего-то не хватает
+if not all([
+    os.getenv("TELEGRAM_BOT_TOKEN"),
+    os.getenv("OPENAI_API_KEY"),
+    os.getenv("ASSISTANT_ID"),
+    os.getenv("JSONBIN_API_KEY"),
+    os.getenv("JSONBIN_BIN_ID")
+]):
+    raise ValueError("❌ Одно или несколько обязательных значений переменных окружения не заданы.")
+
+# ✅ Импортируем остальные модули
 import json
 import asyncio
 from datetime import datetime, timedelta
 from flask import Flask, request
 from telebot import types
 import telebot
-
 import requests
 
 # Flask app
@@ -17,13 +35,6 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ASSISTANT_ID = os.environ.get("OPENAI_ASSISTANT_ID")
 JSONBIN_API_KEY = os.environ.get("JSONBIN_API_KEY")
 JSONBIN_BIN_ID = os.environ.get("JSONBIN_BIN_ID")
-
-# 🔽 Временные отладочные print() — увидишь в логах Render
-print("DEBUG: TELEGRAM_BOT_TOKEN =", TELEGRAM_BOT_TOKEN)
-print("DEBUG: OPENAI_API_KEY =", OPENAI_API_KEY)
-print("DEBUG: ASSISTANT_ID =", ASSISTANT_ID)
-print("DEBUG: JSONBIN_API_KEY =", JSONBIN_API_KEY)
-print("DEBUG: JSONBIN_BIN_ID =", JSONBIN_BIN_ID)
 
 # Проверка
 if not all([TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, ASSISTANT_ID, JSONBIN_API_KEY, JSONBIN_BIN_ID]):
