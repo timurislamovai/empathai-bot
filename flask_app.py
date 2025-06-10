@@ -141,15 +141,15 @@ def webhook():
         bot.send_message(chat_id=chat_id, text=welcome, reply_markup=main_menu)
         return jsonify({"status": "ok"})
 
-    elif text == "Инструкция":
+    elif text == "🧠 Инструкция":
         bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=main_menu)
-    elif text == "О Сервисе":
+    elif text == "ℹ️ О Сервисе":
         bot.send_message(chat_id=chat_id, text=load_text("info"), reply_markup=main_menu)
-    elif text == "Пользовательское соглашение":
+    elif text == "📜 Пользовательское соглашение":
         bot.send_message(chat_id=chat_id, text=load_text("rules"), reply_markup=main_menu)
-    elif text == "Гид по боту":
+    elif text == "❓ Гид по боту":
         bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=main_menu)
-    elif text == "Сбросить диалог":
+    elif text == "🔄 Сбросить диалог":
         reset_history(chat_id)
         bot.send_message(chat_id=chat_id, text=load_text("reset"), reply_markup=main_menu)
     else:
