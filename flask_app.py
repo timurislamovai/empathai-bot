@@ -29,7 +29,11 @@ def load_user_data(user_id):
             headers={"X-Master-Key": JSONBIN_API_KEY}
         )
         response.raise_for_status()
-        all_data = response.json().get("record", {})
+        data = response.json()
+        # Обрабатываем возможную вложенность
+        all_data = data.get("record", {})
+        while isinstance(all_data.get("record"), dict):
+            all_data = all_data["record"]
         user_data = all_data.get(user_id, {
             "free_trial_start": None,
             "messages_today": 0,
@@ -50,7 +54,11 @@ def save_user_data(user_id, user_data):
             headers={"X-Master-Key": JSONBIN_API_KEY}
         )
         response.raise_for_status()
-        all_data = response.json().get("record", {})
+        data = response.json()
+        # Обрабатываем возможную вложенность
+        all_data = data.get("record", {})
+        while isinstance(all_data.get("record"), dict):
+            all_data = all_data["record"]
         all_data[user_id] = user_data
         print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data, ensure_ascii=False)}")
         update = requests.put(
@@ -59,7 +67,7 @@ def save_user_data(user_id, user_data):
                 "X-Master-Key": JSONBIN_API_KEY,
                 "Content-Type": "application/json"
             },
-            json={"record": all_data}
+            json=all_data  # Отправляем напрямую, без ключа "record"
         )
         update.raise_for_status()
         print(f"[DEBUG] Успешно сохранено в JSONBin.io, Response: {update.text}")
