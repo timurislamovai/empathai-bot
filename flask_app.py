@@ -103,7 +103,7 @@ async def handle_update(update):
     if not thread_id:
         r = requests.post("https://api.openai.com/v1/threads", headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v1"
+            "OpenAI-Beta": "assistants=v2"
         })
 
         if r.status_code != 200:
@@ -125,7 +125,7 @@ async def handle_update(update):
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v1",
+            "OpenAI-Beta": "assistants=v2",
             "Content-Type": "application/json"
         },
         json={"role": "user", "content": text}
@@ -135,7 +135,7 @@ async def handle_update(update):
         f"https://api.openai.com/v1/threads/{thread_id}/runs",
         headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v1",
+            "OpenAI-Beta": "assistants=v2",
             "Content-Type": "application/json"
         },
         json={"assistant_id": ASSISTANT_ID}
@@ -151,7 +151,7 @@ async def handle_update(update):
             f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
             headers={
                 "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "OpenAI-Beta": "assistants=v1"
+                "OpenAI-Beta": "assistants=v2"
             }
         )
         status = r.json()["status"]
@@ -161,7 +161,7 @@ async def handle_update(update):
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v1"
+            "OpenAI-Beta": "assistants=v2"
         }
     )
 
