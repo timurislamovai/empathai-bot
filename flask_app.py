@@ -9,9 +9,14 @@ import telebot
 from utils import load_text, load_user_data, save_user_data
 
 # Telegram Bot Init
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+import os
+
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
+
 bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
+
 
 # Constants
 FREE_TRIAL_DAYS = 7
