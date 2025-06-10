@@ -1,27 +1,23 @@
 import os
 import json
-import asyncio
 from datetime import datetime, timedelta
 from flask import Flask, request
 from telebot import types
 import telebot
 
-from flask import Flask, request
-...
-app = Flask(__name__)  # <- Добавь эту строку здесь
-
 from utils import load_text, load_user_data, save_user_data
 
-# Telegram Bot Init
-import os
+# Flask App Init
+app = Flask(__name__)
 
+# Telegram Bot Init
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
 
 bot = telebot.TeleBot(TOKEN)
 
-# Constants
+# Константы
 FREE_TRIAL_DAYS = 7
 DAILY_MESSAGE_LIMIT = 15
 
@@ -41,8 +37,8 @@ def get_keyboard_for_user(is_new_user):
         keyboard.row("🆓 Начать бесплатный период")
     return keyboard
 
-# Асинхронная обработка обновлений
-async def handle_update(update):
+# Обработка апдейта
+def handle_update(update):
     message = update.message
     if not message:
         return
@@ -52,70 +48,33 @@ async def handle_update(update):
     message_text = message.text
 
     user_data = load_user_data(user_id)
-    if "registered" not in user_data:
-        user_data["registered"] = datetime.utcnow().isoformat()
-        user_data["trial_active"] = False
-        user_data["messages"] = {}
+    if user_id not in user_data:
+        # Новый пользователь
+        user_data[user_id] = {
+            "start_date": datetime.utcnow().isoformat(),
+            "messages_sent_today": 0,
+            "last_message_date": datetime.utcnow().date().isoformat(),
+        }
         save_user_data(user_id, user_data)
+        reply = "👋 Привет! Добро пожаловать в EmpathAI.\nНажми кнопку ниже, чтобы начать бесплатный период."
+        keyboard = get_keyboard_for_user(is_new_user=True)
+        bot.send_message(chat_id, reply, reply_markup=keyboard)
+        return
 
-    keyboard = get_keyboard_for_user(not user_data.get("trial_active", False))
-
-    if message_text == "/start":
-        reply = "Привет! Я EmpathAI — виртуальный помощник. Я помогу тебе справиться с тревогой, сомнениями и мыслями.\n\n🆓 Чтобы начать — нажми кнопку *Начать бесплатный период*."
-    elif message_text == "🆓 Начать бесплатный период":
-        user_data["trial_active"] = True
-        user_data["trial_start"] = datetime.utcnow().isoformat()
-        user_data["messages"] = {}
-        reply = load_text("texts/trial_info.txt")
-    elif message_text == "💳 Купить подписку":
-        reply = load_text("texts/subscribe.txt")
-    elif message_text == "🔄 Сбросить диалог":
-        user_data["messages"] = {}
-        reply = load_text("texts/reset.txt")
-    elif message_text == "🧠 Инструкция":
-        reply = load_text("texts/support.txt")
-    elif message_text == "❓ Гид по боту":
-        reply = load_text("texts/faq.txt")
-    elif message_text == "ℹ️ О Сервисе":
-        reply = load_text("texts/info.txt")
-    elif message_text == "📜 Пользовательское соглашение":
-        reply = load_text("texts/rules.txt")
-    else:
-        # Проверка пробного периода
-        if user_data.get("trial_active", False):
-            start_date = datetime.fromisoformat(user_data["trial_start"])
-            if datetime.utcnow() - start_date > timedelta(days=FREE_TRIAL_DAYS):
-                user_data["trial_active"] = False
-                reply = load_text("texts/trial_expired.txt")
-                save_user_data(user_id, user_data)
-                await bot.send_message(chat_id, reply, reply_markup=keyboard)
-                return
-
-            today = datetime.utcnow().strftime("%Y-%m-%d")
-            user_data["messages"].setdefault(today, 0)
-            if user_data["messages"][today] >= DAILY_MESSAGE_LIMIT:
-                reply = load_text("texts/trial_expired.txt")
-            else:
-                user_data["messages"][today] += 1
-                reply = f"✅ Ваше сообщение принято ({user_data['messages'][today]}/{DAILY_MESSAGE_LIMIT})."
-        else:
-            reply = load_text("texts/trial_expired.txt")
-
-    save_user_data(user_id, user_data)
-    await bot.send_message(chat_id, reply, reply_markup=keyboard)
-
-# Flask-приложение
-app = Flask(__name__)
+    # Уже есть пользователь
+    reply = "🤖 Я тебя слушаю. Напиши свой вопрос или выбери действие из меню."
+    keyboard = get_keyboard_for_user(is_new_user=False)
+    bot.send_message(chat_id, reply, reply_markup=keyboard)
 
 # Webhook обработка
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    update = types.Update.de_json(request.get_json(force=True))  # ✅ исправлено
-    asyncio.run(handle_update(update))
+    json_str = request.get_data().decode("utf-8")
+    update = types.Update.de_json(json_str)
+    handle_update(update)
     return "OK", 200
 
-# Запуск локально или на Render
+# Локальный запуск
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
