@@ -3,7 +3,6 @@ import json
 import requests
 from flask import Flask, request, jsonify
 from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 import openai
 
 app = Flask(__name__)
@@ -62,6 +61,9 @@ def save_history(user_id, history):
         print(f"[!] Ошибка сохранения истории: {e}, Response: {update.text if 'update' in locals() else 'No response'}")
         return False
 
+def reset_history(user_id):
+    save_history(user_id, [])
+
 # Загрузка текстов для меню
 def load_text(name):
     try:
@@ -106,7 +108,7 @@ def generate_response(user_id, message_text):
             if status.status == "completed":
                 break
             elif status.status in ["failed", "cancelled", "expired"]:
-                return f"Извините, произошла ошибка (статус: {status.status}). Попробуйте позже."
+                return f"Извините, произошла ошибка (status: {status.status}). Попробуйте позже."
 
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
         reply = ""
@@ -123,7 +125,7 @@ def generate_response(user_id, message_text):
         print(f"[!] Ошибка Open AI: {e}")
         return "Извините, что-то пошло не так. Попробуйте ещё раз!"
 
-# Нижнее меню (новые названия кнопок)
+# Нижнее меню
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton("🧠 Инструкция"), KeyboardButton("ℹ️ О Сервисе")],
@@ -150,8 +152,6 @@ def webhook():
             "Выбери пункт меню или напиши мне."
         )
         bot.send_message(chat_id=chat_id, text=welcome, reply_markup=main_menu)
-        return jsonify({"status": "ok"})
-
     elif text == "🧠 Инструкция":
         bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=main_menu)
     elif text == "ℹ️ О Сервисе":
