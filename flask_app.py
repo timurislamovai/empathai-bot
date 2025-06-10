@@ -6,6 +6,10 @@ from flask import Flask, request
 from telebot import types
 import telebot
 
+from flask import Flask, request
+...
+app = Flask(__name__)  # <- Добавь эту строку здесь
+
 from utils import load_text, load_user_data, save_user_data
 
 # Telegram Bot Init
