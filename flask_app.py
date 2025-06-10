@@ -37,9 +37,10 @@ def load_user_data(user_id):
             "is_subscribed": False,
             "history": []
         })
+        print(f"[DEBUG] Загружены данные для user_id {user_id}: {json.dumps(user_data, ensure_ascii=False)}")
         return user_data
     except Exception as e:
-        print(f"[!] Ошибка загрузки данных: {e}")
+        print(f"[!] Ошибка загрузки данных: {e}, Response: {response.text if 'response' in locals() else 'No response'}")
         return {"free_trial_start": None, "messages_today": 0, "last_message_date": None, "is_subscribed": False, "history": []}
 
 def save_user_data(user_id, user_data):
@@ -84,11 +85,13 @@ def load_text(name):
 def check_limits(user_id):
     user_data = load_user_data(user_id)
     today = datetime.now().strftime("%Y-%m-%d")
+    print(f"[DEBUG] Проверка лимитов для user_id {user_id}, today: {today}")
     
     # Сброс счётчика сообщений, если новый день
     if user_data["last_message_date"] != today:
         user_data["messages_today"] = 0
         user_data["last_message_date"] = today
+        save_user_data(user_id, user_data)
     
     # Проверка подписки
     if user_data["is_subscribed"]:
@@ -102,23 +105,33 @@ def check_limits(user_id):
             one_time_keyboard=True
         )
     
-    trial_start = datetime.strptime(user_data["free_trial_start"], "%Y-%m-%d")
-    trial_end = trial_start + timedelta(days=7)
-    if datetime.now() > trial_end:
-        return False, user_data, "Твой бесплатный период закончился. 💳 Купить подписку?", ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton("💳 Купить подписку")]],
+    try:
+        trial_start = datetime.strptime(user_data["free_trial_start"], "%Y-%m-%d")
+        trial_end = trial_start + timedelta(days=7)
+        if datetime.now() > trial_end:
+            return False, user_data, "Твой бесплатный период закончился. 💳 Купить подписку?", ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton("💳 Купить подписку")]],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+        
+        if user_data["messages_today"] >= 15:
+            return False, user_data, f"Лимит 15 сообщений сегодня достигнут. 💳 Купить подписку? Триал до {trial_end.strftime('%Y-%m-%d')}.", ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton("💳 Купить подписку")]],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+        
+        return True, user_data, f"Осталось {15 - user_data['messages_today']} сообщений сегодня.", None
+    except ValueError as e:
+        print(f"[!] Ошибка парсинга даты free_trial_start: {e}")
+        user_data["free_trial_start"] = None
+        save_user_data(user_id, user_data)
+        return False, user_data, "Ошибка с триалом. Нажми 🆓 Начать бесплатный период.", ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton("🆓 Начать бесплатный период")]],
             resize_keyboard=True,
             one_time_keyboard=True
         )
-    
-    if user_data["messages_today"] >= 15:
-        return False, user_data, f"Лимит 15 сообщений сегодня достигнут. 💳 Купить подписку? Триал до {trial_end.strftime('%Y-%m-%d')}.", ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton("💳 Купить подписку")]],
-            resize_keyboard=True,
-            one_time_keyboard=True
-        )
-    
-    return True, user_data, f"Осталось {15 - user_data['messages_today']} сообщений сегодня.", None
 
 # Генерация ответа через Open AI
 def generate_response(user_id, message_text):
@@ -126,6 +139,7 @@ def generate_response(user_id, message_text):
         return "Пожалуйста, напиши что-нибудь, чтобы я мог ответить! 😊", None
     
     can_respond, user_data, limit_message, custom_menu = check_limits(user_id)
+    print(f"[DEBUG] generate_response: can_respond={can_respond}, limit_message={limit_message}")
     if not can_respond:
         return limit_message, custom_menu
     
@@ -228,8 +242,10 @@ def webhook():
             user_data["free_trial_start"] = datetime.now().strftime("%Y-%m-%d")
             user_data["last_message_date"] = datetime.now().strftime("%Y-%m-%d")
             user_data["messages_today"] = 0
-            save_user_data(chat_id, user_data)
-            bot.send_message(chat_id=chat_id, text="Бесплатный период начался! 7 дней, 15 сообщений в день. Пиши мне!", reply_markup=main_menu)
+            if save_user_data(chat_id, user_data):
+                bot.send_message(chat_id=chat_id, text="Бесплатный период начался! 7 дней, 15 сообщений в день. Пиши мне!", reply_markup=main_menu)
+            else:
+                bot.send_message(chat_id=chat_id, text="Ошибка при запуске триала. Попробуй ещё раз!", reply_markup=menu)
         else:
             bot.send_message(chat_id=chat_id, text="Твой бесплатный период уже активен!", reply_markup=main_menu)
     elif text == "💳 Купить подписку":
