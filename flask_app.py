@@ -103,20 +103,27 @@ def load_text(name):
 
 def generate_response(user_id, message_text, user_data):
     if not message_text.strip():
-        return "Пожалуйста, напиши что-нибудь 😊"
+        return "Пожалуйста, напиши что-нибудь 😊", user_data
 
-    user_data = update_history(user_data, {"role": "user", "content": message_text})
+    user_data = update_history(user_data, {"role": "user", "content": message_text[:2000]})
     openai.api_key = OPENAI_API_KEY
 
     try:
         thread = openai.beta.threads.create(messages=user_data["history"])
-        run = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
+    except Exception as e:
+        print(f"[!] Ошибка создания потока: {e}")
+        return "Ошибка создания диалога. Попробуй ещё раз позже.", user_data
 
-        while True:
+    try:
+        run = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
+        max_attempts = 10
+        attempts = 0
+        while attempts < max_attempts:
             run_status = openai.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
             if run_status.status == "completed":
                 break
             time.sleep(1)
+            attempts += 1
 
         messages = openai.beta.threads.messages.list(thread_id=thread.id)
         reply = messages.data[0].content[0].text.value
@@ -126,6 +133,10 @@ def generate_response(user_id, message_text, user_data):
         print(f"[!] Ошибка OpenAI: {e}")
         return "Произошла ошибка при обращении к GPT.", user_data
 
+@app.route("/", methods=["GET"])
+def home():
+    return "EmpathAI работает и ожидает Telegram-запросов."
+
 @app.route("/", methods=["POST"])
 def webhook():
     update = request.get_json()
@@ -133,12 +144,17 @@ def webhook():
     user_id = str(chat_id)
     message_text = update["message"].get("text", "")
 
+    user_data, all_data = load_user(user_id)
+    keyboard_buttons = [
+        [KeyboardButton("Помощь"), KeyboardButton("О нас")],
+        [KeyboardButton("Купить подписку")],
+        [KeyboardButton("Сбросить диалог")]
+    ]
+    if not user_data or user_data.get("subscription_status") != "premium":
+        keyboard_buttons[1].insert(0, KeyboardButton("Бесплатный период"))
+
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton("Помощь"), KeyboardButton("О нас")],
-            [KeyboardButton("Бесплатный период"), KeyboardButton("Купить подписку")],
-            [KeyboardButton("Сбросить диалог")]
-        ],
+        keyboard=keyboard_buttons,
         resize_keyboard=True
     )
 
@@ -151,7 +167,6 @@ def webhook():
     elif message_text == "Купить подписку":
         bot.send_message(chat_id=chat_id, text=load_text("subscribe"), reply_markup=keyboard)
     elif message_text == "Сбросить диалог":
-        user_data, all_data = load_user(user_id)
         if user_data:
             user_data["history"] = []
             user_data["daily_count"] = 0
