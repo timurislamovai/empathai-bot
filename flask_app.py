@@ -133,7 +133,7 @@ def generate_response(user_id, message_text, user_data):
         print(f"[!] Ошибка OpenAI: {e}")
         return "Произошла ошибка при обращении к GPT.", user_data
 
-@app.route("/", methods=["GET"])
+@app.route("/webhook", methods=["POST"])
 def home():
     return "EmpathAI работает и ожидает Telegram-запросов."
 
