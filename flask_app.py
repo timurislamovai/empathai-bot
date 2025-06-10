@@ -17,7 +17,6 @@ if not TOKEN:
 
 bot = telebot.TeleBot(TOKEN)
 
-
 # Constants
 FREE_TRIAL_DAYS = 7
 DAILY_MESSAGE_LIMIT = 15
