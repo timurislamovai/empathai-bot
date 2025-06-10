@@ -1,7 +1,14 @@
-import json
 import os
+import json
+import requests
 
-USER_DATA_FILE = "users.json"
+JSONBIN_API_KEY = os.environ.get("JSONBIN_API_KEY")
+BIN_ID = os.environ.get("JSONBIN_BIN_ID")
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "X-Master-Key": JSONBIN_API_KEY,
+}
 
 def load_text(filename):
     filepath = os.path.join("texts", f"{filename}.txt")
@@ -10,20 +17,22 @@ def load_text(filename):
             return f.read()
     return "Файл не найден."
 
-def load_user_data(user_id):
-    if os.path.exists(USER_DATA_FILE):
-        with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get(user_id, {})  # Возвращаем только данные по user_id
-    return {}
+def load_user_data():
+    url = f"https://api.jsonbin.io/v3/b/{BIN_ID}/latest"
+    try:
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        return response.json()["record"]
+    except Exception as e:
+        print("Ошибка загрузки данных:", e)
+        return {}
 
-def save_user_data(user_id, user_data):
-    data = {}
-    if os.path.exists(USER_DATA_FILE):
-        with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-    data[user_id] = user_data  # Обновляем или добавляем пользователя
-
-    with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save_user_data(data):
+    url = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
+    try:
+        response = requests.put(url, headers=HEADERS, json=data)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print("Ошибка сохранения данных:", e)
+        return False
