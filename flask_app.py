@@ -41,6 +41,17 @@ def load_user_data(user_id):
             "is_subscribed": False,
             "history": []
         })
+        # Проверяем, если user_data — список (старая структура)
+        if isinstance(user_data, list):
+            print(f"[DEBUG] Обнаружен старый формат данных для user_id {user_id}, сбрасываем")
+            user_data = {
+                "free_trial_start": None,
+                "messages_today": 0,
+                "last_message_date": None,
+                "is_subscribed": False,
+                "history": user_data  # Сохраняем старую историю
+            }
+            save_user_data(user_id, user_data)
         print(f"[DEBUG] Загружены данные для user_id {user_id}: {json.dumps(user_data, ensure_ascii=False)}")
         return user_data
     except Exception as e:
@@ -49,7 +60,7 @@ def load_user_data(user_id):
 
 def save_user_data(user_id, user_data):
     try:
-        all_data = {user_id: user_data}  # Формируем чистую структуру
+        all_data = {user_id: user_data}  # Чистая структура
         print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data, ensure_ascii=False)}")
         update = requests.put(
             f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
@@ -238,16 +249,10 @@ def webhook():
     user_data = load_user_data(chat_id)
     print(f"[DEBUG] User data: {json.dumps(user_data, ensure_ascii=False)}")
     
-    # Сброс данных, если структура сломана
-    if "record" in user_data:
-        print(f"[DEBUG] Сломанная структура данных, сбрасываем для user_id {chat_id}")
-        reset_user_data(chat_id)
-        user_data = load_user_data(chat_id)
-    
     menu = trial_menu if not user_data.get("free_trial_start") else main_menu
 
     if text == "/start":
-        reset_user_data(chat_id)  # Сбрасываем данные при /start для чистоты
+        reset_user_data(chat_id)
         welcome = (
             "Привет! Я Ила — твой виртуальный психолог и наставник по саморазвитию.\n\n"
             "Получи 7 дней бесплатного периода (15 сообщений в день)! Нажми 🆓 Начать бесплатный период или напиши мне."
