@@ -3,9 +3,9 @@ import json
 import requests
 import logging
 import time
+import sqlite3
 from flask import Flask, request, jsonify
 from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Dispatcher
 import openai
 
 # Настройка логирования
@@ -25,68 +25,60 @@ app = Flask(__name__)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
-JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 
 # Инициализация бота
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
-dispatcher = Dispatcher(bot, None, workers=0)
 
 # Папка с текстами
 TEXT_FOLDER = "texts"
 
-# In-memory кэш для истории
-history_cache = {}
+# Инициализация SQLite
+def init_db():
+    try:
+        conn = sqlite3.connect('history.db')
+        c = conn.cursor()
+        c.execute('CREATE TABLE IF NOT EXISTS history (user_id TEXT PRIMARY KEY, history TEXT)')
+        conn.commit()
+        logger.info("SQLite база данных инициализирована")
+    except Exception as e:
+        logger.error(f"Ошибка инициализации SQLite: {e}")
+    finally:
+        conn.close()
 
-# Функции для работы с JSONBin.io
+# Функции для работы с SQLite
 def load_history(user_id):
-    if user_id in history_cache:
-        logger.info(f"История для {user_id} взята из кэша")
-        return history_cache[user_id]
     start_time = time.time()
     try:
-        response = requests.get(
-            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest",
-            headers={"X-Master-Key": JSONBIN_API_KEY},
-            timeout=5
-        )
-        response.raise_for_status()
-        all_data = response.json().get("record", {})
-        user_data = all_data.get(user_id, [])
-        if isinstance(user_data, list):
-            history_cache[user_id] = user_data
-            logger.info(f"Загрузка истории для {user_id} выполнена за {time.time() - start_time:.2f} сек")
-            return user_data
-        else:
-            logger.warning(f"История пользователя {user_id} не список, сбрасываю")
-            return []
+        conn = sqlite3.connect('history.db')
+        c = conn.cursor()
+        c.execute('SELECT history FROM history WHERE user_id = ?', (user_id,))
+        result = c.fetchone()
+        history = json.loads(result[0]) if result else []
+        logger.info(f"Загрузка истории для {user_id} из SQLite за {time.time() - start_time:.2f} сек")
+        return history
     except Exception as e:
         logger.error(f"Ошибка загрузки истории для {user_id}: {e}")
         return []
+    finally:
+        conn.close()
 
 def save_history(user_id, history):
-    history_cache[user_id] = history[:10]  # Кэшируем последние 10 сообщений
     start_time = time.time()
     try:
-        all_data = {user_id: history_cache[user_id]}
-        update = requests.put(
-            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
-            headers={
-                "X-Master-Key": JSONBIN_API_KEY,
-                "Content-Type": "application/json"
-            },
-            json={"record": all_data},
-            timeout=5
-        )
-        update.raise_for_status()
-        logger.info(f"Сохранение истории для {user_id} выполнено за {time.time() - start_time:.2f} сек")
+        conn = sqlite3.connect('history.db')
+        c = conn.cursor()
+        c.execute('INSERT OR REPLACE INTO history (user_id, history) VALUES (?, ?)',
+                  (user_id, json.dumps(history[-10:])))
+        conn.commit()
+        logger.info(f"Сохранение истории для {user_id} в SQLite за {time.time() - start_time:.2f} сек")
         return True
     except Exception as e:
-        logger.error(f"Ошибка сохранения истории для {user_id}: {e}, Response: {update.text if 'update' in locals() else 'No response'}")
+        logger.error(f"Ошибка сохранения истории для {user_id}: {e}")
         return False
+    finally:
+        conn.close()
 
 def reset_history(user_id):
-    history_cache[user_id] = []
     save_history(user_id, [])
 
 # Загрузка текстов для меню
@@ -129,7 +121,7 @@ def generate_response(user_id, message_text):
         )
         logger.info(f"Создан run_id: {run.id} для {user_id}")
 
-        max_wait_time = 15  # Уменьшено до 15 секунд
+        max_wait_time = 15  # Таймаут 15 секунд
         wait_start = time.time()
         while time.time() - wait_start < max_wait_time:
             status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
@@ -189,7 +181,6 @@ def webhook():
     # Обработка инлайн-кнопки
     if update.callback_query:
         query = update.callback_query
-        query.answer()
         if query.data == "agree":
             history = load_history(chat_id)
             history.append({"role": "user", "content": "Пользователь подтвердил согласие с пользовательским соглашением"})
@@ -200,6 +191,7 @@ def webhook():
                 text="Спасибо за подтверждение! Вы можете продолжать пользоваться ботом.",
                 reply_markup=main_menu
             )
+            bot.answer_callback_query(callback_query_id=query.id)
         return jsonify({"status": "ok"})
 
     text = update.message.text.strip() if update.message and update.message.text else ""
@@ -247,4 +239,5 @@ def webhook():
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
+    init_db()
     app.run(debug=True)
