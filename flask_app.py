@@ -6,12 +6,13 @@ from flask import Flask, request
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
-# Загрузка переменных окружения
+# Загрузка .env
 load_dotenv()
 
+# Flask-приложение
 app = Flask(__name__)
 
-# Конфигурация
+# Переменные окружения
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
@@ -22,6 +23,7 @@ TIMEZONE_OFFSET = timedelta(hours=5)
 TRIAL_LIMIT = 15
 TRIAL_DAYS = 3
 
+# Меню-клавиатуры
 def start_trial_menu():
     return {
         "keyboard": [
@@ -40,6 +42,7 @@ def main_menu():
         "resize_keyboard": True
     }
 
+# Отправка сообщения
 def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -50,6 +53,7 @@ def send_message(chat_id, text, reply_markup=None):
         payload["reply_markup"] = json.dumps(reply_markup)
     requests.post(url, json=payload)
 
+# Работа с JSONBin
 def get_user_data(user_id):
     headers = {"X-Master-Key": JSONBIN_SECRET}
     res = requests.get(f"{JSONBIN_URL}/{user_id}", headers=headers)
@@ -64,6 +68,7 @@ def save_user_data(user_id, data):
     }
     requests.put(f"{JSONBIN_URL}/{user_id}", headers=headers, data=json.dumps(data))
 
+# Вебхук
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
@@ -74,6 +79,7 @@ def webhook():
         print(f"[ERROR] Webhook exception: {e}")
         return "Internal Server Error", 500
 
+# Основная логика обработки
 def handle_update(update):
     message = update.get("message")
     if not message:
@@ -87,17 +93,17 @@ def handle_update(update):
     if text == "/start":
         user_data = get_user_data(user_id)
         if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
-            welcome_text = (
+            content = (
                 "👋 Добро пожаловать в EmpathAI!\n\n"
                 "Я твой виртуальный помощник для поддержки, саморазвития и снижения тревожности.\n\n"
                 "🆓 Нажми кнопку «Начать бесплатный период», чтобы активировать 3 дня доступа с лимитом 15 сообщений в день."
             )
-            send_message(chat_id, welcome_text, reply_markup=start_trial_menu())
+            send_message(chat_id, content, reply_markup=start_trial_menu())
         else:
             send_message(chat_id, "С возвращением! Продолжим?", reply_markup=main_menu())
         return
 
-    # Активация пробного периода
+    # Активация триала
     if text == "🆓 Начать бесплатный период":
         now = datetime.utcnow() + TIMEZONE_OFFSET
         user_data = get_user_data(user_id)
@@ -111,18 +117,7 @@ def handle_update(update):
             send_message(chat_id, "Вы уже активировали бесплатный период.", reply_markup=main_menu())
         return
 
-    # Сбросить диалог
-    if text == "🔄 Сбросить диалог":
-        user_data = get_user_data(user_id)
-        user_data.pop("thread_id", None)
-        save_user_data(user_id, user_data)
-        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
-            send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы получить доступ!", reply_markup=start_trial_menu())
-        else:
-            send_message(chat_id, "Диалог сброшен. Продолжим?", reply_markup=main_menu())
-        return
-
-    # Обработка кнопок меню
+    # Статические тексты
     if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе", "📜 Условия пользования", "💳 Купить подписку"]:
         filename = {
             "🧠 Инструкция": "support",
@@ -139,31 +134,40 @@ def handle_update(update):
         send_message(chat_id, content, reply_markup=main_menu())
         return
 
-    # Проверка доступа
+    # Лимиты триала
     user_data = get_user_data(user_id)
-    now = datetime.utcnow() + TIMEZONE_OFFSET
-    today_str = now.strftime("%Y-%m-%d")
-
     if user_data.get("is_subscribed"):
-        pass
-    elif user_data.get("free_trial_start"):
-        start_date = datetime.strptime(user_data["free_trial_start"], "%Y-%m-%d")
+        trial_active = True
+    else:
+        now = datetime.utcnow() + TIMEZONE_OFFSET
+        today_str = now.strftime("%Y-%m-%d")
+        start_date_str = user_data.get("free_trial_start")
+
+        if not start_date_str:
+            send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы получить 3 дня и 15 сообщений в день!", reply_markup=main_menu())
+            return
+
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
         if (now - start_date).days >= TRIAL_DAYS:
             send_message(chat_id, "Срок бесплатного периода истёк. 💳 Купить подписку?", reply_markup=main_menu())
             return
+
         if user_data.get("last_message_date") != today_str:
             user_data["messages_today"] = 0
             user_data["last_message_date"] = today_str
-        if user_data.get("messages_today", 0) >= TRIAL_LIMIT:
+            send_message(chat_id, f"Вы используете бесплатную версию. Вам доступно {TRIAL_LIMIT} сообщений в день. Лимит обновляется ежедневно.", reply_markup=main_menu())
+
+        messages_today = user_data.get("messages_today", 0)
+        if messages_today >= TRIAL_LIMIT:
             send_message(chat_id, "Вы достигли дневного лимита. 💳 Купить подписку?", reply_markup=main_menu())
             return
-        user_data["messages_today"] = user_data.get("messages_today", 0) + 1
-        save_user_data(user_id, user_data)
-    else:
-        send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы начать!", reply_markup=start_trial_menu())
-        return
 
-    # OpenAI Assistant API
+        user_data["messages_today"] = messages_today + 1
+        save_user_data(user_id, user_data)
+        remaining = TRIAL_LIMIT - user_data["messages_today"]
+        send_message(chat_id, f"Осталось {remaining} сообщений сегодня.")
+
+    # Работа с Assistant API
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "OpenAI-Beta": "assistants=v2",
@@ -203,5 +207,6 @@ def handle_update(update):
 
     send_message(chat_id, reply, reply_markup=main_menu())
 
+# Запуск Flask
 if __name__ == "__main__":
     app.run(debug=True)
