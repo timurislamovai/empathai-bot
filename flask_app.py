@@ -1,11 +1,16 @@
 import os
-import json
-import asyncio
-from datetime import datetime, timedelta
-from flask import Flask, request
 import requests
+from dotenv import load_dotenv
 
-from telegram import Bot, ReplyKeyboardMarkup
+load_dotenv()
+
+# Загружаем переменные окружения
+JSONBIN_URL = os.getenv("JSONBIN_URL")
+JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
+
+# Временная отладка — можешь удалить потом
+print(f"[DEBUG] JSONBIN_URL = {JSONBIN_URL}")
+print(f"[DEBUG] JSONBIN_API_KEY = {JSONBIN_API_KEY}")
 
 app = Flask(__name__)
 
