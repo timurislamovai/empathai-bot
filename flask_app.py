@@ -23,7 +23,6 @@ TIMEZONE_OFFSET = timedelta(hours=5)
 TRIAL_LIMIT = 15
 TRIAL_DAYS = 3
 
-# Меню-клавиатуры
 def start_trial_menu():
     return {
         "keyboard": [
@@ -42,7 +41,6 @@ def main_menu():
         "resize_keyboard": True
     }
 
-# Отправка сообщения
 def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -53,7 +51,6 @@ def send_message(chat_id, text, reply_markup=None):
         payload["reply_markup"] = json.dumps(reply_markup)
     requests.post(url, json=payload)
 
-# Работа с JSONBin
 def get_user_data(user_id):
     headers = {"X-Master-Key": JSONBIN_SECRET}
     res = requests.get(f"{JSONBIN_URL}/{user_id}", headers=headers)
@@ -68,7 +65,6 @@ def save_user_data(user_id, data):
     }
     requests.put(f"{JSONBIN_URL}/{user_id}", headers=headers, data=json.dumps(data))
 
-# Вебхук
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
@@ -79,7 +75,6 @@ def webhook():
         print(f"[ERROR] Webhook exception: {e}")
         return "Internal Server Error", 500
 
-# Основная логика обработки
 def handle_update(update):
     message = update.get("message")
     if not message:
@@ -89,7 +84,7 @@ def handle_update(update):
     text = message.get("text", "").strip()
     user_id = str(chat_id)
 
-    # Команда /start
+    # /start или первое обращение
     if text == "/start":
         user_data = get_user_data(user_id)
         if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
@@ -103,7 +98,19 @@ def handle_update(update):
             send_message(chat_id, "С возвращением! Продолжим?", reply_markup=main_menu())
         return
 
-    # Активация триала
+    # Сбросить диалог — с удалением контекста
+    if text == "🔄 Сбросить диалог":
+        user_data = get_user_data(user_id)
+        user_data.pop("thread_id", None)
+        save_user_data(user_id, user_data)
+
+        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
+            send_message(chat_id, "Диалог сброшен. Нажми кнопку ниже, чтобы начать бесплатный период.", reply_markup=start_trial_menu())
+        else:
+            send_message(chat_id, "Диалог сброшен. Можем начать заново.", reply_markup=main_menu())
+        return
+
+    # Активация пробного периода
     if text == "🆓 Начать бесплатный период":
         now = datetime.utcnow() + TIMEZONE_OFFSET
         user_data = get_user_data(user_id)
@@ -117,7 +124,7 @@ def handle_update(update):
             send_message(chat_id, "Вы уже активировали бесплатный период.", reply_markup=main_menu())
         return
 
-    # Статические тексты
+    # Обработка кнопок меню
     if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе", "📜 Условия пользования", "💳 Купить подписку"]:
         filename = {
             "🧠 Инструкция": "support",
@@ -134,17 +141,17 @@ def handle_update(update):
         send_message(chat_id, content, reply_markup=main_menu())
         return
 
-    # Лимиты триала
+    # Проверка лимита
     user_data = get_user_data(user_id)
     if user_data.get("is_subscribed"):
         trial_active = True
     else:
         now = datetime.utcnow() + TIMEZONE_OFFSET
         today_str = now.strftime("%Y-%m-%d")
-        start_date_str = user_data.get("free_trial_start")
 
+        start_date_str = user_data.get("free_trial_start")
         if not start_date_str:
-            send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы получить 3 дня и 15 сообщений в день!", reply_markup=main_menu())
+            send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы получить 3 дня и 15 сообщений в день!", reply_markup=start_trial_menu())
             return
 
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
@@ -167,7 +174,7 @@ def handle_update(update):
         remaining = TRIAL_LIMIT - user_data["messages_today"]
         send_message(chat_id, f"Осталось {remaining} сообщений сегодня.")
 
-    # Работа с Assistant API
+    # OpenAI Assistant API
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "OpenAI-Beta": "assistants=v2",
@@ -207,6 +214,5 @@ def handle_update(update):
 
     send_message(chat_id, reply, reply_markup=main_menu())
 
-# Запуск Flask
 if __name__ == "__main__":
     app.run(debug=True)
