@@ -73,57 +73,50 @@ async def handle_update(update):
     user_data = load_user_data()
     user_entry = user_data.get(user_id, {"start_date": None, "used_messages": 0})
 
-    # 🔘 Обработка кнопок
+    # Обработка стандартных кнопок (включая подписку)
+    if text in [
+        "🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе",
+        "📜 Пользовательское соглашение", "💳 Купить подписку"
+    ]:
+        filename = {
+            "🧠 Инструкция": "support",
+            "❓ Гид по боту": "faq",
+            "ℹ️ О Сервисе": "info",
+            "📜 Пользовательское соглашение": "rules",
+            "💳 Купить подписку": "subscribe"
+        }.get(text, "faq")
+
+        try:
+            with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
+                content = f.read()
+        except:
+            content = "Файл не найден."
+
+        await send_message(chat_id, content, get_main_menu())
+        return
+
+    # Обработка сброса диалога
     if text == "🔄 Сбросить диалог":
         user_entry["thread_id"] = None
         await send_message(chat_id, "Диалог сброшен. Начните новый запрос.", get_main_menu())
         user_data[user_id] = user_entry
         save_user_data(user_data)
         return
-        
-if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе", "📜 Пользовательское соглашение", "💳 Купить подписку"]:
-    filename = {
-        "🧠 Инструкция": "support",
-        "❓ Гид по боту": "faq",
-        "ℹ️ О Сервисе": "info",
-        "📜 Пользовательское соглашение": "rules",
-        "💳 Купить подписку": "subscribe"
-    }.get(text, "faq")
 
-    try:
-        with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
-            content = f.read()
-    except:
-        content = "Файл не найден."
-
-    await send_message(chat_id, content, get_main_menu())
-    return
-
-
-    # 🧠 OpenAI (Assistant API)
+    # Получение thread_id или создание нового
     thread_id = user_entry.get("thread_id")
-
     if not thread_id:
         r = requests.post("https://api.openai.com/v1/threads", headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v2"
+            "OpenAI-Beta": "assistants=v2"  # Обновлено на v2
         })
-
         if r.status_code != 200:
-            print("❌ Ошибка создания thread:", r.status_code, r.text)
-            await send_message(chat_id, "Ошибка создания диалога. Попробуйте позже.", get_main_menu())
+            await send_message(chat_id, "⚠️ Ошибка создания диалога.", get_main_menu())
             return
-
-        thread_json = r.json()
-        thread_id = thread_json.get("id")
-        if not thread_id:
-            print("❌ Thread без ID:", thread_json)
-            await send_message(chat_id, "Не удалось создать диалог.", get_main_menu())
-            return
-
+        thread_id = r.json()["id"]
         user_entry["thread_id"] = thread_id
 
-    # 📩 Отправка запроса
+    # Отправка сообщения пользователя
     requests.post(
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers={
@@ -134,6 +127,7 @@ if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О 
         json={"role": "user", "content": text}
     )
 
+    # Запуск ассистента
     run_resp = requests.post(
         f"https://api.openai.com/v1/threads/{thread_id}/runs",
         headers={
@@ -146,7 +140,7 @@ if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О 
 
     run_id = run_resp.json()["id"]
 
-    # ⏳ Ожидание завершения
+    # Ожидание завершения обработки
     status = "in_progress"
     while status in ["queued", "in_progress"]:
         await asyncio.sleep(1)
@@ -158,6 +152,24 @@ if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О 
             }
         )
         status = r.json()["status"]
+
+    # Получение финального ответа
+    messages_resp = requests.get(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "OpenAI-Beta": "assistants=v2"
+        }
+    )
+
+    last_message = messages_resp.json()["data"][0]["content"][0]["text"]["value"]
+
+    await send_message(chat_id, last_message, get_main_menu())
+
+    # Сохраняем изменения
+    user_data[user_id] = user_entry
+    save_user_data(user_data)
+
 
     # 📥 Получение ответа
     messages_resp = requests.get(
