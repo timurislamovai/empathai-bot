@@ -16,6 +16,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 
+# Главное меню
 def main_menu():
     return {
         "keyboard": [
@@ -26,6 +27,7 @@ def main_menu():
         "resize_keyboard": True
     }
 
+# Отправка сообщения в Telegram
 def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -34,18 +36,24 @@ def send_message(chat_id, text, reply_markup=None):
     }
     if reply_markup:
         payload["reply_markup"] = json.dumps(reply_markup)
-    requests.post(url, json=payload)
 
+    response = requests.post(url, json=payload)
+    if response.status_code != 200:
+        print(f"[ERROR] Telegram send failed: {response.status_code} {response.text}")
+
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
         update = request.get_json()
+        print("Received update:", json.dumps(update, indent=2, ensure_ascii=False))
         handle_update(update)
         return "OK"
     except Exception as e:
         print(f"[ERROR] Webhook exception: {e}")
         return "Internal Server Error", 500
 
+# Обработка обновления
 def handle_update(update):
     message = update.get("message")
     if not message:
@@ -82,40 +90,77 @@ def handle_update(update):
         send_message(chat_id, content, reply_markup=main_menu())
         return
 
-    # Запрос к OpenAI Assistant API
+    # GPT-обработка через Assistant API
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "OpenAI-Beta": "assistants=v2",
         "Content-Type": "application/json"
     }
 
-    res = requests.post("https://api.openai.com/v1/threads", headers=headers)
-    if res.status_code != 200:
-        send_message(chat_id, "Ошибка инициализации сессии.", reply_markup=main_menu())
+    # Создаем новый thread
+    thread_res = requests.post("https://api.openai.com/v1/threads", headers=headers)
+    if thread_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка инициализации сессии.", reply_markup=main_menu())
         return
 
-    thread_id = res.json()["id"]
-    requests.post(f"https://api.openai.com/v1/threads/{thread_id}/messages", headers=headers, json={
+    thread_id = thread_res.json()["id"]
+
+    # Отправляем сообщение
+    msg_payload = {
         "role": "user",
         "content": text
-    })
+    }
+    requests.post(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers=headers,
+        json=msg_payload
+    )
 
-    run = requests.post(f"https://api.openai.com/v1/threads/{thread_id}/runs", headers=headers, json={
+    # Запускаем Run
+    run_payload = {
         "assistant_id": ASSISTANT_ID
-    })
+    }
+    run_res = requests.post(
+        f"https://api.openai.com/v1/threads/{thread_id}/runs",
+        headers=headers,
+        json=run_payload
+    )
 
-    run_id = run.json()["id"]
+    if run_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка запуска AI-сессии.", reply_markup=main_menu())
+        return
 
-    for _ in range(20):
-        status = requests.get(f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}", headers=headers).json()
-        if status.get("status") == "completed":
-            break
+    run_id = run_res.json()["id"]
+
+    # Ожидаем завершения run
+    for _ in range(30):
         time.sleep(1)
+        check = requests.get(
+            f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
+            headers=headers
+        )
+        status = check.json().get("status")
+        if status == "completed":
+            break
+    else:
+        send_message(chat_id, "⏳ Превышено время ожидания ответа.", reply_markup=main_menu())
+        return
 
-    messages = requests.get(f"https://api.openai.com/v1/threads/{thread_id}/messages", headers=headers).json()
-    reply = messages["data"][0]["content"][0]["text"]["value"]
+    # Получаем ответ
+    messages_res = requests.get(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers=headers
+    )
 
-    send_message(chat_id, reply, reply_markup=main_menu())
+    if messages_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
+        return
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    messages = messages_res.json().get("data", [])
+    for msg in reversed(messages):
+        if msg["role"] == "assistant":
+            response_text = msg["content"][0]["text"]["value"]
+            send_message(chat_id, response_text, reply_markup=main_menu())
+            return
+
+    send_message(chat_id, "🤖 Ответ не найден.", reply_markup=main_menu())
