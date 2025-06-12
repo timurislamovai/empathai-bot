@@ -1,10 +1,14 @@
 import os
 import requests
-from flask import Flask, request  # ⬅️ добавили этот импорт
+from flask import Flask, request
 from dotenv import load_dotenv
-from datetime import datetime, timedelta  # ⬅️ если используешь даты
+from datetime import datetime, timedelta
 
+# Загрузка .env
 load_dotenv()
+
+# Flask-приложение
+app = Flask(__name__)
 
 # Загружаем переменные окружения
 JSONBIN_URL = os.getenv("JSONBIN_URL")
@@ -25,6 +29,7 @@ TIMEZONE_OFFSET = timedelta(hours=5)  # Например, для UTC+5
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
+# Главное меню клавиатуры
 MAIN_MENU = {
     "keyboard": [
         [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
