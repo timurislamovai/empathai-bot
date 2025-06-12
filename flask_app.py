@@ -58,9 +58,14 @@ def save_user_data(user_id, data):
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    update = request.get_json()
-    handle_update(update)
-    return "OK"
+    try:
+        update = request.get_json()
+        handle_update(update)  # если это async, удалите await и убедитесь, что функция синхронна
+        return "OK"
+    except Exception as e:
+        print(f"[ERROR] Webhook exception: {e}")
+        return "Internal Server Error", 500
+
 
 def handle_update(update):
     message = update.get("message")
