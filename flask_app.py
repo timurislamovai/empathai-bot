@@ -22,7 +22,6 @@ USER_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_USER_BIN}"
 
 SYSTEM_BUTTONS = ["🧠 Инструкция", "❓ Гид по боту", "💳 Купить подписку", "📜 Условия пользования", "🔄 Сбросить диалог"]
 
-
 def main_menu():
     return {
         "keyboard": [
@@ -39,8 +38,6 @@ def send_message(chat_id, text, reply_markup=None):
     if reply_markup:
         payload["reply_markup"] = json.dumps(reply_markup)
     requests.post(url, json=payload)
-
-# ========== Thread ID Management ==========
 
 def get_jsonbin_data(url):
     headers = {"X-Master-Key": JSONBIN_API_KEY}
@@ -76,8 +73,6 @@ def reset_thread_id(chat_id):
     if str(chat_id) in data:
         del data[str(chat_id)]
         update_jsonbin_data(THREAD_URL, data)
-
-# ========== User Limit Management ==========
 
 def get_user_data(chat_id):
     data = get_jsonbin_data(USER_URL)
@@ -117,7 +112,6 @@ def check_limit(chat_id):
     save_user_data(chat_id, user)
     return True
 
-# ========== Flask Route & Main Logic ==========
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json()
@@ -161,7 +155,6 @@ def handle_update(update):
             send_message(chat_id, "Файл не найден.", reply_markup=main_menu())
         return
 
-    # GPT-запрос — проверка лимита
     if not check_limit(chat_id):
         send_message(chat_id, "💡 Вы использовали лимит сообщений на сегодня. Активируйте подписку, чтобы продолжить.", reply_markup=main_menu())
         print(f"[GPT] Limit reached — response blocked for user {chat_id}")
@@ -224,4 +217,5 @@ def handle_update(update):
     for msg in reversed(messages_res.json().get("data", [])):
         if msg["role"] == "assistant":
             response_text = msg["content"][0]["text"]["value"]
-            send_message(chat_id, response_text, reply_markup=main
+            send_message(chat_id, response_text, reply_markup=main_menu())
+            return
