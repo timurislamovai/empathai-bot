@@ -3,6 +3,7 @@ import requests
 from flask import Flask, request  # ⬅️ добавили этот импорт
 from dotenv import load_dotenv
 from datetime import datetime, timedelta  # ⬅️ если используешь даты
+from aiogram import Bot, Dispatcher, types
 
 load_dotenv()
 
