@@ -1,83 +1,125 @@
 import os
+import time
 import json
-import asyncio
-from flask import Flask, request
-from telebot import types
-import telebot
 import requests
+from flask import Flask, request
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
-# 🔍 Отладочный вывод
-print("DEBUG: TELEGRAM_BOT_TOKEN =", os.getenv("TELEGRAM_BOT_TOKEN"))
-print("DEBUG: OPENAI_API_KEY =", os.getenv("OPENAI_API_KEY"))
-print("DEBUG: ASSISTANT_ID =", os.getenv("ASSISTANT_ID"))
-print("DEBUG: JSONBIN_API_KEY =", os.getenv("JSONBIN_API_KEY"))
-print("DEBUG: JSONBIN_BIN_ID =", os.getenv("JSONBIN_BIN_ID"))
+# Загрузка переменных окружения
+load_dotenv()
 
-# 💥 Проверка обязательных переменных
-if not all([
-    os.getenv("TELEGRAM_BOT_TOKEN"),
-    os.getenv("OPENAI_API_KEY"),
-    os.getenv("ASSISTANT_ID"),
-    os.getenv("JSONBIN_API_KEY"),
-    os.getenv("JSONBIN_BIN_ID")
-]):
-    raise ValueError("❌ Одно или несколько обязательных значений переменных окружения не заданы.")
-
-# Инициализация Flask и бота
+# Flask-приложение
 app = Flask(__name__)
 
+# Переменные окружения
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
-JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
+JSONBIN_URL = os.getenv("JSONBIN_URL")
+JSONBIN_SECRET = os.getenv("JSONBIN_SECRET")
 
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+TRIAL_LIMIT = 15
+TRIAL_DAYS = 3
+TIMEZONE_OFFSET = timedelta(hours=5)
 
-# 📱 Клавиатура
-def get_main_menu():
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.row("🧠 Инструкция", "❓ Гид по боту")
-    keyboard.row("ℹ️ О Сервисе", "📜 Условия пользования")
-    keyboard.row("🔄 Сбросить диалог", "💳 Купить подписку")
-    return keyboard
+def main_menu():
+    return {
+        "keyboard": [
+            [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
+            [{"text": "ℹ️ О Сервисе"}, {"text": "🔄 Сбросить диалог"}],
+            [{"text": "📜 Условия пользования"}, {"text": "💳 Купить подписку"}]
+        ],
+        "resize_keyboard": True
+    }
 
-# 📂 Работа с JSONBin
-def load_user_data():
-    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
-    headers = {"X-Master-Key": JSONBIN_API_KEY}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json().get("record", {})
+def start_trial_menu():
+    return {
+        "keyboard": [
+            [{"text": "🆓 Начать бесплатный период"}]
+        ],
+        "resize_keyboard": True
+    }
+
+def send_message(chat_id, text, reply_markup=None):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    requests.post(url, json=payload)
+
+def get_user_data(user_id):
+    headers = {"X-Master-Key": JSONBIN_SECRET}
+    res = requests.get(f"{JSONBIN_URL}/{user_id}", headers=headers)
+    if res.status_code == 200:
+        return res.json().get("record", {})
     return {}
 
-def save_user_data(data):
-    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+def save_user_data(user_id, data):
     headers = {
-        "Content-Type": "application/json",
-        "X-Master-Key": JSONBIN_API_KEY,
-        "X-Bin-Versioning": "false"
+        "X-Master-Key": JSONBIN_SECRET,
+        "Content-Type": "application/json"
     }
-    requests.put(url, headers=headers, json=data)
+    requests.put(f"{JSONBIN_URL}/{user_id}", headers=headers, data=json.dumps(data))
 
-# 🤖 Асинхронная обработка
-async def handle_update(update):
-    message = update.message
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    try:
+        update = request.get_json()
+        handle_update(update)
+        return "OK"
+    except Exception as e:
+        print(f"[ERROR] Webhook exception: {e}")
+        return "Internal Server Error", 500
+
+def handle_update(update):
+    message = update.get("message")
     if not message:
         return
 
-    chat_id = message.chat.id
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "").strip()
     user_id = str(chat_id)
-    text = message.text.strip()
 
-    user_data = load_user_data()
-    user_entry = user_data.get(user_id, {"start_date": None, "used_messages": 0})
+    user_data = get_user_data(user_id)
 
-    # Обработка стандартных кнопок (включая подписку)
-    if text in [
-        "🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе",
-        "📜 Условия пользования", "💳 Купить подписку"
-    ]:
+    if text == "/start":
+        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
+            welcome_text = (
+                "👋 Добро пожаловать в EmpathAI!\n\n"
+                "Я твой виртуальный помощник для поддержки, саморазвития и снижения тревожности.\n\n"
+                "🆓 Нажми кнопку «Начать бесплатный период», чтобы активировать 3 дня доступа с лимитом 15 сообщений в день."
+            )
+            send_message(chat_id, welcome_text, reply_markup=start_trial_menu())
+        else:
+            send_message(chat_id, "С возвращением! Продолжим?", reply_markup=main_menu())
+        return
+
+    if text == "🆓 Начать бесплатный период":
+        now = datetime.utcnow() + TIMEZONE_OFFSET
+        if not user_data.get("free_trial_start"):
+            user_data["free_trial_start"] = now.strftime("%Y-%m-%d")
+            user_data["last_message_date"] = now.strftime("%Y-%m-%d")
+            user_data["messages_today"] = 0
+            save_user_data(user_id, user_data)
+            send_message(chat_id, "Бесплатный период активирован! Можешь начать общение.", reply_markup=main_menu())
+        else:
+            send_message(chat_id, "Вы уже активировали бесплатный период.", reply_markup=main_menu())
+        return
+
+    if text == "🔄 Сбросить диалог":
+        user_data.pop("thread_id", None)
+        save_user_data(user_id, user_data)
+        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
+            send_message(chat_id, "Нажми «Начать бесплатный период», чтобы начать!", reply_markup=start_trial_menu())
+        else:
+            send_message(chat_id, "Диалог сброшен. Продолжим?", reply_markup=main_menu())
+        return
+
+    if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе", "📜 Условия пользования", "💳 Купить подписку"]:
         filename = {
             "🧠 Инструкция": "support",
             "❓ Гид по боту": "faq",
@@ -85,120 +127,80 @@ async def handle_update(update):
             "📜 Условия пользования": "rules",
             "💳 Купить подписку": "subscribe"
         }.get(text, "faq")
-
         try:
             with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
                 content = f.read()
         except:
             content = "Файл не найден."
-
-        await send_message(chat_id, content, get_main_menu())
+        send_message(chat_id, content, reply_markup=main_menu())
         return
 
-    # Обработка сброса диалога
-    if text == "🔄 Сбросить диалог":
-        user_entry["thread_id"] = None
-        await send_message(chat_id, "Диалог сброшен. Начните новый запрос.", get_main_menu())
-        user_data[user_id] = user_entry
-        save_user_data(user_data)
-        return
+    # Проверка пробного периода
+    if not user_data.get("is_subscribed"):
+        now = datetime.utcnow() + TIMEZONE_OFFSET
+        today_str = now.strftime("%Y-%m-%d")
 
-    # Получение thread_id или создание нового
-    thread_id = user_entry.get("thread_id")
-    if not thread_id:
-        r = requests.post("https://api.openai.com/v1/threads", headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v2"  # Обновлено на v2
-        })
-        if r.status_code != 200:
-            await send_message(chat_id, "⚠️ Ошибка создания диалога.", get_main_menu())
+        start_date_str = user_data.get("free_trial_start")
+        if not start_date_str:
+            send_message(chat_id, "Нажми «Начать бесплатный период», чтобы получить доступ!", reply_markup=start_trial_menu())
             return
-        thread_id = r.json()["id"]
-        user_entry["thread_id"] = thread_id
 
-    # Отправка сообщения пользователя
-    requests.post(
-        f"https://api.openai.com/v1/threads/{thread_id}/messages",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v2",
-            "Content-Type": "application/json"
-        },
-        json={"role": "user", "content": text}
-    )
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        if (now - start_date).days >= TRIAL_DAYS:
+            send_message(chat_id, "⏳ Срок бесплатного периода истёк. 💳 Купить подписку?", reply_markup=main_menu())
+            return
 
-    # Запуск ассистента
-    run_resp = requests.post(
-        f"https://api.openai.com/v1/threads/{thread_id}/runs",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v2",
-            "Content-Type": "application/json"
-        },
-        json={"assistant_id": ASSISTANT_ID}
-    )
+        if user_data.get("last_message_date") != today_str:
+            user_data["messages_today"] = 0
+            user_data["last_message_date"] = today_str
 
-    run_id = run_resp.json()["id"]
+        messages_today = user_data.get("messages_today", 0)
+        if messages_today >= TRIAL_LIMIT:
+            send_message(chat_id, "🚫 Вы достигли дневного лимита. 💳 Купить подписку?", reply_markup=main_menu())
+            return
 
-    # Ожидание завершения обработки
-    status = "in_progress"
-    while status in ["queued", "in_progress"]:
-        await asyncio.sleep(1)
-        r = requests.get(
-            f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "OpenAI-Beta": "assistants=v2"
-            }
-        )
-        status = r.json()["status"]
+        user_data["messages_today"] = messages_today + 1
+        save_user_data(user_id, user_data)
 
-    # Получение финального ответа
-    messages_resp = requests.get(
-        f"https://api.openai.com/v1/threads/{thread_id}/messages",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v2"
-        }
-    )
+    # Запрос к OpenAI Assistant API
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "OpenAI-Beta": "assistants=v2",
+        "Content-Type": "application/json"
+    }
 
-    last_message = messages_resp.json()["data"][0]["content"][0]["text"]["value"]
+    thread_id = user_data.get("thread_id")
+    if not thread_id:
+        res = requests.post("https://api.openai.com/v1/threads", headers=headers)
+        if res.status_code == 200:
+            thread_id = res.json()["id"]
+            user_data["thread_id"] = thread_id
+            save_user_data(user_id, user_data)
+        else:
+            send_message(chat_id, "Ошибка инициализации сессии.", reply_markup=main_menu())
+            return
 
-    await send_message(chat_id, last_message, get_main_menu())
+    requests.post(f"https://api.openai.com/v1/threads/{thread_id}/messages", headers=headers, json={
+        "role": "user",
+        "content": text
+    })
 
-    # Сохраняем изменения
-    user_data[user_id] = user_entry
-    save_user_data(user_data)
+    run = requests.post(f"https://api.openai.com/v1/threads/{thread_id}/runs", headers=headers, json={
+        "assistant_id": ASSISTANT_ID
+    })
 
+    run_id = run.json()["id"]
 
-    # 📥 Получение ответа
-    messages_resp = requests.get(
-        f"https://api.openai.com/v1/threads/{thread_id}/messages",
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "OpenAI-Beta": "assistants=v2"
-        }
-    )
+    for _ in range(20):
+        status = requests.get(f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}", headers=headers).json()
+        if status.get("status") == "completed":
+            break
+        time.sleep(1)
 
-    last_message = messages_resp.json()["data"][0]["content"][0]["text"]["value"]
-    await send_message(chat_id, last_message, get_main_menu())
+    messages = requests.get(f"https://api.openai.com/v1/threads/{thread_id}/messages", headers=headers).json()
+    reply = messages["data"][0]["content"][0]["text"]["value"]
 
-    # 💾 Сохранение
-    user_data[user_id] = user_entry
-    save_user_data(user_data)
+    send_message(chat_id, reply, reply_markup=main_menu())
 
-# 📤 Отправка сообщения
-async def send_message(chat_id, text, keyboard=None):
-    bot.send_message(chat_id, text, reply_markup=keyboard)
-
-# 🌐 Вебхук
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    update = types.Update.de_json(request.get_json(force=True))
-    asyncio.run(handle_update(update))
-    return "OK", 200
-
-# 🔧 Запуск локально
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)
