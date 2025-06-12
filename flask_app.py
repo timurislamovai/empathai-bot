@@ -6,13 +6,12 @@ from flask import Flask, request
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
-# Загрузка .env
+# Загрузка переменных окружения
 load_dotenv()
 
-# Flask-приложение
 app = Flask(__name__)
 
-# Переменные окружения
+# Конфигурация
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
@@ -84,30 +83,18 @@ def handle_update(update):
     text = message.get("text", "").strip()
     user_id = str(chat_id)
 
-    # /start или первое обращение
+    # Команда /start
     if text == "/start":
         user_data = get_user_data(user_id)
         if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
-            content = (
+            welcome_text = (
                 "👋 Добро пожаловать в EmpathAI!\n\n"
                 "Я твой виртуальный помощник для поддержки, саморазвития и снижения тревожности.\n\n"
                 "🆓 Нажми кнопку «Начать бесплатный период», чтобы активировать 3 дня доступа с лимитом 15 сообщений в день."
             )
-            send_message(chat_id, content, reply_markup=start_trial_menu())
+            send_message(chat_id, welcome_text, reply_markup=start_trial_menu())
         else:
             send_message(chat_id, "С возвращением! Продолжим?", reply_markup=main_menu())
-        return
-
-    # Сбросить диалог — с удалением контекста
-    if text == "🔄 Сбросить диалог":
-        user_data = get_user_data(user_id)
-        user_data.pop("thread_id", None)
-        save_user_data(user_id, user_data)
-
-        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
-            send_message(chat_id, "Диалог сброшен. Нажми кнопку ниже, чтобы начать бесплатный период.", reply_markup=start_trial_menu())
-        else:
-            send_message(chat_id, "Диалог сброшен. Можем начать заново.", reply_markup=main_menu())
         return
 
     # Активация пробного периода
@@ -122,11 +109,18 @@ def handle_update(update):
             send_message(chat_id, "Бесплатный период активирован!", reply_markup=main_menu())
         else:
             send_message(chat_id, "Вы уже активировали бесплатный период.", reply_markup=main_menu())
-        
-        # 🔁 Обновляем user_data после активации
-        user_data = get_user_data(user_id)
         return
 
+    # Сбросить диалог
+    if text == "🔄 Сбросить диалог":
+        user_data = get_user_data(user_id)
+        user_data.pop("thread_id", None)
+        save_user_data(user_id, user_data)
+        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
+            send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы получить доступ!", reply_markup=start_trial_menu())
+        else:
+            send_message(chat_id, "Диалог сброшен. Продолжим?", reply_markup=main_menu())
+        return
 
     # Обработка кнопок меню
     if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О Сервисе", "📜 Условия пользования", "💳 Купить подписку"]:
@@ -145,38 +139,29 @@ def handle_update(update):
         send_message(chat_id, content, reply_markup=main_menu())
         return
 
-    # Проверка лимита
+    # Проверка доступа
     user_data = get_user_data(user_id)
+    now = datetime.utcnow() + TIMEZONE_OFFSET
+    today_str = now.strftime("%Y-%m-%d")
+
     if user_data.get("is_subscribed"):
-        trial_active = True
-    else:
-        now = datetime.utcnow() + TIMEZONE_OFFSET
-        today_str = now.strftime("%Y-%m-%d")
-
-        start_date_str = user_data.get("free_trial_start")
-        if not start_date_str:
-            send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы получить 3 дня и 15 сообщений в день!", reply_markup=start_trial_menu())
-            return
-
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        pass
+    elif user_data.get("free_trial_start"):
+        start_date = datetime.strptime(user_data["free_trial_start"], "%Y-%m-%d")
         if (now - start_date).days >= TRIAL_DAYS:
             send_message(chat_id, "Срок бесплатного периода истёк. 💳 Купить подписку?", reply_markup=main_menu())
             return
-
         if user_data.get("last_message_date") != today_str:
             user_data["messages_today"] = 0
             user_data["last_message_date"] = today_str
-            send_message(chat_id, f"Вы используете бесплатную версию. Вам доступно {TRIAL_LIMIT} сообщений в день. Лимит обновляется ежедневно.", reply_markup=main_menu())
-
-        messages_today = user_data.get("messages_today", 0)
-        if messages_today >= TRIAL_LIMIT:
+        if user_data.get("messages_today", 0) >= TRIAL_LIMIT:
             send_message(chat_id, "Вы достигли дневного лимита. 💳 Купить подписку?", reply_markup=main_menu())
             return
-
-        user_data["messages_today"] = messages_today + 1
+        user_data["messages_today"] = user_data.get("messages_today", 0) + 1
         save_user_data(user_id, user_data)
-        remaining = TRIAL_LIMIT - user_data["messages_today"]
-        send_message(chat_id, f"Осталось {remaining} сообщений сегодня.")
+    else:
+        send_message(chat_id, "Нажми 🆓 Начать бесплатный период, чтобы начать!", reply_markup=start_trial_menu())
+        return
 
     # OpenAI Assistant API
     headers = {
