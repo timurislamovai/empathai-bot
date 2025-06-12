@@ -55,7 +55,26 @@ def save_user_data(user_id, data):
         "Content-Type": "application/json"
     }
     requests.put(f"{JSONBIN_URL}/{user_id}", headers=headers, data=json.dumps(data))
+    
+# ⬇️ ВСТАВЬ ЭТИ ДВЕ ФУНКЦИИ СЮДА:
+def start_trial_menu():
+    return {
+        "keyboard": [
+            [{"text": "🆓 Начать бесплатный период"}]
+        ],
+        "resize_keyboard": True
+    }
 
+def main_menu():
+    return {
+        "keyboard": [
+            [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
+            [{"text": "ℹ️ О Сервисе"}, {"text": "🔄 Сбросить диалог"}],
+            [{"text": "📜 Условия пользования"}, {"text": "💳 Купить подписку"}]
+        ],
+        "resize_keyboard": True
+    }
+    
 @app.route("/webhook", methods=["POST"])
 def webhook():
     try:
@@ -71,6 +90,24 @@ def handle_update(update):
     message = update.get("message")
     if not message:
         return
+
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "").strip()
+    user_id = str(chat_id)
+
+    if text == "/start":
+        user_data = get_user_data(user_id)
+        if not user_data.get("free_trial_start") and not user_data.get("is_subscribed"):
+            content = (
+                "👋 Добро пожаловать в EmpathAI!\n\n"
+                "Я твой виртуальный помощник для поддержки, саморазвития и снижения тревожности.\n\n"
+                "🆓 Нажми кнопку «Начать бесплатный период», чтобы активировать 3 дня доступа с лимитом 10 сообщений в день."
+            )
+            send_telegram_message(chat_id, content, reply_markup=start_trial_menu())
+        else:
+            send_telegram_message(chat_id, "С возвращением! Продолжим?", reply_markup=main_menu())
+        return
+
 
     chat_id = message["chat"]["id"]
     text = message.get("text", "").strip()
