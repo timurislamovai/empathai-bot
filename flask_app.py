@@ -1,6 +1,8 @@
 import os
 import requests
+from flask import Flask, request  # ⬅️ добавили этот импорт
 from dotenv import load_dotenv
+from datetime import datetime, timedelta  # ⬅️ если используешь даты
 
 load_dotenv()
 
@@ -12,7 +14,7 @@ JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 print(f"[DEBUG] JSONBIN_URL = {JSONBIN_URL}")
 print(f"[DEBUG] JSONBIN_API_KEY = {JSONBIN_API_KEY}")
 
-app = Flask(__name__)
+app = Flask(__name__)  # ⬅️ теперь Flask будет определён
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
