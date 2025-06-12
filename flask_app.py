@@ -3,7 +3,6 @@ import requests
 from flask import Flask, request  # ⬅️ добавили этот импорт
 from dotenv import load_dotenv
 from datetime import datetime, timedelta  # ⬅️ если используешь даты
-from aiogram import Bot, Dispatcher, types
 
 load_dotenv()
 
@@ -26,12 +25,14 @@ TIMEZONE_OFFSET = timedelta(hours=5)  # Например, для UTC+5
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
-MAIN_MENU = ReplyKeyboardMarkup([
-    ["🧠 Инструкция", "❓ Гид по боту"],
-    ["ℹ️ О Сервисе", "🔄 Сбросить диалог"],
-    ["📜 Условия пользования", "💳 Купить подписку"]
-], resize_keyboard=True)
-
+MAIN_MENU = {
+    "keyboard": [
+        [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
+        [{"text": "ℹ️ О Сервисе"}, {"text": "🔄 Сбросить диалог"}],
+        [{"text": "📜 Условия пользования"}, {"text": "💳 Купить подписку"}]
+    ],
+    "resize_keyboard": True
+}
 TRIAL_LIMIT = 10  # лимит сообщений в день
 TRIAL_DAYS = 3
 
