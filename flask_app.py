@@ -48,7 +48,8 @@ def get_jsonbin_data(url):
         res = requests.get(url, headers=headers)
         if res.status_code == 200:
             return res.json().get("record", {})
-    except: pass
+    except Exception as e:
+        print(f"[ERROR] get_jsonbin_data: {e}")
     return {}
 
 def update_jsonbin_data(url, data):
@@ -58,7 +59,8 @@ def update_jsonbin_data(url, data):
     }
     try:
         requests.put(url, headers=headers, json=data)
-    except: pass
+    except Exception as e:
+        print(f"[ERROR] update_jsonbin_data: {e}")
 
 def get_thread_id(chat_id):
     data = get_jsonbin_data(THREAD_URL)
@@ -89,21 +91,29 @@ def save_user_data(chat_id, user_data):
 def check_limit(chat_id):
     user = get_user_data(chat_id)
     today = datetime.now().strftime("%Y-%m-%d")
+    print(f"[LIMIT] Checking user: {chat_id}, Data: {user}")
 
     if not user:
         user = {"daily_count": 0, "last_date": today, "trial_active": True, "trial_start": today}
+        save_user_data(chat_id, user)
+        print(f"[LIMIT] First-time user, trial started.")
+        return True
 
     if not user.get("trial_active", False):
+        print(f"[LIMIT] Trial inactive for {chat_id}")
         return False
 
     if user.get("last_date") != today:
+        print(f"[LIMIT] Resetting count for new day for {chat_id}")
         user["daily_count"] = 0
         user["last_date"] = today
 
     if user["daily_count"] >= 15:
+        print(f"[LIMIT] User {chat_id} exceeded daily limit.")
         return False
 
     user["daily_count"] += 1
+    print(f"[LIMIT] Count updated: {user['daily_count']}/15")
     save_user_data(chat_id, user)
     return True
 
@@ -118,6 +128,8 @@ def handle_update(update):
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     text = message.get("text", "").strip()
+
+    print(f"[INCOMING] chat_id: {chat_id}, text: {text}")
 
     if not chat_id or not text:
         return
@@ -149,9 +161,10 @@ def handle_update(update):
             send_message(chat_id, "Файл не найден.", reply_markup=main_menu())
         return
 
-    # GPT-запрос — здесь проверка лимита!
+    # GPT-запрос — проверка лимита
     if not check_limit(chat_id):
         send_message(chat_id, "💡 Вы использовали лимит сообщений на сегодня. Активируйте подписку, чтобы продолжить.", reply_markup=main_menu())
+        print(f"[GPT] Limit reached — response blocked for user {chat_id}")
         return
 
     headers = {
@@ -211,7 +224,4 @@ def handle_update(update):
     for msg in reversed(messages_res.json().get("data", [])):
         if msg["role"] == "assistant":
             response_text = msg["content"][0]["text"]["value"]
-            send_message(chat_id, response_text, reply_markup=main_menu())
-            return
-
-    send_message(chat_id, "🤖 Ответ от GPT не получен.", reply_markup=main_menu())
+            send_message(chat_id, response_text, reply_markup=main
