@@ -111,21 +111,21 @@ def handle_update(update):
         return
 
     # Активация пробного периода
-        if text == "🆓 Начать бесплатный период":
-    now = datetime.utcnow() + TIMEZONE_OFFSET               # ✅ Отступ 4 пробела
-    user_data = get_user_data(user_id)
-    if not user_data.get("free_trial_start"):
-        user_data["free_trial_start"] = now.strftime("%Y-%m-%d")
-        user_data["last_message_date"] = now.strftime("%Y-%m-%d")
-        user_data["messages_today"] = 0
-        save_user_data(user_id, user_data)
-        send_message(chat_id, "Бесплатный период активирован!", reply_markup=main_menu())
-    else:
-        send_message(chat_id, "Вы уже активировали бесплатный период.", reply_markup=main_menu())
-    
-    # 🔁 Обновляем user_data после активации
-    user_data = get_user_data(user_id)
-    return
+            if text == "🆓 Начать бесплатный период":
+        now = datetime.utcnow() + TIMEZONE_OFFSET
+        user_data = get_user_data(user_id)
+        if not user_data.get("free_trial_start"):
+            user_data["free_trial_start"] = now.strftime("%Y-%m-%d")
+            user_data["last_message_date"] = now.strftime("%Y-%m-%d")
+            user_data["messages_today"] = 0
+            save_user_data(user_id, user_data)
+            send_message(chat_id, "Бесплатный период активирован!", reply_markup=main_menu())
+        else:
+            send_message(chat_id, "Вы уже активировали бесплатный период.", reply_markup=main_menu())
+        
+        # 🔁 Обновляем user_data после активации
+        user_data = get_user_data(user_id)
+        return
 
 
     # Обработка кнопок меню
