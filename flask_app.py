@@ -111,7 +111,7 @@ def handle_update(update):
         return
 
     # Активация пробного периода
-            if text == "🆓 Начать бесплатный период":
+    if text == "🆓 Начать бесплатный период":
         now = datetime.utcnow() + TIMEZONE_OFFSET
         user_data = get_user_data(user_id)
         if not user_data.get("free_trial_start"):
