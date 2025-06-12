@@ -89,14 +89,16 @@ if text in ["🧠 Инструкция", "❓ Гид по боту", "ℹ️ О 
         "📜 Пользовательское соглашение": "rules",
         "💳 Купить подписку": "subscribe"
     }.get(text, "faq")
-    
-        try:
-            with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
-                content = f.read()
-        except:
-            content = "Файл не найден."
-        await send_message(chat_id, content, get_main_menu())
-        return
+
+    try:
+        with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
+            content = f.read()
+    except:
+        content = "Файл не найден."
+
+    await send_message(chat_id, content, get_main_menu())
+    return
+
 
     # 🧠 OpenAI (Assistant API)
     thread_id = user_entry.get("thread_id")
