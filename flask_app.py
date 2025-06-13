@@ -126,15 +126,15 @@ class OpenAIAssistant:
             if status.get("status") in ["completed", "failed"]:
                 break
 
-        msg_url = f"https://api.openai.com/v1/threads/{thread_id}/messages"
-        messages = requests.get(msg_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
-        if not messages.get("data"):
-    return "Извините, я не смог получить ответ. Попробуй ещё раз."
+    msg_url = f"https://api.openai.com/v1/threads/{thread_id}/messages"
+    messages = requests.get(msg_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
+    
+    if not messages.get("data"):
+       return "Извините, я не смог получить ответ. Попробуй ещё раз."
 
     content = messages["data"][0]["content"][0]["text"]["value"]
     return content
-        content = messages["data"][0]["content"][0]["text"]["value"]
-        return content
+        
 
 # Работа с JSONBin
 class DataStorage:
