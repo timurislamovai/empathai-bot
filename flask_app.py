@@ -120,22 +120,30 @@ class OpenAIAssistant:
 
         # Проверка готовности ответа
         import time
-        for _ in range(10):
-            time.sleep(0.8)
-            status = requests.get(status_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
-            if status.get("status") in ["completed", "failed"]:
-                break
+import requests
+
+def get_openai_response(thread_id, headers, status_url):
+    # Проверка готовности ответа
+    for _ in range(10):
+        time.sleep(0.8)
+        status = requests.get(status_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
+        if status.get("status") in ["completed", "failed"]:
+            break
 
     msg_url = f"https://api.openai.com/v1/threads/{thread_id}/messages"
     messages = requests.get(msg_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
     
     if not messages.get("data"):
-       return "Извините, я не смог получить ответ. Попробуй ещё раз."
+        return "Извините, я не смог получить ответ. Попробуй ещё раз."
 
     content = messages["data"][0]["content"][0]["text"]["value"]
     return content
-        
 
+# Пример вызова функции
+# response = get_openai_response(thread_id, headers, status_url)
+# print(response)
+
+        
 # Работа с JSONBin
 class DataStorage:
     @staticmethod
