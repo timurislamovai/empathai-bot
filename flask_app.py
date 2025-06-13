@@ -120,15 +120,19 @@ class OpenAIAssistant:
 
         # Проверка готовности ответа
         import time
-        for _ in range(20):
-            time.sleep(1)
-            status_url = f"{run_url}/{run_id}"
+        for _ in range(10):
+            time.sleep(0.8)
             status = requests.get(status_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
-            if status.get("status") == "completed":
+            if status.get("status") in ["completed", "failed"]:
                 break
 
         msg_url = f"https://api.openai.com/v1/threads/{thread_id}/messages"
         messages = requests.get(msg_url, headers=headers, timeout=Config.REQUEST_TIMEOUT).json()
+        if not messages.get("data"):
+    return "Извините, я не смог получить ответ. Попробуй ещё раз."
+
+    content = messages["data"][0]["content"][0]["text"]["value"]
+    return content
         content = messages["data"][0]["content"][0]["text"]["value"]
         return content
 
@@ -285,3 +289,8 @@ def webhook():
         TelegramAPI.send_message(chat_id, answer, TelegramAPI.main_menu())
 
     return jsonify({"ok": True})
+
+
+   if __name__ == "__main__":
+       port = int(os.environ.get("PORT", 5000))
+       app.run(host="0.0.0.0", port=port)
