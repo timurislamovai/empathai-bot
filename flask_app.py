@@ -294,6 +294,8 @@ def webhook():
 
         OpenAIAssistant.send_message(thread_id, text)
         answer = OpenAIAssistant.get_response(thread_id)
+        if not answer:
+            answer = "Извините, я не смог получить ответ. Попробуйте ещё раз."
         TelegramAPI.send_message(chat_id, answer, TelegramAPI.main_menu())
 
     return jsonify({"ok": True})
