@@ -2,221 +2,542 @@ import os
 import time
 import json
 import requests
-from flask import Flask, request
-from datetime import datetime
+import logging
+from flask import Flask, request, jsonify
 from dotenv import load_dotenv
+from functools import wraps
+from threading import Thread
+import signal
+import sys
 
+# Настройка логирования для Render
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]  # Только stdout для Render
+)
+logger = logging.getLogger(__name__)
+
+# Загрузка переменных окружения
 load_dotenv()
 
 app = Flask(__name__)
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
-JSONBIN_THREAD_BIN = os.getenv("JSONBIN_BIN_ID")
-JSONBIN_USER_BIN = os.getenv("JSONBIN_USER_BIN_ID")
+# Конфигурация
+class Config:
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    ASSISTANT_ID = os.getenv("ASSISTANT_ID")
+    JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
+    JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
+    JSONBIN_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+    
+    # Тайм-ауты и лимиты (адаптированы для Render)
+    REQUEST_TIMEOUT = 15  # Увеличен для медленных соединений
+    MAX_RETRIES = 2       # Уменьшен для экономии ресурсов
+    OPENAI_WAIT_TIMEOUT = 25  # Оптимизирован для бесплатного тарифа
+    TELEGRAM_MESSAGE_LIMIT = 4096
 
-THREAD_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_THREAD_BIN}"
-USER_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_USER_BIN}"
-
-SYSTEM_BUTTONS = ["🧠 Инструкция", "❓ Гид по боту", "💳 Купить подписку", "📜 Условия пользования", "🔄 Сбросить диалог"]
-
-def main_menu():
-    return {
-        "keyboard": [
-            [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
-            [{"text": "🔄 Сбросить диалог"}, {"text": "💳 Купить подписку"}],
-            [{"text": "📜 Условия пользования"}]
-        ],
-        "resize_keyboard": True
-    }
-
-def send_message(chat_id, text, reply_markup=None):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text}
-    if reply_markup:
-        payload["reply_markup"] = json.dumps(reply_markup)
-    requests.post(url, json=payload)
-
-def get_jsonbin_data(url):
-    headers = {"X-Master-Key": JSONBIN_API_KEY}
-    try:
-        res = requests.get(url, headers=headers)
-        if res.status_code == 200:
-            return res.json().get("record", {})
-    except Exception as e:
-        print(f"[ERROR] get_jsonbin_data: {e}")
-    return {}
-
-def update_jsonbin_data(url, data):
-    headers = {
-        "X-Master-Key": JSONBIN_API_KEY,
-        "Content-Type": "application/json"
-    }
-    try:
-        requests.put(url, headers=headers, json=data)
-    except Exception as e:
-        print(f"[ERROR] update_jsonbin_data: {e}")
-
-def get_thread_id(chat_id):
-    data = get_jsonbin_data(THREAD_URL)
-    return data.get(str(chat_id))
-
-def save_thread_id(chat_id, thread_id):
-    data = get_jsonbin_data(THREAD_URL)
-    data[str(chat_id)] = thread_id
-    update_jsonbin_data(THREAD_URL, data)
-
-def reset_thread_id(chat_id):
-    data = get_jsonbin_data(THREAD_URL)
-    if str(chat_id) in data:
-        del data[str(chat_id)]
-        update_jsonbin_data(THREAD_URL, data)
-
-def get_user_data(chat_id):
-    data = get_jsonbin_data(USER_URL)
-    return data.get(str(chat_id), {})
-
-def save_user_data(chat_id, user_data):
-    data = get_jsonbin_data(USER_URL)
-    data[str(chat_id)] = user_data
-    update_jsonbin_data(USER_URL, data)
-
-def check_limit(chat_id):
-    user = get_user_data(chat_id)
-    today = datetime.now().strftime("%Y-%m-%d")
-    print(f"[LIMIT] Checking user: {chat_id}, Data: {user}")
-
-    if not user:
-        user = {"daily_count": 0, "last_date": today, "trial_active": True, "trial_start": today}
-        save_user_data(chat_id, user)
-        print(f"[LIMIT] First-time user, trial started.")
-        return True
-
-    if not user.get("trial_active", False):
-        print(f"[LIMIT] Trial inactive for {chat_id}")
+# Валидация конфигурации
+def validate_config():
+    required_vars = [
+        'TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY', 'ASSISTANT_ID',
+        'JSONBIN_API_KEY', 'JSONBIN_BIN_ID'
+    ]
+    missing = [var for var in required_vars if not getattr(Config, var)]
+    if missing:
+        logger.error(f"Отсутствуют обязательные переменные окружения: {missing}")
         return False
-
-    if user.get("last_date") != today:
-        print(f"[LIMIT] Resetting count for new day for {chat_id}")
-        user["daily_count"] = 0
-        user["last_date"] = today
-
-    if user["daily_count"] >= 15:
-        print(f"[LIMIT] User {chat_id} exceeded daily limit.")
-        return False
-
-    user["daily_count"] += 1
-    print(f"[LIMIT] Count updated: {user['daily_count']}/15")
-    save_user_data(chat_id, user)
     return True
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    update = request.get_json()
-    handle_update(update)
-    return "OK"
+# Декоратор для обработки ошибок
+def handle_errors(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Ошибка в {func.__name__}: {e}")
+            return None
+    return wrapper
 
-def handle_update(update):
-    message = update.get("message", {})
-    chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "").strip()
+# Декоратор для retry логики (упрощен для экономии ресурсов)
+def retry(max_attempts=2, delay=0.5):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_attempts - 1:
+                        logger.error(f"Все попытки исчерпаны для {func.__name__}: {e}")
+                        raise
+                    logger.warning(f"Повтор {attempt + 1} для {func.__name__}: {e}")
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
 
-    print(f"[INCOMING] chat_id: {chat_id}, text: {text}")
+class TelegramAPI:
+    @staticmethod
+    def main_menu():
+        return {
+            "keyboard": [
+                [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
+                [{"text": "🔄 Сбросить диалог"}, {"text": "💳 Купить подписку"}],
+                [{"text": "📜 Условия пользования"}, {"text": "ℹ️ Информация"}],
+                [{"text": "🆓 Пробный период"}]
+            ],
+            "resize_keyboard": True
+        }
 
-    if not chat_id or not text:
-        return
+    @staticmethod
+    @retry(max_attempts=Config.MAX_RETRIES)
+    def send_message(chat_id, text, reply_markup=None):
+        """Отправка сообщения с обработкой лимитов длины"""
+        if not text:
+            logger.warning("Попытка отправить пустое сообщение")
+            return False
+            
+        # Разбиваем длинные сообщения
+        if len(text) > Config.TELEGRAM_MESSAGE_LIMIT:
+            parts = [text[i:i+Config.TELEGRAM_MESSAGE_LIMIT] 
+                    for i in range(0, len(text), Config.TELEGRAM_MESSAGE_LIMIT)]
+            for i, part in enumerate(parts):
+                markup = reply_markup if i == len(parts) - 1 else None
+                if not TelegramAPI._send_single_message(chat_id, part, markup):
+                    return False
+                time.sleep(0.1)  # Небольшая задержка между сообщениями
+            return True
+        else:
+            return TelegramAPI._send_single_message(chat_id, text, reply_markup)
 
-    if text == "/start":
-        send_message(chat_id, (
-            "👋 Добро пожаловать в EmpathAI!\n\n"
-            "Привет! Меня зовут Ила – твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
-            "Я здесь, чтобы помочь тебе разобраться в мыслях, найти баланс и чувствовать уверенность в себе.\n\n"
-            "📋 Выберите пункт меню или напишите свой вопрос, чтобы начать общение."
-        ), reply_markup=main_menu())
-        return
+    @staticmethod
+    def _send_single_message(chat_id, text, reply_markup=None):
+        url = f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": chat_id, 
+            "text": text,
+            "parse_mode": "HTML"
+        }
+        if reply_markup:
+            payload["reply_markup"] = json.dumps(reply_markup)
+        
+        try:
+            response = requests.post(
+                url, 
+                json=payload, 
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                return True
+            else:
+                logger.error(f"Telegram API error: {response.status_code} - {response.text}")
+                return False
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка отправки сообщения: {e}")
+            return False
 
-    if text == "🔄 Сбросить диалог":
-        reset_thread_id(chat_id)
-        send_message(chat_id, "Диалог сброшен. Начнем заново?", reply_markup=main_menu())
-        return
+class DataStorage:
+    @staticmethod
+    @handle_errors
+    @retry(max_attempts=Config.MAX_RETRIES)
+    def get_thread_id(chat_id):
+        headers = {"X-Master-Key": Config.JSONBIN_API_KEY}
+        try:
+            response = requests.get(
+                Config.JSONBIN_URL, 
+                headers=headers, 
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                data = response.json().get("record", {})
+                return data.get(str(chat_id))
+            else:
+                logger.error(f"JSONBin get error: {response.status_code}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка получения thread_id: {e}")
+            return None
 
-    if text in SYSTEM_BUTTONS:
-        filename = {
+    @staticmethod
+    @handle_errors
+    @retry(max_attempts=Config.MAX_RETRIES)
+    def save_thread_id(chat_id, thread_id):
+        headers = {
+            "X-Master-Key": Config.JSONBIN_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            # Получаем текущие данные
+            response = requests.get(
+                Config.JSONBIN_URL, 
+                headers=headers, 
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            data = response.json().get("record", {}) if response.status_code == 200 else {}
+            
+            # Обновляем данные
+            data[str(chat_id)] = thread_id
+            
+            # Сохраняем
+            response = requests.put(
+                Config.JSONBIN_URL, 
+                headers=headers, 
+                json=data, 
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            return response.status_code == 200
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка сохранения thread_id: {e}")
+            return False
+
+    @staticmethod
+    @handle_errors
+    @retry(max_attempts=Config.MAX_RETRIES)
+    def reset_thread_id(chat_id):
+        headers = {
+            "X-Master-Key": Config.JSONBIN_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            response = requests.get(
+                Config.JSONBIN_URL, 
+                headers=headers, 
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                data = response.json().get("record", {})
+                if str(chat_id) in data:
+                    del data[str(chat_id)]
+                    response = requests.put(
+                        Config.JSONBIN_URL, 
+                        headers=headers, 
+                        json=data, 
+                        timeout=Config.REQUEST_TIMEOUT
+                    )
+                    return response.status_code == 200
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка сброса thread_id: {e}")
+            return False
+
+class FileManager:
+    @staticmethod
+    @handle_errors
+    def get_text_content(filename):
+        """Получение содержимого текстовых файлов"""
+        try:
+            with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                return content if content else "📄 Содержимое файла пустое."
+        except FileNotFoundError:
+            logger.warning(f"Файл texts/{filename}.txt не найден")
+            return "📄 Содержимое временно недоступно. Попробуйте позже."
+        except Exception as e:
+            logger.error(f"Ошибка чтения файла {filename}: {e}")
+            return "❌ Ошибка загрузки содержимого."
+
+class OpenAIAssistant:
+    @staticmethod
+    def get_headers():
+        return {
+            "Authorization": f"Bearer {Config.OPENAI_API_KEY}",
+            "OpenAI-Beta": "assistants=v2",
+            "Content-Type": "application/json"
+        }
+
+    @staticmethod
+    @handle_errors
+    def create_thread():
+        try:
+            response = requests.post(
+                "https://api.openai.com/v1/threads",
+                headers=OpenAIAssistant.get_headers(),
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                return response.json()["id"]
+            else:
+                logger.error(f"OpenAI thread creation error: {response.status_code}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка создания thread: {e}")
+            return None
+
+    @staticmethod
+    @handle_errors
+    def send_message_to_thread(thread_id, message):
+        payload = {"role": "user", "content": message}
+        try:
+            response = requests.post(
+                f"https://api.openai.com/v1/threads/{thread_id}/messages",
+                headers=OpenAIAssistant.get_headers(),
+                json=payload,
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            return response.status_code == 200
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка отправки сообщения в thread: {e}")
+            return False
+
+    @staticmethod
+    @handle_errors
+    def run_assistant(thread_id):
+        payload = {"assistant_id": Config.ASSISTANT_ID}
+        try:
+            response = requests.post(
+                f"https://api.openai.com/v1/threads/{thread_id}/runs",
+                headers=OpenAIAssistant.get_headers(),
+                json=payload,
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                return response.json()["id"]
+            else:
+                logger.error(f"OpenAI run creation error: {response.status_code}")
+                return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка запуска ассистента: {e}")
+            return None
+
+    @staticmethod
+    @handle_errors
+    def wait_for_completion(thread_id, run_id):
+        for attempt in range(Config.OPENAI_WAIT_TIMEOUT):
+            try:
+                response = requests.get(
+                    f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
+                    headers=OpenAIAssistant.get_headers(),
+                    timeout=Config.REQUEST_TIMEOUT
+                )
+                if response.status_code == 200:
+                    status = response.json().get("status")
+                    if status == "completed":
+                        return True
+                    elif status in ["failed", "cancelled", "expired"]:
+                        logger.error(f"Выполнение завершилось со статусом: {status}")
+                        return False
+                time.sleep(1)
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Ошибка проверки статуса: {e}")
+                time.sleep(2)
+        
+        logger.warning("Превышено время ожидания выполнения OpenAI")
+        return False
+
+    @staticmethod
+    @handle_errors
+    def get_assistant_response(thread_id):
+        try:
+            response = requests.get(
+                f"https://api.openai.com/v1/threads/{thread_id}/messages",
+                headers=OpenAIAssistant.get_headers(),
+                timeout=Config.REQUEST_TIMEOUT
+            )
+            if response.status_code == 200:
+                messages = response.json().get("data", [])
+                for msg in messages:
+                    if msg["role"] == "assistant":
+                        return msg["content"][0]["text"]["value"]
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка получения ответа: {e}")
+            return None
+
+class MessageHandler:
+    @staticmethod
+    def handle_start_command(chat_id):
+        welcome_text = (
+            "👋 <b>Добро пожаловать в EmpathAI!</b>\n\n"
+            "Я твой виртуальный помощник для поддержки, саморазвития и снижения тревожности.\n\n"
+            "📋 Выбери пункт из меню, чтобы начать общение."
+        )
+        TelegramAPI.send_message(chat_id, welcome_text, reply_markup=TelegramAPI.main_menu())
+
+    @staticmethod
+    def handle_reset_command(chat_id):
+        # Сначала показываем содержимое reset.txt
+        reset_content = FileManager.get_text_content("reset")
+        TelegramAPI.send_message(chat_id, reset_content)
+        
+        # Затем сбрасываем диалог
+        if DataStorage.reset_thread_id(chat_id):
+            TelegramAPI.send_message(
+                chat_id, 
+                "✅ Диалог успешно сброшен. Начнем заново?", 
+                reply_markup=TelegramAPI.main_menu()
+            )
+        else:
+            TelegramAPI.send_message(
+                chat_id, 
+                "❌ Ошибка сброса диалога. Попробуйте позже.", 
+                reply_markup=TelegramAPI.main_menu()
+            )
+
+    @staticmethod
+    def handle_menu_commands(chat_id, text):
+        filename_map = {
             "🧠 Инструкция": "support",
             "❓ Гид по боту": "faq",
             "💳 Купить подписку": "subscribe",
-            "📜 Условия пользования": "rules"
-        }.get(text)
-        try:
-            with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
-                send_message(chat_id, f.read(), reply_markup=main_menu())
-        except:
-            send_message(chat_id, "Файл не найден.", reply_markup=main_menu())
+            "📜 Условия пользования": "rules",
+            "ℹ️ Информация": "info",
+            "🆓 Пробный период": "trial_info"
+        }
+        
+        filename = filename_map.get(text)
+        if filename:
+            content = FileManager.get_text_content(filename)
+            TelegramAPI.send_message(chat_id, content, reply_markup=TelegramAPI.main_menu())
+            return True
+        return False
+
+    @staticmethod
+    def handle_ai_conversation(chat_id, text):
+        """Обработка AI диалога в отдельном потоке"""
+        def process_ai_request():
+            try:
+                # Получаем или создаем thread
+                thread_id = DataStorage.get_thread_id(chat_id)
+                if not thread_id:
+                    thread_id = OpenAIAssistant.create_thread()
+                    if not thread_id:
+                        TelegramAPI.send_message(
+                            chat_id, 
+                            "❌ Ошибка инициализации сессии. Попробуйте позже.", 
+                            reply_markup=TelegramAPI.main_menu()
+                        )
+                        return
+                    DataStorage.save_thread_id(chat_id, thread_id)
+
+                # Отправляем сообщение в thread
+                if not OpenAIAssistant.send_message_to_thread(thread_id, text):
+                    TelegramAPI.send_message(
+                        chat_id, 
+                        "❌ Ошибка отправки сообщения. Попробуйте позже.", 
+                        reply_markup=TelegramAPI.main_menu()
+                    )
+                    return
+
+                # Запускаем ассистента
+                run_id = OpenAIAssistant.run_assistant(thread_id)
+                if not run_id:
+                    TelegramAPI.send_message(
+                        chat_id, 
+                        "❌ Ошибка запуска AI-сессии. Попробуйте позже.", 
+                        reply_markup=TelegramAPI.main_menu()
+                    )
+                    return
+
+                # Ждем выполнения
+                if not OpenAIAssistant.wait_for_completion(thread_id, run_id):
+                    TelegramAPI.send_message(
+                        chat_id, 
+                        "⏳ Превышено время ожидания ответа. Попробуйте еще раз.", 
+                        reply_markup=TelegramAPI.main_menu()
+                    )
+                    return
+
+                # Получаем ответ
+                response = OpenAIAssistant.get_assistant_response(thread_id)
+                if response:
+                    TelegramAPI.send_message(chat_id, response, reply_markup=TelegramAPI.main_menu())
+                else:
+                    TelegramAPI.send_message(
+                        chat_id, 
+                        "🤖 Не удалось получить ответ. Попробуйте еще раз.", 
+                        reply_markup=TelegramAPI.main_menu()
+                    )
+
+            except Exception as e:
+                logger.error(f"Ошибка в AI обработке для chat_id {chat_id}: {e}")
+                TelegramAPI.send_message(
+                    chat_id, 
+                    "❌ Произошла ошибка. Попробуйте позже.", 
+                    reply_markup=TelegramAPI.main_menu()
+                )
+
+        # Запускаем в отдельном потоке для неблокирующей обработки
+        Thread(target=process_ai_request, daemon=True).start()
+
+def handle_update(update):
+    """Главная функция обработки обновлений"""
+    message = update.get("message")
+    if not message:
         return
 
-    if not check_limit(chat_id):
-        send_message(chat_id, "💡 Вы использовали лимит сообщений на сегодня. Активируйте подписку, чтобы продолжить.", reply_markup=main_menu())
-        print(f"[GPT] Limit reached — response blocked for user {chat_id}")
-        return
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "").strip()
+    
+    logger.info(f"Получено сообщение от {chat_id}: {text[:50]}...")
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "OpenAI-Beta": "assistants=v2",
-        "Content-Type": "application/json"
-    }
+    if text == "/start":
+        MessageHandler.handle_start_command(chat_id)
+    elif text == "🔄 Сбросить диалог":
+        MessageHandler.handle_reset_command(chat_id)
+    elif MessageHandler.handle_menu_commands(chat_id, text):
+        pass  # Команда уже обработана
+    elif text:  # Обычное сообщение для AI
+        MessageHandler.handle_ai_conversation(chat_id, text)
 
-    thread_id = get_thread_id(chat_id)
-    if not thread_id:
-        res = requests.post("https://api.openai.com/v1/threads", headers=headers)
-        if res.status_code != 200:
-            send_message(chat_id, "❌ Ошибка инициализации сессии GPT.", reply_markup=main_menu())
-            return
-        thread_id = res.json()["id"]
-        save_thread_id(chat_id, thread_id)
+# Flask маршруты
+@app.route("/", methods=["GET"])
+def health_check():
+    """Health check для Render"""
+    return jsonify({
+        "status": "healthy",
+        "service": "EmpathAI Bot",
+        "timestamp": int(time.time()),
+        "config_valid": validate_config()
+    })
 
-    requests.post(
-        f"https://api.openai.com/v1/threads/{thread_id}/messages",
-        headers=headers,
-        json={"role": "user", "content": text}
-    )
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    """Webhook endpoint для Telegram"""
+    try:
+        update = request.get_json()
+        if not update:
+            logger.warning("Получен пустой JSON")
+            return jsonify({"error": "Invalid JSON"}), 400
+            
+        handle_update(update)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        logger.error(f"Ошибка webhook: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
-    run_res = requests.post(
-        f"https://api.openai.com/v1/threads/{thread_id}/runs",
-        headers=headers,
-        json={"assistant_id": ASSISTANT_ID}
-    )
+@app.route("/set_webhook", methods=["POST"])
+def set_webhook():
+    """Установка webhook (для отладки)"""
+    try:
+        data = request.get_json()
+        webhook_url = data.get("url") if data else None
+        
+        if not webhook_url:
+            return jsonify({"error": "URL not provided"}), 400
+            
+        url = f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook"
+        response = requests.post(url, json={"url": webhook_url}, timeout=10)
+        
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"Ошибка установки webhook: {e}")
+        return jsonify({"error": str(e)}), 500
 
-    if run_res.status_code != 200:
-        send_message(chat_id, "❌ Ошибка запуска GPT-сессии.", reply_markup=main_menu())
-        return
-
-    run_id = run_res.json()["id"]
-
-    for _ in range(30):
-        time.sleep(1)
-        run_status = requests.get(
-            f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
-            headers=headers
-        ).json()
-        if run_status.get("status") == "completed":
-            break
-    else:
-        send_message(chat_id, "⏳ Время ожидания ответа GPT истекло.", reply_markup=main_menu())
-        return
-
-    messages_res = requests.get(
-        f"https://api.openai.com/v1/threads/{thread_id}/messages",
-        headers=headers
-    )
-
-    if messages_res.status_code != 200:
-        send_message(chat_id, "❌ Ошибка получения ответа от GPT.", reply_markup=main_menu())
-        return
-
-    for msg in reversed(messages_res.json().get("data", [])):
-        if msg["role"] == "assistant":
-            response_text = msg["content"][0]["text"]["value"]
-            send_message(chat_id, response_text, reply_markup=main_menu())
-            return
+# Инициализация при запуске
+if __name__ == "__main__":
+    logger.info("Запуск EmpathAI Bot...")
+    
+    if not validate_config():
+        logger.error("Ошибка конфигурации. Проверьте переменные окружения.")
+        sys.exit(1)
+    
+    logger.info("Конфигурация валидна. Бот готов к работе.")
+    
+    # Для Render используем PORT из переменных окружения
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
