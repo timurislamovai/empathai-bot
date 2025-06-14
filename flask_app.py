@@ -13,8 +13,6 @@ ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 
-# Инициализация бота
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 # Папка с текстами
 TEXT_FOLDER = "texts"
