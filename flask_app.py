@@ -22,23 +22,56 @@ def main_menu():
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
 # === Работа с JSONBin для хранения thread_id ===
-def get_thread_id(user_id):
-    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
-    headers = {"X-Master-Key": JSONBIN_API_KEY}
-    response = requests.get(url, headers=headers)
-    data = response.json()["record"]
-    return data.get(str(user_id))
-
-def save_thread_id(user_id, thread_id):
-    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+ddef get_thread_id(user_id):
     headers = {
         "X-Master-Key": JSONBIN_API_KEY,
-        "Content-Type": "application/json"
     }
-    response = requests.get(url + "/latest", headers=headers)
-    data = response.json()["record"]
-    data[str(user_id)] = thread_id
-    requests.put(url, headers=headers, json=data)
+    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print(f"❌ Ошибка JSONBin GET: {response.status_code} — {response.text}")
+        return None
+
+    try:
+        data = response.json()
+        record = data.get("record", {})
+        return record.get(str(user_id))
+    except Exception as e:
+        print("❌ Ошибка при разборе JSON из JSONBin:", e)
+        return None
+
+
+def save_thread_id(user_id, thread_id):
+    headers = {
+        "Content-Type": "application/json",
+        "X-Master-Key": JSONBIN_API_KEY,
+        "X-Bin-Private": "true"
+    }
+
+    # Сначала получим текущее содержимое
+    url_get = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
+    response = requests.get(url_get, headers={"X-Master-Key": JSONBIN_API_KEY})
+
+    if response.status_code != 200:
+        print(f"❌ Ошибка JSONBin GET перед PUT: {response.status_code} — {response.text}")
+        current_data = {}
+    else:
+        try:
+            current_data = response.json().get("record", {})
+        except Exception as e:
+            print("❌ Ошибка при чтении текущих данных:", e)
+            current_data = {}
+
+    current_data[str(user_id)] = thread_id
+
+    url_patch = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+    response = requests.put(url_patch, headers=headers, json={"record": current_data})
+
+    if response.status_code != 200:
+        print(f"❌ Ошибка JSONBin PUT: {response.status_code} — {response.text}")
+    else:
+        print(f"✅ Thread ID сохранён для пользователя {user_id}")
 
 def reset_thread_id(user_id):
     url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
