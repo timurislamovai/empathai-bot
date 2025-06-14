@@ -1,185 +1,190 @@
 import os
+import time
+import json
 import requests
 from flask import Flask, request
-from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
-from openai import OpenAI
-import json
+from dotenv import load_dotenv
 
-# === Настройки ===
+# Загрузка переменных окружения
+load_dotenv()
+
 app = Flask(__name__)
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
-JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
+JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
+JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
+JSONBIN_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
 
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
-
-# === Интерфейс главного меню ===
 def main_menu():
-    buttons = [["🧠 Инструкция", "❓ Гид по боту"], ["📜 Условия пользования", "💳 Купить подписку"]]
-    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-
-# === Работа с JSONBin для хранения thread_id ===
-def get_thread_id(user_id):
-    headers = {
-    "X-Master-Key": JSONBIN_API_KEY,
-    "Content-Type": "application/json"
-}
-    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        print(f"❌ Ошибка JSONBin GET: {response.status_code} — {response.text}")
-        return None
-
-    try:
-        data = response.json()
-        record = data.get("record", {})
-        return record.get(str(user_id))
-    except Exception as e:
-        print("❌ Ошибка при разборе JSON из JSONBin:", e)
-        return None
-
-
-def save_thread_id(user_id, thread_id):
-    headers = {
-        "Content-Type": "application/json",
-        "X-Master-Key": JSONBIN_API_KEY,
-        "X-Bin-Private": "true"
+    return {
+        "keyboard": [
+            [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
+            [{"text": "🔄 Сбросить диалог"}, {"text": "💳 Купить подписку"}],
+            [{"text": "📜 Условия пользования"}]
+        ],
+        "resize_keyboard": True
     }
 
-    # Сначала получим текущее содержимое
-    url_get = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
-    response = requests.get(url_get, headers={"X-Master-Key": JSONBIN_API_KEY})
+def get_thread_id(chat_id):
+    headers = {"X-Master-Key": JSONBIN_API_KEY}
+    try:
+        res = requests.get(JSONBIN_URL, headers=headers)
+        if res.status_code == 200:
+            data = res.json().get("record", {})
+            return data.get(str(chat_id))
+    except Exception as e:
+        print(f"[ERROR] get_thread_id: {e}")
+    return None
 
-    if response.status_code != 200:
-        print(f"❌ Ошибка JSONBin GET перед PUT: {response.status_code} — {response.text}")
-        current_data = {}
-    else:
-        try:
-            current_data = response.json().get("record", {})
-        except Exception as e:
-            print("❌ Ошибка при чтении текущих данных:", e)
-            current_data = {}
-
-    current_data[str(user_id)] = thread_id
-
-    url_patch = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
-    response = requests.put(url_patch, headers=headers, json={"record": current_data})
-
-    if response.status_code != 200:
-        print(f"❌ Ошибка JSONBin PUT: {response.status_code} — {response.text}")
-    else:
-        print(f"✅ Thread ID сохранён для пользователя {user_id}")
-
-def reset_thread_id(user_id):
-    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+def save_thread_id(chat_id, thread_id):
     headers = {
         "X-Master-Key": JSONBIN_API_KEY,
         "Content-Type": "application/json"
     }
-    response = requests.get(url + "/latest", headers=headers)
-    data = response.json()["record"]
-    data.pop(str(user_id), None)
-    requests.put(url, headers=headers, json=data)
-
-# === Чтение текстовых файлов ===
-def read_file(name):
     try:
-        with open(name, encoding="utf-8") as f:
-            return f.read()
-    except:
-        return "[Файл не найден]"
+        res = requests.get(JSONBIN_URL, headers=headers)
+        data = res.json().get("record", {}) if res.status_code == 200 else {}
+        data[str(chat_id)] = thread_id
+        requests.put(JSONBIN_URL, headers=headers, json=data)
+    except Exception as e:
+        print(f"[ERROR] save_thread_id: {e}")
 
-# === Отправка сообщения через Telegram ===
-def send_message(chat_id, text, reply_markup=None):
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "reply_markup": reply_markup.to_dict() if reply_markup else None
+def reset_thread_id(chat_id):
+    headers = {
+        "X-Master-Key": JSONBIN_API_KEY,
+        "Content-Type": "application/json"
     }
-    requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", json=payload)
+    try:
+        res = requests.get(JSONBIN_URL, headers=headers)
+        if res.status_code == 200:
+            data = res.json().get("record", {})
+            if str(chat_id) in data:
+                del data[str(chat_id)]
+                requests.put(JSONBIN_URL, headers=headers, json=data)
+    except Exception as e:
+        print(f"[ERROR] reset_thread_id: {e}")
 
-# === Обращение к OpenAI Assistant ===
-def send_to_assistant(user_id, user_input):
-    thread_id = get_thread_id(user_id)
-    if not thread_id:
-        thread = openai_client.beta.threads.create()
-        thread_id = thread.id
-        save_thread_id(user_id, thread_id)
+def send_message(chat_id, text, reply_markup=None):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    response = requests.post(url, json=payload)
+    if response.status_code != 200:
+        print(f"[ERROR] Telegram send failed: {response.status_code} {response.text}")
 
-    openai_client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=user_input
-    )
-
-    run = openai_client.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=ASSISTANT_ID,
-        instructions="Отвечай без Markdown, не используй *, **, --- и ###. Пиши красиво и понятно, как заботливый человек."
-    )
-
-    while True:
-        status = openai_client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-        if status.status == "completed":
-            break
-
-    messages = openai_client.beta.threads.messages.list(thread_id=thread_id)
-    for msg in reversed(messages.data):
-        if msg.role == "assistant":
-            return msg.content[0].text.value
-    return "Извини, я не смог ответить. Попробуй ещё раз."
-
-# === Обработка входящих сообщений ===
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.json
-    message = data.get("message")
-    if not message:
-        return "ok"
+    try:
+        update = request.get_json()
+        handle_update(update)
+        return "OK"
+    except Exception as e:
+        print(f"[ERROR] Webhook exception: {e}")
+        return "Internal Server Error", 500
 
-    text = message.get("text", "")
+def handle_update(update):
+    message = update.get("message")
+    if not message:
+        return
+
     chat_id = message["chat"]["id"]
-    user_id = message["from"]["id"]
+    text = message.get("text", "").strip()
 
     if text == "/start":
-        welcome = (
-            "Привет, я Ила — твой виртуальный помощник в понимании себя и поиске душевного равновесия\n\n"
-            "💙 Я здесь, чтобы поддержать тебя в сложные моменты, помочь разобраться в эмоциях и найти пути к спокойствию.\n"
-            "✨ Выберите пункт меню или напишите свой вопрос, чтобы начать общение"
+        welcome_text = (
+            "👋 Добро пожаловать в EmpathAI!\n\n"
+            "Я твой виртуальный помощник для поддержки, саморазвития и снижения тревожности.\n\n"
+            "📋 Выбери пункт из меню, чтобы начать общение."
         )
-        send_message(chat_id, welcome, reply_markup=main_menu())
-        return "ok"
+        send_message(chat_id, welcome_text, reply_markup=main_menu())
+        return
 
-    elif text == "🧠 Инструкция":
-        send_message(chat_id, read_file("support.txt"))
-        return "ok"
-    elif text == "❓ Гид по боту":
-        send_message(chat_id, read_file("faq.txt"))
-        return "ok"
-    elif text == "📜 Условия пользования":
-        send_message(chat_id, read_file("rules.txt"))
-        return "ok"
-    elif text == "💳 Купить подписку":
-        send_message(chat_id, read_file("subscribe.txt"))
-        return "ok"
-    elif text.lower() in ["сброс", "сбросить", "сбросить диалог"]:
-        reset_thread_id(user_id)
-        send_message(chat_id, read_file("reset.txt"))
-        return "ok"
+    if text == "🔄 Сбросить диалог":
+        reset_thread_id(chat_id)
+        send_message(chat_id, "Диалог сброшен. Начнем заново?", reply_markup=main_menu())
+        return
 
-    # Ответ по умолчанию через GPT
-    response = send_to_assistant(user_id, text)
-    send_message(chat_id, response)
-    return "ok"
+    if text in ["🧠 Инструкция", "❓ Гид по боту", "💳 Купить подписку", "📜 Условия пользования"]:
+        filename = {
+            "🧠 Инструкция": "support",
+            "❓ Гид по боту": "faq",
+            "💳 Купить подписку": "subscribe",
+            "📜 Условия пользования": "rules"
+        }.get(text, "faq")
+        try:
+            with open(f"texts/{filename}.txt", "r", encoding="utf-8") as f:
+                content = f.read()
+        except:
+            content = "Файл не найден."
+        send_message(chat_id, content, reply_markup=main_menu())
+        return
 
-# === Запуск ===
-@app.route("/")
-def index():
-    return "Бот работает!"
+    # GPT-переписка
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "OpenAI-Beta": "assistants=v2",
+        "Content-Type": "application/json"
+    }
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    thread_id = get_thread_id(chat_id)
+    if not thread_id:
+        thread_res = requests.post("https://api.openai.com/v1/threads", headers=headers)
+        if thread_res.status_code != 200:
+            send_message(chat_id, "❌ Ошибка инициализации сессии.", reply_markup=main_menu())
+            return
+        thread_id = thread_res.json()["id"]
+        save_thread_id(chat_id, thread_id)
+
+    msg_payload = {"role": "user", "content": text}
+    requests.post(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers=headers,
+        json=msg_payload
+    )
+
+    run_payload = {"assistant_id": ASSISTANT_ID}
+    run_res = requests.post(
+        f"https://api.openai.com/v1/threads/{thread_id}/runs",
+        headers=headers,
+        json=run_payload
+    )
+
+    if run_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка запуска AI-сессии.", reply_markup=main_menu())
+        return
+
+    run_id = run_res.json()["id"]
+
+    for _ in range(30):
+        time.sleep(1)
+        check = requests.get(
+            f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
+            headers=headers
+        )
+        status = check.json().get("status")
+        if status == "completed":
+            break
+    else:
+        send_message(chat_id, "⏳ Превышено время ожидания ответа.", reply_markup=main_menu())
+        return
+
+    messages_res = requests.get(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers=headers
+    )
+
+    if messages_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
+        return
+
+    messages = messages_res.json().get("data", [])
+    for msg in reversed(messages):
+        if msg["role"] == "assistant":
+            response_text = msg["content"][0]["text"]["value"]
+            send_message(chat_id, response_text, reply_markup=main_menu())
+            return
+
+    send_message(chat_id, "🤖 Ответ не найден.", reply_markup=main_menu())
