@@ -24,8 +24,9 @@ def main_menu():
 # === Работа с JSONBin для хранения thread_id ===
 def get_thread_id(user_id):
     headers = {
-        "X-Master-Key": JSONBIN_API_KEY,
-    }
+    "X-Master-Key": JSONBIN_API_KEY,
+    "Content-Type": "application/json"
+}
     url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
     response = requests.get(url, headers=headers)
 
