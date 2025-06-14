@@ -2,7 +2,6 @@ import os
 import json
 import requests
 from flask import Flask, request, jsonify
-from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
 import openai
 
 app = Flask(__name__)
