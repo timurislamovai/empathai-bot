@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from flask import Flask, request, jsonify
+from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
 import openai
 
 app = Flask(__name__)
@@ -13,6 +14,8 @@ ASSISTANT_ID = os.getenv("ASSISTANT_ID")
 JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
 
+# Инициализация бота
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 # Папка с текстами
 TEXT_FOLDER = "texts"
@@ -126,7 +129,7 @@ def generate_response(user_id, message_text):
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton("🧠 Инструкция"), KeyboardButton("ℹ️ О Сервисе")],
-        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("📜 Условия пользования")],
+        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("📜 Условия поьзования")],
         [KeyboardButton("❓ Гид по боту")]
     ],
     resize_keyboard=True,
@@ -144,7 +147,7 @@ def webhook():
 
     if text == "/start":
         welcome = (
-            "❤️ Привет, я Ила — твой виртуальный помощник в понимании себя и поиске душевного равновесия.\n\n"
+            "Привет, я Ила — твой виртуальный помощник в понимании себя и поиске душевного равновесия.\n\n"
             "💙 Я здесь, чтобы поддержать тебя в сложные моменты, помочь разобраться в эмоциях и найти пути к спокойствию.\n\n"
             "✨ Выберите пункт меню или напишите свой вопрос, чтобы начать общение."
         )
@@ -153,7 +156,7 @@ def webhook():
         bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=main_menu)
     elif text == "ℹ️ О Сервисе":
         bot.send_message(chat_id=chat_id, text=load_text("info"), reply_markup=main_menu)
-    elif text == "📜 Условия пользования":
+    elif text == "📜 Условия поьзования":
         bot.send_message(chat_id=chat_id, text=load_text("rules"), reply_markup=main_menu)
     elif text == "❓ Гид по боту":
         bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=main_menu)
