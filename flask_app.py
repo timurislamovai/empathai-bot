@@ -1,173 +1,157 @@
 import os
 import json
 import requests
-from flask import Flask, request, jsonify
-from telegram import Bot, Update, ReplyKeyboardMarkup, KeyboardButton
-import openai
+from flask import Flask, request
+from dotenv import load_dotenv
+from openai import OpenAI
 
-app = Flask(__name__)
+load_dotenv()
 
-# Переменные окружения
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = os.getenv("ASSISTANT_ID")
-JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 JSONBIN_API_KEY = os.getenv("JSONBIN_API_KEY")
+JSONBIN_BIN_ID = os.getenv("JSONBIN_BIN_ID")
 
-# Инициализация бота
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+JSONBIN_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
 
-# Папка с текстами
-TEXT_FOLDER = "texts"
+HEADERS = {
+    "X-Master-Key": JSONBIN_API_KEY,
+    "Content-Type": "application/json"
+}
 
-# Функции для работы с JSONBin.io
-def load_history(user_id):
-    try:
-        response = requests.get(
-            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest",
-            headers={"X-Master-Key": JSONBIN_API_KEY}
-        )
-        response.raise_for_status()
-        all_data = response.json().get("record", {})
-        user_data = all_data.get(user_id, [])
-        if isinstance(user_data, list):
-            return user_data
-        else:
-            print(f"[!] История пользователя {user_id} не список, сбрасываю.")
-            return []
-    except Exception as e:
-        print(f"[!] Ошибка загрузки истории: {e}")
-        return []
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-def save_history(user_id, history):
-    try:
-        history = history[-10:] if len(history) > 10 else history
-        all_data = {user_id: history}
-        print(f"[DEBUG] Отправляем в JSONBin.io: {json.dumps(all_data, ensure_ascii=False)}")
-        print(f"[DEBUG] URL: https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}")
-        print(f"[DEBUG] Headers: {{'X-Master-Key': '***', 'Content-Type': 'application/json'}}")
-        update = requests.put(
-            f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}",
-            headers={
-                "X-Master-Key": JSONBIN_API_KEY,
-                "Content-Type": "application/json"
-            },
-            json={"record": all_data}
-        )
-        update.raise_for_status()
-        print(f"[DEBUG] Успешно сохранено в JSONBin.io, Response: {update.text}")
-        return True
-    except Exception as e:
-        print(f"[!] Ошибка сохранения истории: {e}, Response: {update.text if 'update' in locals() else 'No response'}")
-        return False
+app = Flask(__name__)
 
-def reset_history(user_id):
-    save_history(user_id, [])
-
-# Загрузка текстов для меню
-def load_text(name):
-    try:
-        with open(f"{TEXT_FOLDER}/{name}.txt", "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return "Извините, информация временно недоступна."
-
-# Генерация ответа через Open AI
-def generate_response(user_id, message_text):
-    if not message_text or message_text.strip() == "":
-        return "Пожалуйста, напиши что-нибудь, чтобы я мог ответить! 😊"
-    
-    history = load_history(user_id)
-    history.append({"role": "user", "content": message_text})
-    print(f"[DEBUG] История перед отправкой в Open AI: {json.dumps(history, ensure_ascii=False)}")
-
-    openai.api_key = OPENAI_API_KEY
-    try:
-        thread = openai.beta.threads.create()
-        thread_id = thread.id
-        print(f"[DEBUG] Создан thread_id: {thread_id}")
-
-        for msg in history:
-            if not msg["content"] or msg["content"].strip() == "":
-                continue
-            openai.beta.threads.messages.create(
-                thread_id=thread_id,
-                role=msg["role"],
-                content=msg["content"]
-            )
-
-        run = openai.beta.threads.runs.create(
-            thread_id=thread_id,
-            assistant_id=ASSISTANT_ID
-        )
-        print(f"[DEBUG] Создан run_id: {run.id}")
-
-        while True:
-            status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-            print(f"[DEBUG] Статус run: {status.status}")
-            if status.status == "completed":
-                break
-            elif status.status in ["failed", "cancelled", "expired"]:
-                return f"Извините, произошла ошибка (status: {status.status}). Попробуйте позже."
-
-        messages = openai.beta.threads.messages.list(thread_id=thread_id)
-        reply = ""
-        for msg in reversed(messages.data):
-            if msg.role == "assistant":
-                reply = msg.content[0].text.value
-                break
-
-        history.append({"role": "assistant", "content": reply})
-        save_history(user_id, history)
-        print(f"[DEBUG] Ответ от Open AI: {reply}")
-        return reply
-    except Exception as e:
-        print(f"[!] Ошибка Open AI: {e}")
-        return "Извините, что-то пошло не так. Попробуйте ещё раз!"
-
-# Нижнее меню
-main_menu = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton("🧠 Инструкция"), KeyboardButton("ℹ️ О Сервисе")],
-        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("📜 Условия поьзования")],
-        [KeyboardButton("❓ Гид по боту")]
+main_menu = {
+    "keyboard": [
+        [{"text": "🧠 Инструкция"}, {"text": "❓ Гид по боту"}],
+        [{"text": "📜 Условия пользования"}, {"text": "💳 Купить подписку"}]
     ],
-    resize_keyboard=True,
-    one_time_keyboard=False
-)
+    "resize_keyboard": True
+}
 
-@app.route(f"/webhook", methods=["POST"])
+
+def get_thread_id(user_id):
+    response = requests.get(JSONBIN_URL, headers=HEADERS)
+    if response.status_code == 200:
+        data = response.json()
+        threads = data["record"]
+        return threads.get(str(user_id))
+    return None
+
+
+def save_thread_id(user_id, thread_id):
+    response = requests.get(JSONBIN_URL, headers=HEADERS)
+    if response.status_code == 200:
+        data = response.json()
+        threads = data["record"]
+        threads[str(user_id)] = thread_id
+        requests.put(JSONBIN_URL, headers=HEADERS, json={"record": threads})
+
+
+def reset_thread_id(user_id):
+    response = requests.get(JSONBIN_URL, headers=HEADERS)
+    if response.status_code == 200:
+        data = response.json()
+        threads = data["record"]
+        if str(user_id) in threads:
+            del threads[str(user_id)]
+            requests.put(JSONBIN_URL, headers=HEADERS, json={"record": threads})
+
+
+def send_message(chat_id, text):
+    url = f"{BASE_URL}/sendMessage"
+    data = {
+        "chat_id": chat_id,
+        "text": text,
+        "reply_markup": main_menu,
+        "parse_mode": "HTML"
+    }
+    requests.post(url, json=data)
+
+
+def read_file(file_name):
+    try:
+        with open(file_name, "r", encoding="utf-8") as f:
+            return f.read()
+    except:
+        return "Файл не найден."
+
+
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    if not update or not update.effective_chat:
-        return jsonify({"status": "error", "message": "Invalid update"})
+    data = request.json
+    if not data or "message" not in data:
+        return "ok"
 
-    chat_id = str(update.effective_chat.id)
-    text = update.message.text.strip() if update.message and update.message.text else ""
+    message = data["message"]
+    chat_id = message["chat"]["id"]
+    user_id = message["from"]["id"]
+    text = message.get("text", "")
 
     if text == "/start":
-        welcome = (
-            "Привет, я Ила — твой виртуальный помощник в понимании себя и поиске душевного равновесия.\n\n"
-            "💙 Я здесь, чтобы поддержать тебя в сложные моменты, помочь разобраться в эмоциях и найти пути к спокойствию.\n\n"
-            "✨ Выберите пункт меню или напишите свой вопрос, чтобы начать общение."
-        )
-        bot.send_message(chat_id=chat_id, text=welcome, reply_markup=main_menu)
-    elif text == "🧠 Инструкция":
-        bot.send_message(chat_id=chat_id, text=load_text("support"), reply_markup=main_menu)
-    elif text == "ℹ️ О Сервисе":
-        bot.send_message(chat_id=chat_id, text=load_text("info"), reply_markup=main_menu)
-    elif text == "📜 Условия поьзования":
-        bot.send_message(chat_id=chat_id, text=load_text("rules"), reply_markup=main_menu)
-    elif text == "❓ Гид по боту":
-        bot.send_message(chat_id=chat_id, text=load_text("faq"), reply_markup=main_menu)
-    elif text == "🔄 Сбросить диалог":
-        reset_history(chat_id)
-        bot.send_message(chat_id=chat_id, text=load_text("reset"), reply_markup=main_menu)
-    else:
-        answer = generate_response(chat_id, text)
-        bot.send_message(chat_id=chat_id, text=answer, reply_markup=main_menu)
+        welcome = read_file("support.txt")
+        send_message(chat_id, welcome)
+        return "ok"
 
-    return jsonify({"status": "ok"})
+    if text == "🧠 Инструкция":
+        send_message(chat_id, read_file("support.txt"))
+        return "ok"
+    elif text == "❓ Гид по боту":
+        send_message(chat_id, read_file("faq.txt"))
+        return "ok"
+    elif text == "📜 Условия пользования":
+        send_message(chat_id, read_file("rules.txt"))
+        return "ok"
+    elif text == "💳 Купить подписку":
+        send_message(chat_id, "Скоро будет доступно.")
+        return "ok"
+    elif text.lower() in ["сброс", "сбросить", "сбросить диалог"]:
+        reset_thread_id(user_id)
+        send_message(chat_id, read_file("reset.txt"))
+        return "ok"
+
+    thread_id = get_thread_id(user_id)
+
+    if not thread_id:
+        thread = client.beta.threads.create()
+        thread_id = thread.id
+        save_thread_id(user_id, thread_id)
+
+    client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=text
+    )
+
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=ASSISTANT_ID
+    )
+
+    while True:
+        run_status = client.beta.threads.runs.retrieve(
+            thread_id=thread_id,
+            run_id=run.id
+        )
+        if run_status.status == "completed":
+            break
+
+    messages = client.beta.threads.messages.list(thread_id=thread_id)
+    if messages.data:
+        reply = messages.data[0].content[0].text.value
+        send_message(chat_id, reply)
+
+    return "ok"
+
+
+@app.route("/", methods=["GET"])
+def index():
+    return "Telegram bot is running."
+
 
 if __name__ == "__main__":
     app.run(debug=True)
