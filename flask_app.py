@@ -22,7 +22,7 @@ def main_menu():
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
 # === Работа с JSONBin для хранения thread_id ===
-ddef get_thread_id(user_id):
+def get_thread_id(user_id):
     headers = {
         "X-Master-Key": JSONBIN_API_KEY,
     }
