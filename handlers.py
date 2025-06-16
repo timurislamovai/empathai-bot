@@ -25,7 +25,6 @@ def main_menu():
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
 
-
 async def handle_update(update: dict):
     print("✅ Webhook получен от Telegram")
     print("📦 update:", update)
@@ -34,12 +33,8 @@ async def handle_update(update: dict):
     try:
         message = update.get("message")
         if not message:
-            print("⚠️ В update нет message")
+            print("⚠️ Нет поля 'message'")
             return
-        ...
-    finally:
-        db.close()
-
 
         telegram_id = message["from"]["id"]
         text = message.get("text", "")
@@ -58,8 +53,7 @@ async def handle_update(update: dict):
             remaining = max(0, FREE_MESSAGES_LIMIT - user.free_messages_used)
             bot.send_message(
                 chat_id,
-                f"🧾 Вы использовали {user.free_messages_used} из {FREE_MESSAGES_LIMIT} сообщений.\n"
-                f"Осталось: {remaining}",
+                f"🧾 Вы использовали {user.free_messages_used} из {FREE_MESSAGES_LIMIT} сообщений.\nОсталось: {remaining}",
                 reply_markup=main_menu()
             )
             return
@@ -71,7 +65,7 @@ async def handle_update(update: dict):
                 "📜 Условия пользования": "rules.txt",
                 "💳 Купить подписку": "subscribe.txt"
             }[text]
-             try:
+            try:
                 with open(f"texts/{filename}", "r", encoding="utf-8") as f:
                     response = f.read()
             except FileNotFoundError:
@@ -84,7 +78,7 @@ async def handle_update(update: dict):
             bot.send_message(chat_id, "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.", reply_markup=main_menu())
             return
 
-        # Генерация ответа от ИИ
+        # Получаем ответ от GPT (Assistant API)
         assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
 
         if not user.thread_id:
@@ -94,5 +88,8 @@ async def handle_update(update: dict):
 
         bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
-              finally:
+    except Exception as e:
+        print("❌ Ошибка в handle_update:", e)
+
+    finally:
         db.close()
