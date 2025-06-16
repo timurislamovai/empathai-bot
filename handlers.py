@@ -25,12 +25,21 @@ def main_menu():
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
 
+
 async def handle_update(update: dict):
+    print("✅ Webhook получен от Telegram")
+    print("📦 update:", update)
+
     db = SessionLocal()
     try:
         message = update.get("message")
         if not message:
+            print("⚠️ В update нет message")
             return
+        ...
+    finally:
+        db.close()
+
 
         telegram_id = message["from"]["id"]
         text = message.get("text", "")
