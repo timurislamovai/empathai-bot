@@ -147,15 +147,13 @@ def handle_update(update):
         save_user(chat_id, thread_id)
 
     # Отправляем сообщение пользователя
-    msg_payload = {
-        "messages": [
-            {"role": "user", "content": {"type": "text", "text": {"value": text}}}
-        ]
-    }
     requests.post(
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers=headers,
-        json=msg_payload
+        json={
+            "role": "user",
+            "content": text
+        }
     )
 
     # Запускаем run
