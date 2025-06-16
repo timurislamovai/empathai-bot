@@ -31,8 +31,8 @@ async def startup():
     Base.metadata.create_all(bind=engine)
     print("✅ Таблицы пересозданы")
 
-    # Настроим Telegram webhook
-    await setup_webhook()
+ 
+    
 
 @app.get("/")
 async def root():
