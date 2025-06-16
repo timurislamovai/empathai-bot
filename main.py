@@ -15,11 +15,23 @@ FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
 app = FastAPI()
 
+from sqlalchemy import text
+
 @app.on_event("startup")
 async def startup():
-    # Создаёт таблицы в базе (если ещё нет)
+    # Временное удаление таблицы users, если есть
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS users"))
+            print("🗑️ Таблица users удалена")
+    except Exception as e:
+        print("⚠️ Ошибка при удалении таблицы:", e)
+
+    # Пересоздание таблиц
     Base.metadata.create_all(bind=engine)
-    # Настраивает Telegram-webhook
+    print("✅ Таблицы пересозданы")
+
+    # Настроим Telegram webhook
     await setup_webhook()
 
 @app.get("/")
