@@ -185,6 +185,21 @@ def handle_update(update):
         return
 
     # Получаем и отправляем ответ ассистента
+    # Ожидание завершения run
+    while True:
+        run_status = requests.get(
+            f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
+            headers=headers
+        ).json()
+
+        if run_status["status"] == "completed":
+            break
+        elif run_status["status"] == "failed":
+            send_message(chat_id, "❌ Ошибка при обработке запроса.", reply_markup=main_menu())
+            return
+        time.sleep(1)
+
+    # Получение всех сообщений
     messages_res = requests.get(
         f"https://api.openai.com/v1/threads/{thread_id}/messages",
         headers=headers
@@ -194,14 +209,20 @@ def handle_update(update):
         return
 
     messages = messages_res.json().get("data", [])
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant":
-            parts = msg.get("content", [])
-            full_text = ""
-            for part in parts:
-                if part.get("type") == "text":
-                    full_text += part["text"].get("value", "")
-            send_message(chat_id, full_text.strip(), reply_markup=main_menu())
+    # Найдём последнее сообщение от ассистента
+    assistant_reply = next(
+        (msg for msg in messages if msg.get("role") == "assistant"),
+        None
+    )
+
+    if assistant_reply:
+        parts = assistant_reply.get("content", [])
+        full_text = "".join(
+            part["text"]["value"]
+            for part in parts
+            if part.get("type") == "text"
+        )
+        send_message(chat_id, full_text.strip(), reply_markup=main_menu())
             break
 
 
