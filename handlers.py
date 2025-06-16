@@ -32,7 +32,7 @@ def send_message(chat_id, text, show_menu=False):
 async def handle_update(update):
     db = SessionLocal()
     try:
-    message = update.get("message")
+        message = update.get("message")
     if not message:
         return {"ok": True}
 
