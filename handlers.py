@@ -18,8 +18,8 @@ FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
 def main_menu():
     buttons = [
-        [KeyboardButton("❓ Гид по боту")],
-        [KeyboardButton("📜 Условия пользования"), KeyboardButton("💳 Купить подписку")],
+        [KeyboardButton("💳 Купить подписку")],
+        [KeyboardButton("📜 Условия пользования"), KeyboardButton("❓ Гид по боту")],
         [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")]
     ]
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
@@ -71,11 +71,11 @@ async def handle_update(update: dict):
             )
             return
 
-        if text in ["❓ Гид по боту", "📜 Условия пользования", "💳 Купить подписку"]:
+        if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
             filename = {
+                "💳 Купить подписку": "subscribe.txt"
                 "❓ Гид по боту": "guide.txt",
                 "📜 Условия пользования": "rules.txt",
-                "💳 Купить подписку": "subscribe.txt"
             }[text]
             try:
                 with open(f"texts/{filename}", "r", encoding="utf-8") as f:
