@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from handlers import setup_webhook, handle_update
+from handlers import handle_update
 from db import engine, Base
 
 # Загрузка конфигурации из переменных окружения
