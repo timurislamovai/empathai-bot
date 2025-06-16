@@ -71,7 +71,7 @@ async def handle_update(update: dict):
                 "📜 Условия пользования": "rules.txt",
                 "💳 Купить подписку": "subscribe.txt"
             }[text]
-            try:
+             try:
                 with open(f"texts/{filename}", "r", encoding="utf-8") as f:
                     response = f.read()
             except FileNotFoundError:
@@ -94,5 +94,5 @@ async def handle_update(update: dict):
 
         bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
-    finally:
+              finally:
         db.close()
