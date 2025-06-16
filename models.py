@@ -33,5 +33,5 @@ def increment_message_count(db: Session, user: User):
 
 def reset_user_thread(db: Session, user: User):
     user.thread_id = None
-    user.free_messages_used = 0
     db.commit()
+
