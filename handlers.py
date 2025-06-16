@@ -1,108 +1,89 @@
 import os
 import requests
-from config import TELEGRAM_TOKEN, BASE_URL
-from models import get_user_by_telegram_id, create_user, update_user_thread_id, increment_message_count, reset_user_thread
-from openai_api import send_to_openai
+from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
+from fastapi import Request
 from database import SessionLocal
+from models import (
+    get_user_by_telegram_id,
+    create_user,
+    update_user_thread_id,
+    increment_message_count,
+    reset_user_thread
+)
+from openai_api import send_message_to_assistant
 
-
+bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
 
-def send_message(chat_id, text, show_menu=False):
-    reply_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+def main_menu():
+    buttons = [
+        [KeyboardButton("🧠 Инструкция"), KeyboardButton("❓ Гид по боту")],
+        [KeyboardButton("📜 Условия пользования"), KeyboardButton("💳 Купить подписку")],
+        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")]
+    ]
+    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-    }
 
-    if show_menu:
-        payload["reply_markup"] = {
-            "keyboard": [
-                [{"text": "Личный кабинет"}, {"text": "Гид по боту"}],
-                [{"text": "Сбросить диалог"}, {"text": "Купить подписку"}]
-            ],
-            "resize_keyboard": True,
-            "one_time_keyboard": False
-        }
-
-    requests.post(reply_url, json=payload)
-
-async def handle_update(update):
+async def handle_update(update: dict):
     db = SessionLocal()
     try:
         message = update.get("message")
-    if not message:
-        return {"ok": True}
+        if not message:
+            return
 
-    chat_id = message["chat"]["id"]
-    user_message = message.get("text", "")
+        telegram_id = message["from"]["id"]
+        text = message.get("text", "")
+        chat_id = message["chat"]["id"]
 
-    db = SessionLocal()
-    user = get_user_by_telegram_id(db, chat_id)
+        user = get_user_by_telegram_id(db, telegram_id)
+        if not user:
+            user = create_user(db, telegram_id)
 
-    if not user:
-        user = create_user(db, chat_id)
+        if text == "🔄 Сбросить диалог":
+            reset_user_thread(db, user)
+            bot.send_message(chat_id, "Диалог сброшен. Можем начать сначала 🌀", reply_markup=main_menu())
+            return
 
-    if user_message.lower() == "сбросить диалог":
-        reset_user_thread(db, user)
-        send_message(chat_id, "🗑 Диалог очищен. Можем начать сначала 😊", show_menu=True)
-        db.close()
-        return {"ok": True}
+        if text == "👤 Личный кабинет":
+            remaining = max(0, FREE_MESSAGES_LIMIT - user.free_messages_used)
+            bot.send_message(
+                chat_id,
+                f"🧾 Вы использовали {user.free_messages_used} из {FREE_MESSAGES_LIMIT} сообщений.\n"
+                f"Осталось: {remaining}",
+                reply_markup=main_menu()
+            )
+            return
 
-    if user_message.lower() == "личный кабинет":
-        remaining = max(0, FREE_MESSAGES_LIMIT - user.free_messages_used)
-        try:
-            with open("texts/profile.txt", "r", encoding="utf-8") as f:
-                text = f.read()
-            text = text.replace("{remaining}", str(remaining)).replace("{limit}", str(FREE_MESSAGES_LIMIT))
-        except Exception:
-            text = f"👤 Осталось бесплатных сообщений: {remaining} из {FREE_MESSAGES_LIMIT}"
-        send_message(chat_id, text, show_menu=True)
-        db.close()
-        return {"ok": True}
+        if text in ["🧠 Инструкция", "❓ Гид по боту", "📜 Условия пользования", "💳 Купить подписку"]:
+            filename = {
+                "🧠 Инструкция": "support.txt",
+                "❓ Гид по боту": "faq.txt",
+                "📜 Условия пользования": "rules.txt",
+                "💳 Купить подписку": "subscribe.txt"
+            }[text]
+            try:
+                with open(f"texts/{filename}", "r", encoding="utf-8") as f:
+                    response = f.read()
+            except FileNotFoundError:
+                response = "Файл с информацией пока не загружен."
+            bot.send_message(chat_id, response, reply_markup=main_menu())
+            return
 
-    if user_message.lower() == "гид по боту":
-        try:
-            with open("texts/guide.txt", "r", encoding="utf-8") as f:
-                guide_text = f.read()
-        except Exception:
-            guide_text = "📘 Гид по боту недоступен."
-        send_message(chat_id, guide_text, show_menu=True)
-        db.close()
-        return {"ok": True}
+        # Проверка лимита
+        if user.free_messages_used >= FREE_MESSAGES_LIMIT:
+            bot.send_message(chat_id, "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.", reply_markup=main_menu())
+            return
 
-    if user_message.lower() == "купить подписку":
-        try:
-            with open("texts/subscribe.txt", "r", encoding="utf-8") as f:
-                sub_text = f.read()
-        except Exception:
-            sub_text = "💳 Подписка временно недоступна."
-        send_message(chat_id, sub_text, show_menu=True)
-        db.close()
-        return {"ok": True}
+        # Генерация ответа от ИИ
+        assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
 
-    if user.free_messages_used >= FREE_MESSAGES_LIMIT:
-        send_message(chat_id, "🚫 Лимит бесплатных сообщений исчерпан. Купите подписку, чтобы продолжить.", show_menu=True)
-        db.close()
-        return {"ok": True}
+        if not user.thread_id:
+            update_user_thread_id(db, user, thread_id)
+
+        increment_message_count(db, user)
+
+        bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
     finally:
         db.close()
-    # Отправка сообщения в OpenAI
-    reply = send_to_openai(user, user_message)
-    send_message(chat_id, reply, show_menu=True)
-
-    # Обновляем счётчики и thread_id
-    increment_message_count(db, user)
-    update_user_thread_id(db, user)
-    db.close()
-
-    return {"ok": True}
-
-async def setup_webhook():
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook"
-    data = {"url": f"{BASE_URL}/webhook"}
-    response = requests.post(url, json=data)
-    print("✅ Установлен webhook:", response.json())
