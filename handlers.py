@@ -1,10 +1,13 @@
+import os
 import requests
 from config import TELEGRAM_TOKEN, BASE_URL
 from models import get_user_by_telegram_id, create_user, update_user_thread_id, increment_message_count, reset_user_thread
 from openai_api import send_to_openai
 from database import SessionLocal
 
-FREE_MESSAGES_LIMIT = 50
+
+FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
+
 
 def send_message(chat_id, text, show_menu=False):
     reply_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
