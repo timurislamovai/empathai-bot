@@ -168,9 +168,9 @@ def handle_update(update):
     headers=headers
 )
 
-if messages_res.status_code != 200:
-      send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
-      return
+   if messages_res.status_code != 200:
+       send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
+       return
 
 messages = messages_res.json().get("data", [])
 for msg in reversed(messages):
