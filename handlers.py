@@ -18,7 +18,7 @@ FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
 def main_menu():
     buttons = [
-        [KeyboardButton("🧠 Инструкция"), KeyboardButton("❓ Гид по боту")],
+        [KeyboardButton("❓ Гид по боту")],
         [KeyboardButton("📜 Условия пользования"), KeyboardButton("💳 Купить подписку")],
         [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")]
     ]
