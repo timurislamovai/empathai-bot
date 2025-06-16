@@ -164,16 +164,21 @@ def handle_update(update):
         return
 
     messages_res = requests.get(
-        f"https://api.openai.com/v1/threads/{thread_id}/messages",
-        headers=headers
-    )
+    f"https://api.openai.com/v1/threads/{thread_id}/messages",
+    headers=headers
+)
 
-    if messages_res.status_code != 200:
-        send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
-        return
+if messages_res.status_code != 200:
+    send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
+    return
 
-    messages = messages_res.json().get("data", [])
-    for msg in reversed(messages):
-        if msg["role"] == "assistant":
-            send_message(chat_id, msg["content"], reply_markup=main_menu())
-            break
+messages = messages_res.json().get("data", [])
+for msg in reversed(messages):
+    if msg["role"] == "assistant":
+        parts = msg.get("content", [])
+        full_text = ""
+        for part in parts:
+            if part["type"] == "text":
+                full_text += part["text"]["value"]
+        send_message(chat_id, full_text.strip(), reply_markup=main_menu())
+        break
