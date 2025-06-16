@@ -91,7 +91,17 @@ async def handle_update(update: dict):
             return
 
         # Получаем ответ от GPT (Assistant API)
-        assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+        try:
+            assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+        except Exception as e:
+            if "run is active" in str(e):
+                print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
+                user.thread_id = None
+                db.commit()
+                assistant_response, thread_id = send_message_to_assistant(None, text)
+            else:
+                raise e
+
 
         if not user.thread_id:
             update_user_thread_id(db, user, thread_id)
