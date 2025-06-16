@@ -1,14 +1,10 @@
 import os
-import json
-import requests
+from sqlalchemy.orm import sessionmaker
+from models import User
+from db import engine
 
-JSONBIN_API_KEY = os.environ.get("JSONBIN_API_KEY")
-BIN_ID = os.environ.get("JSONBIN_BIN_ID")
-
-HEADERS = {
-    "Content-Type": "application/json",
-    "X-Master-Key": JSONBIN_API_KEY,
-}
+# Создание сессии для работы с базой данных
+Session = sessionmaker(bind=engine)
 
 def load_text(filename):
     filepath = os.path.join("texts", f"{filename}.txt")
@@ -17,22 +13,27 @@ def load_text(filename):
             return f.read()
     return "Файл не найден."
 
-def load_user_data():
-    url = f"https://api.jsonbin.io/v3/b/{BIN_ID}/latest"
-    try:
-        response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()
-        return response.json()["record"]
-    except Exception as e:
-        print("Ошибка загрузки данных:", e)
-        return {}
+def get_user(telegram_id):
+    session = Session()
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    session.close()
+    return user
 
-def save_user_data(data):
-    url = f"https://api.jsonbin.io/v3/b/{BIN_ID}"
-    try:
-        response = requests.put(url, headers=HEADERS, json=data)
-        response.raise_for_status()
-        return True
-    except Exception as e:
-        print("Ошибка сохранения данных:", e)
-        return False
+def save_user(telegram_id, thread_id):
+    session = Session()
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    if user:
+        user.thread_id = thread_id
+    else:
+        user = User(telegram_id=telegram_id, thread_id=thread_id)
+        session.add(user)
+    session.commit()
+    session.close()
+
+def reset_thread(telegram_id):
+    session = Session()
+    user = session.query(User).filter_by(telegram_id=telegram_id).first()
+    if user:
+        user.thread_id = None
+        session.commit()
+    session.close()
