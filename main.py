@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from handlers import handle_update
-from db import engine, Base
+from database import engine, Base
 
 # Загрузка конфигурации из переменных окружения
 TELEGRAM_TOKEN      = os.environ["TELEGRAM_TOKEN"]
