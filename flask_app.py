@@ -129,13 +129,81 @@ def handle_update(update):
         "Content-Type": "application/json"
     }
 
+    # Получаем пользователя и thread_id
     user = get_user(chat_id)
     thread_id = user.thread_id if user and user.thread_id else None
 
     # Если нет активной сессии — создаём новую
     if not thread_id:
-        thread_res = requests.post("https://api.openai.com/v1/threads", headers=headers)
+        thread_res = requests.post(
+            f"https://api.openai.com/v1/assistants/{ASSISTANT_ID}/sessions",
+            headers=headers,
+            json={}
+        )
         if thread_res.status_code != 200:
             send_message(chat_id, "❌ Ошибка инициализации сессии.", reply_markup=main_menu())
             return
-        thread_id = thread_res.json().get("id"
+        thread_id = thread_res.json().get("id")
+        save_user(chat_id, thread_id)
+
+    # Отправляем сообщение пользователя
+    msg_payload = {
+        "messages": [
+            {"role": "user", "content": {"type": "text", "text": {"value": text}}}
+        ]
+    }
+    requests.post(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers=headers,
+        json=msg_payload
+    )
+
+    # Запускаем run
+    run_payload = {"assistant_id": ASSISTANT_ID}
+    run_res = requests.post(
+        f"https://api.openai.com/v1/threads/{thread_id}/runs",
+        headers=headers,
+        json=run_payload
+    )
+    if run_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка запуска AI-сессии.", reply_markup=main_menu())
+        return
+    run_id = run_res.json().get("id")
+
+    # Ждём завершения
+    for _ in range(30):
+        time.sleep(1)
+        check = requests.get(
+            f"https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}",
+            headers=headers
+        )
+        status = check.json().get("status")
+        if status == "completed":
+            break
+    else:
+        send_message(chat_id, "⏳ Превышено время ожидания ответа.", reply_markup=main_menu())
+        return
+
+    # Получаем и отправляем ответ ассистента
+    messages_res = requests.get(
+        f"https://api.openai.com/v1/threads/{thread_id}/messages",
+        headers=headers
+    )
+    if messages_res.status_code != 200:
+        send_message(chat_id, "❌ Ошибка получения ответа.", reply_markup=main_menu())
+        return
+
+    messages = messages_res.json().get("data", [])
+    for msg in reversed(messages):
+        if msg.get("role") == "assistant":
+            parts = msg.get("content", [])
+            full_text = ""
+            for part in parts:
+                if part.get("type") == "text":
+                    full_text += part["text"].get("value", "")
+            send_message(chat_id, full_text.strip(), reply_markup=main_menu())
+            break
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
