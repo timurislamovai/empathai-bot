@@ -59,22 +59,22 @@ async def handle_update(update):
 
     db.close()
     def send_message(chat_id, text, show_menu=False):
-    reply_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-    }
-
-    if show_menu:
-        payload["reply_markup"] = {
-            "keyboard": [
-                [{"text": "Личный кабинет"}, {"text": "Гид по боту"}],
-                [{"text": "Сбросить диалог"}]
-            ],
-            "resize_keyboard": True,
-            "one_time_keyboard": False
+        reply_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
         }
-
-    requests.post(reply_url, json=payload)
-    return {"ok": True}
+    
+        if show_menu:
+            payload["reply_markup"] = {
+                "keyboard": [
+                    [{"text": "Личный кабинет"}, {"text": "Гид по боту"}],
+                    [{"text": "Сбросить диалог"}]
+                ],
+                "resize_keyboard": True,
+                "one_time_keyboard": False
+            }
+    
+        requests.post(reply_url, json=payload)
+        return {"ok": True}
