@@ -58,5 +58,23 @@ async def handle_update(update):
         assistant_reply = "Произошла ошибка. Попробуйте позже."
 
     db.close()
-    send_message(chat_id, assistant_reply, show_menu=True)
+    def send_message(chat_id, text, show_menu=False):
+    reply_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+    }
+
+    if show_menu:
+        payload["reply_markup"] = {
+            "keyboard": [
+                [{"text": "Личный кабинет"}, {"text": "Гид по боту"}],
+                [{"text": "Сбросить диалог"}]
+            ],
+            "resize_keyboard": True,
+            "one_time_keyboard": False
+        }
+
+    requests.post(reply_url, json=payload)
     return {"ok": True}
