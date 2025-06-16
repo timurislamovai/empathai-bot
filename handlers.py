@@ -27,6 +27,8 @@ def send_message(chat_id, text, show_menu=False):
     requests.post(reply_url, json=payload)
 
 async def handle_update(update):
+    db = SessionLocal()
+    try:
     message = update.get("message")
     if not message:
         return {"ok": True}
@@ -83,6 +85,8 @@ async def handle_update(update):
         db.close()
         return {"ok": True}
 
+    finally:
+        db.close()
     # Отправка сообщения в OpenAI
     reply = send_to_openai(user, user_message)
     send_message(chat_id, reply, show_menu=True)
