@@ -32,8 +32,6 @@ async def startup():
     print("✅ Таблицы пересозданы")
 
  
-    
-
 @app.get("/")
 async def root():
     return {"status": "ok"}
