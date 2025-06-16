@@ -224,7 +224,6 @@ def handle_update(update):
         )
         send_message(chat_id, full_text.strip(), reply_markup=main_menu())
             break
-
-
+        
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
