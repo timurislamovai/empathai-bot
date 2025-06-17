@@ -14,7 +14,7 @@ from models import (
 from openai_api import send_message_to_assistant
 
 # ✅ Telegram ID админов, которым разрешена команда /admin_stats
-ADMIN_IDS = [944583273,396497806]  # 🔁 Замени на свой Telegram ID из личного кабинета
+ADMIN_IDS = ["944583273", "396497806"]  # 🔁 Замени на свой Telegram ID из личного кабинета
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
