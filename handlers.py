@@ -40,7 +40,7 @@ async def handle_update(update: dict):
             print("⚠️ Нет поля 'message'")
             return
 
-        telegram_id = int(message["from"]["id"])
+        telegram_id = str(message["from"]["id"])
         text = message.get("text", "")
         chat_id = message["chat"]["id"]
 
