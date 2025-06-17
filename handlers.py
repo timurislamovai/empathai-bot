@@ -65,12 +65,16 @@ async def handle_update(update: dict):
 
         if text == "👤 Личный кабинет":
             remaining = max(0, FREE_MESSAGES_LIMIT - user.free_messages_used)
-            bot.send_message(
-                chat_id,
-                f"🧾 Вы использовали {user.free_messages_used} из {FREE_MESSAGES_LIMIT} сообщений.\nОсталось: {remaining}",
-                reply_markup=main_menu()
+            reply = (
+                f"👤 *Личный кабинет*\n"
+                f"🆔 Ваш Telegram ID: {user_id}\n\n"
+                f"💬 Сообщений использовано: {user.free_messages_used} из {FREE_MESSAGES_LIMIT}\n"
+                f"📊 Осталось: {remaining}\n"
+                f"📅 Пробный период: {'активен' if remaining > 0 else 'завершён'}"
             )
+            bot.send_message(chat_id, reply, reply_markup=main_menu())
             return
+
 
         if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
             filename = {
