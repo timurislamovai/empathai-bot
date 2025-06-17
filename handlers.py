@@ -128,11 +128,13 @@ async def handle_update(update: dict):
 
         if not user.thread_id:
             update_user_thread_id(db, user, thread_id)
-
+        
+        # ✅ Увеличиваем счётчик и обновляем дату через функцию
         increment_message_count(db, user)
-
+        
         assistant_response = clean_markdown(assistant_response)
         bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
+
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
