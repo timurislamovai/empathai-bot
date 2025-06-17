@@ -5,11 +5,16 @@ from datetime import datetime
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(String, unique=True, index=True)
-    thread_id = Column(String, nullable=True)
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(BigInteger, unique=True)
+    thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # 👇 Дополнительные поля для аналитики:
+    first_seen_at = Column(DateTime, default=datetime.utcnow)
+    last_message_at = Column(DateTime, default=datetime.utcnow)
+    total_messages = Column(Integer, default=0)
+
 
 from sqlalchemy.orm import Session
 
