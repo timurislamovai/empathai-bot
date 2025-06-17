@@ -2,10 +2,10 @@ import psycopg2
 import os
 
 # 📌 Вставь сюда свои данные из Render → Connection
-DB_NAME = "your_db_name"
-DB_USER = "your_user"
-DB_PASSWORD = "your_password"
-DB_HOST = "your-db-host.render.com"
+DB_NAME = "empathai_db_5rz1"
+DB_USER = "empathai_db_5rz1_user"
+DB_PASSWORD = "sEEqC2E49tl7qBbMaqlIwcjGlnQaRZ6N"
+DB_HOST = "dpg-d186908gjchc73dqolo0-a"
 DB_PORT = "5432"
 
 connection = psycopg2.connect(
