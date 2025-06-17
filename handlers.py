@@ -1,5 +1,7 @@
 import os
 import requests
+# ✅ Telegram ID админов, которым разрешена команда /admin_stats
+ADMIN_IDS = [944583273]  # 🔁 Замени на свой Telegram ID из личного кабинета
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 from utils import clean_markdown
 from fastapi import Request
