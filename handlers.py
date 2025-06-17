@@ -63,17 +63,21 @@ async def handle_update(update: dict):
             bot.send_message(chat_id, "Диалог сброшен. Можем начать сначала 🌀", reply_markup=main_menu())
             return
 
+        # ==== 👤 Обработка кнопки "Личный кабинет" ====
+# Показывает Telegram ID пользователя, использованные сообщения и статус пробного периода
+
         if text == "👤 Личный кабинет":
             remaining = max(0, FREE_MESSAGES_LIMIT - user.free_messages_used)
             reply = (
-                f"👤 *Личный кабинет*\n"
-                f"🆔 Ваш Telegram ID: {user_id}\n\n"
+                f"👤 Личный кабинет\n"
+                f"🆔 Ваш Telegram ID: {user.telegram_id}\n\n"
                 f"💬 Сообщений использовано: {user.free_messages_used} из {FREE_MESSAGES_LIMIT}\n"
                 f"📊 Осталось: {remaining}\n"
                 f"📅 Пробный период: {'активен' if remaining > 0 else 'завершён'}"
             )
             bot.send_message(chat_id, reply, reply_markup=main_menu())
             return
+
 
 
         if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
