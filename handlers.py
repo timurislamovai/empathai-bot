@@ -1,7 +1,7 @@
 import os
 import requests
-from utils import clean_markdown
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
+from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
 from models import (
@@ -110,6 +110,7 @@ async def handle_update(update: dict):
 
         increment_message_count(db, user)
 
+        assistant_response = clean_markdown(assistant_response)
         bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
     except Exception as e:
