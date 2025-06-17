@@ -47,7 +47,17 @@ async def handle_update(update: dict):
         user = get_user_by_telegram_id(db, telegram_id)
         if not user:
             user = create_user(db, telegram_id)
-        
+            
+        # === 👨‍💻 Обработка команды /admin_stats (только для админов) ===
+        if text == "/admin_stats":
+            if user.telegram_id not in ADMIN_IDS:
+                bot.send_message(chat_id, "⛔️ У вас нет доступа к этой команде.")
+            else:
+                from utils import get_stats_summary
+                stats = get_stats_summary(db)
+                bot.send_message(chat_id, stats)
+            return
+
         if text == "/start":
             bot.send_message(
                 chat_id,
