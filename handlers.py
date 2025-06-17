@@ -1,7 +1,5 @@
 import os
 import requests
-# ✅ Telegram ID админов, которым разрешена команда /admin_stats
-ADMIN_IDS = [944583273]  # 🔁 Замени на свой Telegram ID из личного кабинета
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 from utils import clean_markdown
 from fastapi import Request
@@ -14,6 +12,9 @@ from models import (
     reset_user_thread
 )
 from openai_api import send_message_to_assistant
+
+# ✅ Telegram ID админов, которым разрешена команда /admin_stats
+ADMIN_IDS = [944583273]  # 🔁 Замени на свой Telegram ID из личного кабинета
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
