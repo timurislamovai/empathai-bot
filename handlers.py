@@ -97,7 +97,7 @@ async def handle_update(update: dict):
                             
             from datetime import datetime, timezone
         
-            telegram_id = str(message.chat.id)
+            telegram_id = str(message["chat"]["id"])
         
             # Расчёт приглашённых
             total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
