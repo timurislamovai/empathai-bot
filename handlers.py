@@ -60,7 +60,17 @@ async def handle_update(update: dict):
             # Если пользователя нет — создаём нового, передавая реферальный код (если он есть)
             user = create_user(db, telegram_id, referrer_code=ref_code)
 
-        # Далее логика обработки сообщения (твой текущий код)...
+               # === Начисление бонуса пригласившему ===
+               BONUS_AMOUNT = 100.0  # Пока фиксированное значение
+        
+        if ref_code:
+            inviter = db.query(User).filter(User.telegram_id == ref_code).first()
+            if inviter:
+                inviter.balance += BONUS_AMOUNT
+                inviter.total_earned += BONUS_AMOUNT
+                db.commit()
+                print(f"✅ Начислено {BONUS_AMOUNT} пригласившему: {ref_code}")
+
 
             
         # === 👨‍💻 Обработка команды /admin_stats (только для админов) ===
