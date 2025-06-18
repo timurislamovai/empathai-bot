@@ -134,6 +134,8 @@ async def handle_update(update: dict):
                 f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
                 f"💰 Поделитесь ссылкой — и получайте доход"
                 f"{referrals_info}"
+                f"💰 Баланс: {user.balance:.2f} тг\n"
+                f"📈 Всего заработано: {user.total_earned:.2f} тг\n"
             )
             bot.send_message(chat_id, message, reply_markup=main_menu())
             return  # ← это обязательно! чтобы GPT не срабатывал дальше
