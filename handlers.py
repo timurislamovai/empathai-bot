@@ -1,5 +1,6 @@
 import os
 import requests
+from models import User
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 from utils import clean_markdown
 from fastapi import Request
