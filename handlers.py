@@ -93,40 +93,37 @@ async def handle_update(update: dict):
 # Показывает Telegram ID пользователя, использованные сообщения и статус пробного периода
 
         if text == "👤 Личный кабинет":
-                    # Получаем пользователя из базы по Telegram ID
-            user = get_user_by_telegram_id(db, telegram_id)
+                            
+            from datetime import datetime, timezone
         
-            if not user:
-                # Если пользователь почему-то не найден
-                bot.send_message(chat_id, "❌ Пользователь не найден.")
-                return
+            telegram_id = str(message.chat.id)
         
-            # --- Расчёт лимитов сообщений ---
-            used = user.free_messages_used or 0
-            limit = int(os.getenv("FREE_MESSAGES_LIMIT", 50))  # лимит из переменной окружения
-            remaining = max(limit - used, 0)
+            # Расчёт приглашённых
+            total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
         
-            # --- Пробный период (можно сделать динамичным позже) ---
-            trial_status = "активен"
+            now = datetime.now(timezone.utc)
+            month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
         
-            # --- Генерация реферальной ссылки ---
-            # Автоматически подставляем username бота и telegram_id пользователя
-            ref_link = f"https://t.me/{bot.get_me().username}?start={telegram_id}"
+            monthly_referrals = db.query(User).filter(
+                User.referrer_code == telegram_id,
+                User.created_at >= month_start
+            ).count()
         
-            # --- Формируем текст сообщения ---
+            if total_referrals > 0:
+                referrals_info = f"\n👥 Вы пригласили:\n— Всего: {total_referrals} человек\n— В этом месяце: {monthly_referrals} человек"
+            else:
+                referrals_info = "\n👥 Вы ещё никого не пригласили."
+        
+            # Сообщение Личного кабинета
             message = (
-                f"👤 Личный кабинет\n"
-                f"🆔 Ваш Telegram ID: {telegram_id}\n\n"
-                f"💬 Сообщений использовано: {used} из {limit}\n"
-                f"📊 Осталось: {remaining}\n"
-                f"📅 Пробный период: {trial_status}\n\n"
-                f"🔗 Ваша реферальная ссылка:\n{ref_link}\n"
-                f"💰 Поделитесь ссылкой — и получайте доход!"
+                f"👤 Ваш Telegram ID: {telegram_id}\n"
+                f"📨 Использовано сообщений: {user.free_messages_used} из 15\n"
+                f"⏳ Пробный период: активен\n\n"
+                f"🔗 Ваша ссылка: https://t.me/название_бота?start={telegram_id}\n"
+                f"💰 Поделитесь ссылкой — и получайте доход"
+                f"{referrals_info}"
             )
-        
-            
-            # --- Отправка сообщения пользователю ---
-            bot.send_message(chat_id, message)
+            bot.send_message(chat_id, message, reply_markup=main_menu())
             return  # ← это обязательно! чтобы GPT не срабатывал дальше
 
 
