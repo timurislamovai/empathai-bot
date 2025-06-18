@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, BigInteger, String, DateTime
 from database import Base
 from datetime import datetime
+from sqlalchemy.orm import Session
 
 class User(Base):
     __tablename__ = "users"
@@ -15,28 +16,41 @@ class User(Base):
     last_message_at = Column(DateTime, default=datetime.utcnow)
     total_messages = Column(Integer, default=0)
 
+    # 👇 Новое поле для хранения реферального кода пригласившего пользователя
+    referrer_code = Column(String, nullable=True)
 
-from sqlalchemy.orm import Session
 
 def get_user_by_telegram_id(db: Session, telegram_id: str):
     return db.query(User).filter(User.telegram_id == telegram_id).first()
 
-def create_user(db: Session, telegram_id: str):
-    user = User(telegram_id=telegram_id)
+
+# Добавлен параметр referrer_code, который сохраняется при создании пользователя
+def create_user(db: Session, telegram_id: str, referrer_code: str = None):
+    user = User(
+        telegram_id=telegram_id,
+        referrer_code=referrer_code,
+        first_seen_at=datetime.utcnow(),
+        last_message_at=datetime.utcnow(),
+        free_messages_used=0,
+        total_messages=0,
+        thread_id=None
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
     return user
 
+
 def update_user_thread_id(db: Session, user: User, thread_id: str):
     user.thread_id = thread_id
     db.commit()
+
 
 def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
     db.commit()
 
+
 def reset_user_thread(db: Session, user: User):
     user.thread_id = None
     db.commit()
-
