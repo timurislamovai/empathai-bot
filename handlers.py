@@ -121,7 +121,7 @@ async def handle_update(update: dict):
                 f"👤 Ваш Telegram ID: {telegram_id}\n"
                 f"📨 Использовано сообщений: {user.free_messages_used} из 15\n"
                 f"⏳ Пробный период: активен\n\n"
-                f"🔗 Ваша ссылка: https://t.me/название_бота?start={telegram_id}\n"
+                f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
                 f"💰 Поделитесь ссылкой — и получайте доход"
                 f"{referrals_info}"
             )
