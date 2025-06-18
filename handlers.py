@@ -72,6 +72,16 @@ async def handle_update(update: dict):
                 stats = get_stats_summary(db)
                 bot.send_message(chat_id, stats)
             return
+            
+        # 🔐 Обработка команды /admin_referrals (ТОП 10 пригласивших)
+        # Показывает лидеров по количеству рефералов (реферальная статистика)
+        elif text == "/admin_referrals":
+            if user.telegram_id not in ADMIN_IDS:
+                bot.send_message(chat_id, "⛔️ У вас нет доступа к этой команде.")
+            else:
+                from admin_commands import handle_admin_stats  # импорт функции из отдельного файла
+                handle_admin_stats(db, chat_id, bot)  # вызываем обработчик статистики
+            return
 
         if text == "/start":
             bot.send_message(
