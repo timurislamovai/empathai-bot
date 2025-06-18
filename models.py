@@ -11,15 +11,18 @@ class User(Base):
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
     
-    created_at = Column(DateTime, default=datetime.utcnow)  # Дата регистрации пользователя (нужна для подсчёта рефералов за месяц)
-
+    
     # 👇 Дополнительные поля для аналитики:
     first_seen_at = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
     total_messages = Column(Integer, default=0)
 
-    # 👇 Новое поле для хранения реферального кода пригласившего пользователя
-    referrer_code = Column(String, nullable=True)
+    
+    referrer_code = Column(String, nullable=True)    # Новое поле для хранения реферального кода пригласившего пользователя
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата регистрации пользователя (нужна для подсчёта рефералов за месяц)
+
+    balance = Column(Float, default=0.0)       # Баланс пользователя (начисления от рефералов)
+    total_earned = Column(Float, default=0.0)  # Сколько всего заработал
 
 
 def get_user_by_telegram_id(db: Session, telegram_id: str):
