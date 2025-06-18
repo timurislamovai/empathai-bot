@@ -36,6 +36,7 @@ async def handle_update(update: dict):
     db = SessionLocal()  # создаём сессию для работы с базой данных
     try:
         message = update.get("message")  # извлекаем объект сообщения из обновления
+        print("DEBUG: message =", message)
         if not message:
             print("⚠️ Нет поля 'message'")
             return  # если сообщение отсутствует — выходим из функции
