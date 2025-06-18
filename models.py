@@ -10,6 +10,8 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True)
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата регистрации пользователя (нужна для подсчёта рефералов за месяц)
 
     # 👇 Дополнительные поля для аналитики:
     first_seen_at = Column(DateTime, default=datetime.utcnow)
