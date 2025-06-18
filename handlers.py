@@ -54,6 +54,7 @@ async def handle_update(update: dict):
         # Проверяем, есть ли пользователь в базе
         user = get_user_by_telegram_id(db, telegram_id)
         if not user:
+            print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
             # Если пользователя нет — создаём нового, передавая реферальный код (если он есть)
             user = create_user(db, telegram_id, referrer_code=ref_code)
 
