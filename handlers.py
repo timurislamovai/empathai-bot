@@ -31,10 +31,6 @@ def main_menu():
     ]
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
-    ]
-    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-
-
 async def handle_update(update: dict):
     print("👉 START handle_update")
     print("📦 update:", update)
