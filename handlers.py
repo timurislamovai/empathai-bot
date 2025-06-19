@@ -102,7 +102,7 @@ async def handle_update(update: dict):
                 handle_admin_stats(db, chat_id, bot)
                 return
 
-            if text == "👤 Личный кабинет":
+            if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
