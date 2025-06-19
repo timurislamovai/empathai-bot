@@ -90,7 +90,7 @@ async def handle_update(update: dict):
 
 
         # --- Обработка команды /start с реферальным параметром ---
-        ref_code = None  # по умолчанию реферальный код отсутствует
+            ref_code = None  # по умолчанию реферальный код отсутствует
             if text.startswith("/start"):  # если сообщение начинается с команды /start
                 parts = text.split(" ", 1)  # разделяем по пробелу на команду и параметр (если есть)
                 if len(parts) > 1:
