@@ -39,7 +39,8 @@ async def handle_update(update: dict):
         from datetime import datetime, timezone
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     
-        telegram_id = str(message["chat"]["id"])
+        chat_id = message["chat"]["id"]  # ← вот это нужно!
+        telegram_id = str(chat_id)
         user = get_user_by_telegram_id(db, telegram_id)
     
         total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
@@ -75,6 +76,7 @@ async def handle_update(update: dict):
     
         bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
         return
+
 
        
     db = SessionLocal()  # создаём сессию для работы с базой данных
