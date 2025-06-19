@@ -47,9 +47,8 @@ async def handle_update(update: dict):
 
         if data == "withdraw_request":
             if data == "withdraw_request":
-            print("💵 Обрабатываем вывод")
-
-            user = get_user_by_telegram_id(db, telegram_id)
+                print("💵 Обрабатываем вывод")
+                user = get_user_by_telegram_id(db, telegram_id)
             if user is None:
                 bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                 return
@@ -70,7 +69,6 @@ async def handle_update(update: dict):
             if text == "👤 Личный кабинет":
                 if text == "👤 Личный кабинет":
                 print("📥 Обрабатываем Личный кабинет")
-
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
