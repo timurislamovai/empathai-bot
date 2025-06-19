@@ -34,8 +34,7 @@ async def handle_update(update: dict):
     print("✅ Webhook получен от Telegram")
     print("📦 update:", update)
 
-    db = SessionLocal()  # создаём сессию для работы с базой данных
-
+    db = SessionLocal()
     try:
         # === 1. Обработка inline-кнопок (callback_query) ===
         if "callback_query" in update:
@@ -44,9 +43,8 @@ async def handle_update(update: dict):
             chat_id = query["message"]["chat"]["id"]
             telegram_id = str(query["from"]["id"])
 
-            # === Кнопка "💵 Вывод средств"
+            # Кнопка "💵 Вывод средств"
             if data == "withdraw_request":
-                from models import get_user_by_telegram_id
                 user = get_user_by_telegram_id(db, telegram_id)
                 if user is None:
                     bot.send_message(chat_id, "Ошибка: пользователь не найден.")
@@ -80,7 +78,6 @@ async def handle_update(update: dict):
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
-            from models import get_user_by_telegram_id
             user = get_user_by_telegram_id(db, telegram_id)
 
             # --- Личный кабинет ---
@@ -119,14 +116,13 @@ async def handle_update(update: dict):
                 bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
                 return
 
-            # --- (тут остальные команды, если есть) ---
-            # ... (оставь остальную логику как была)
+            # --- здесь могут быть другие твои команды ---
+            # ...
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
     finally:
         db.close()
-
 
         telegram_id = str(message["from"]["id"])  # получаем уникальный Telegram ID пользователя (строка)
         text = message.get("text", "")  # получаем текст сообщения, если есть
@@ -284,8 +280,4 @@ async def handle_update(update: dict):
         bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
 
-    except Exception as e:
-        print("❌ Ошибка в handle_update:", e)
-
-    finally:
-        db.close()
+   
