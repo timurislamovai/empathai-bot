@@ -116,12 +116,12 @@ async def handle_update(update: dict):
 
         if text == "👤 Личный кабинет":
             from datetime import datetime, timezone
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         
             telegram_id = str(message["chat"]["id"])
         
             # Расчёт приглашённых
             total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
-        
             now = datetime.now(timezone.utc)
             month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
         
@@ -135,7 +135,6 @@ async def handle_update(update: dict):
             else:
                 referrals_info = "\n👥 Вы ещё никого не пригласили."
         
-            # Сообщение Личного кабинета
             message_text = (
                 f"👤 Ваш Telegram ID: {telegram_id}\n"
                 f"📨 Использовано сообщений: {user.free_messages_used} из 50\n"
@@ -144,35 +143,16 @@ async def handle_update(update: dict):
                 f"💰 Поделитесь ссылкой — и получайте доход"
                 f"{referrals_info}"
                 f"\n💰 Баланс: {user.balance:.2f} тг\n"
-                f"📈 Всего заработано: {user.total_earned:.2f} тг\n"
+                f"📈 Всего заработано: {user.total_earned:.2f} тг"
             )
         
-            bot.send_message(chat_id, message_text, reply_markup=main_menu())
-        
-            # Отдельная кнопка "💵 Вывод средств"
-            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-        
-            withdraw_text = (
-                f"Чтобы вывести средства, напишите администратору:\n\n"
-                f"👉 @Timur146\n\n"
-                f"Пожалуйста, укажите:\n"
-                f"• Ваш Telegram ID: `{telegram_id}`\n"
-                f"• Сумму для вывода (не менее 500₸)\n"
-                f"• Номер карты\n"
-                f"• ФИО\n"
-                f"• Страну проживания\n\n"
-                f"После этого администратор свяжется с вами."
-            )
-        
-            button = InlineKeyboardMarkup([
-                [InlineKeyboardButton("💬 Написать в Telegram", url="https://t.me/Timur146")]
+            # 👇 Кнопка "Вывод средств" — внизу
+            withdraw_button = InlineKeyboardMarkup([
+                [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
             ])
         
-            bot.send_message(chat_id, withdraw_text, parse_mode="Markdown", reply_markup=button)
+            bot.send_message(chat_id, message_text, parse_mode="Markdown", reply_markup=withdraw_button)
             return
-
-
-
 
 
         if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
