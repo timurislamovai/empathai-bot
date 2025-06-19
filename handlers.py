@@ -115,7 +115,6 @@ async def handle_update(update: dict):
 # Показывает Telegram ID пользователя, использованные сообщения и статус пробного периода
 
         if text == "👤 Личный кабинет":
-                            
             from datetime import datetime, timezone
         
             telegram_id = str(message["chat"]["id"])
@@ -137,18 +136,41 @@ async def handle_update(update: dict):
                 referrals_info = "\n👥 Вы ещё никого не пригласили."
         
             # Сообщение Личного кабинета
-            message = (
+            message_text = (
                 f"👤 Ваш Telegram ID: {telegram_id}\n"
                 f"📨 Использовано сообщений: {user.free_messages_used} из 50\n"
                 f"⏳ Пробный период: активен\n\n"
                 f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
                 f"💰 Поделитесь ссылкой — и получайте доход"
                 f"{referrals_info}"
-                f"💰 Баланс: {user.balance:.2f} тг\n"
+                f"\n💰 Баланс: {user.balance:.2f} тг\n"
                 f"📈 Всего заработано: {user.total_earned:.2f} тг\n"
             )
-            bot.send_message(chat_id, message, reply_markup=main_menu())
-            return  # ← это обязательно! чтобы GPT не срабатывал дальше
+        
+            bot.send_message(chat_id, message_text, reply_markup=main_menu())
+        
+            # Отдельная кнопка "💵 Вывод средств"
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+            withdraw_text = (
+                f"Чтобы вывести средства, напишите администратору:\n\n"
+                f"👉 @Timur146\n\n"
+                f"Пожалуйста, укажите:\n"
+                f"• Ваш Telegram ID: `{telegram_id}`\n"
+                f"• Сумму для вывода (не менее 500₸)\n"
+                f"• Номер карты\n"
+                f"• ФИО\n"
+                f"• Страну проживания\n\n"
+                f"После этого администратор свяжется с вами."
+            )
+        
+            button = InlineKeyboardMarkup([
+                [InlineKeyboardButton("💬 Написать в Telegram", url="https://t.me/Timur146")]
+            ])
+        
+            bot.send_message(chat_id, withdraw_text, parse_mode="Markdown", reply_markup=button)
+            return
+
 
 
 
