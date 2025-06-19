@@ -37,7 +37,6 @@ async def handle_update(update: dict):
 
     db = SessionLocal()
     try:
-        # === 1. Обработка inline-кнопок ===
         if "callback_query" in update:
             query = update["callback_query"]
             data = query["data"]
@@ -45,20 +44,16 @@ async def handle_update(update: dict):
             telegram_id = str(query["from"]["id"])
 
             if data == "withdraw_request":
-                print("💵 Обработка вывода средств")
                 user = get_user_by_telegram_id(db, telegram_id)
-                if user is None:
+                if not user:
                     bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                     return
-
                 message_text, markup = generate_withdraw_info(user, telegram_id)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-        # === 2. Обычные сообщения ===
         message = update.get("message")
         if message:
-            print("📩 Обработка текстового сообщения")
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
@@ -72,22 +67,94 @@ async def handle_update(update: dict):
                     ref_code = parts[1].strip()
                     print(f"⚡ Старт с рефкодом: {ref_code}")
 
-            # --- Личный кабинет ---
+                if not user:
+                    print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
+                    user = create_user(db, telegram_id, referrer_code=ref_code)
+                    BONUS_AMOUNT = 100.0
+                    if ref_code:
+                        inviter = db.query(User).filter(User.telegram_id == ref_code).first()
+                        if inviter:
+                            inviter.balance += BONUS_AMOUNT
+                            inviter.total_earned += BONUS_AMOUNT
+                            db.commit()
+                            print(f"✅ Начислено {BONUS_AMOUNT} пригласившему: {ref_code}")
+
+                bot.send_message(
+                    chat_id,
+                    "👋 Добро пожаловать!\n\n"
+                    "Привет, я Ила — твой виртуальный помощник.\n\n"
+                    "🆓 Вам доступно 50 бесплатных сообщений.\n"
+                    "💳 После окончания лимита можно оформить подписку.\n\n"
+                    "📋 Выберите пункт меню или напишите свой вопрос.",
+                    reply_markup=main_menu()
+                )
+                return
+
+            # --- Команды ---
+            if text == "/admin_stats" and user.telegram_id in ADMIN_IDS:
+                from utils import get_stats_summary
+                stats = get_stats_summary(db)
+                bot.send_message(chat_id, stats)
+                return
+
+            if text == "/admin_referrals" and user.telegram_id in ADMIN_IDS:
+                from admin_commands import handle_admin_stats
+                handle_admin_stats(db, chat_id, bot)
+                return
+
             if text == "👤 Личный кабинет":
-                print("📥 Открытие личного кабинета")
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-            # --- Здесь можно подключить Assistant API ---
-            # assistant_response = ask_assistant(user, text)
-            # bot.send_message(chat_id, assistant_response)
-            return
+            if text == "🔄 Сбросить диалог":
+                reset_user_thread(db, user)
+                bot.send_message(chat_id, "Диалог сброшен. Можем начать сначала 🌀", reply_markup=main_menu())
+                return
+
+            if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
+                filename = {
+                    "💳 Купить подписку": "subscribe.txt",
+                    "❓ Гид по боту": "guide.txt",
+                    "📜 Условия пользования": "rules.txt"
+                }[text]
+                try:
+                    with open(f"texts/{filename}", "r", encoding="utf-8") as f:
+                        response = f.read()
+                except FileNotFoundError:
+                    response = "Файл с информацией пока не загружен."
+                bot.send_message(chat_id, response, reply_markup=main_menu())
+                return
+
+            # --- Проверка лимита ---
+            if user.free_messages_used >= FREE_MESSAGES_LIMIT:
+                bot.send_message(chat_id, "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.", reply_markup=main_menu())
+                return
+
+            # --- Assistant API (OpenAI) ---
+            try:
+                assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+            except Exception as e:
+                if "run is active" in str(e):
+                    print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
+                    user.thread_id = None
+                    db.commit()
+                    assistant_response, thread_id = send_message_to_assistant(None, text)
+                else:
+                    raise e
+
+            if not user.thread_id:
+                update_user_thread_id(db, user, thread_id)
+
+            increment_message_count(db, user)
+            assistant_response = clean_markdown(assistant_response)
+            bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
     finally:
         db.close()
+
 
 
         # --- Обработка команды /start с реферальным параметром ---
