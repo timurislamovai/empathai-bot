@@ -39,22 +39,22 @@ async def handle_update(update: dict):
         query = update["callback_query"]
         data = query["data"]
         chat_id = query["message"]["chat"]["id"]
-
+    
         if data == "withdraw_request":
             telegram_id = query["from"]["id"]
-
+    
             text = (
                 f"Чтобы вывести средства, напишите администратору:\n\n"
                 f"👉 @Timur146\n\n"
                 f"Пожалуйста, укажите:\n"
-                f"• Ваш Telegram ID: `{telegram_id}`\n"
+                f"• Ваш Telegram ID: <code>{telegram_id}</code>\n"
                 f"• Сумму для вывода (не менее 500₸)\n"
                 f"• Номер карты\n"
                 f"• ФИО\n"
                 f"• Страну проживания\n\n"
                 f"После этого администратор свяжется с вами."
             )
-
+    
             keyboard = {
                 "inline_keyboard": [[
                     {
@@ -63,9 +63,10 @@ async def handle_update(update: dict):
                     }
                 ]]
             }
-
-            bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown", reply_markup=keyboard)
+    
+            bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", reply_markup=keyboard)
             return
+
             
     db = SessionLocal()  # создаём сессию для работы с базой данных
     try:
