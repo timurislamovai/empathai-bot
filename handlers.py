@@ -193,50 +193,6 @@ async def handle_update(update: dict):
             bot.send_message(chat_id, "Диалог сброшен. Можем начать сначала 🌀", reply_markup=main_menu())
             return
 
-        # ==== 👤 Обработка кнопки "Личный кабинет" ====
-# Показывает Telegram ID пользователя, использованные сообщения и статус пробного периода
-
-        if text == "👤 Личный кабинет":
-            from datetime import datetime, timezone
-            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-        
-            telegram_id = str(message["chat"]["id"])
-        
-            # Расчёт приглашённых
-            total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
-            now = datetime.now(timezone.utc)
-            month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-        
-            monthly_referrals = db.query(User).filter(
-                User.referrer_code == telegram_id,
-                User.created_at >= month_start
-            ).count()
-        
-            if total_referrals > 0:
-                referrals_info = f"\n👥 Вы пригласили:\n— Всего: {total_referrals} человек\n— В этом месяце: {monthly_referrals} человек"
-            else:
-                referrals_info = "\n👥 Вы ещё никого не пригласили."
-        
-            message_text = (
-                f"👤 Ваш Telegram ID: {telegram_id}\n"
-                f"📨 Использовано сообщений: {user.free_messages_used} из 50\n"
-                f"⏳ Пробный период: активен\n\n"
-                f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
-                f"💰 Поделитесь ссылкой — и получайте доход"
-                f"{referrals_info}"
-                f"\n💰 Баланс: {user.balance:.2f} тг\n"
-                f"📈 Всего заработано: {user.total_earned:.2f} тг"
-            )
-        
-            # 👇 Кнопка "Вывод средств" — внизу
-            withdraw_button = InlineKeyboardMarkup([
-                [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
-            ])
-        
-            bot.send_message(chat_id, message_text, parse_mode="Markdown", reply_markup=withdraw_button)
-            return
-
-
         if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
             filename = {
                 "💳 Купить подписку": "subscribe.txt",
