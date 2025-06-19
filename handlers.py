@@ -111,10 +111,8 @@ async def handle_update(update: dict):
                 withdraw_button = InlineKeyboardMarkup([
                     [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
                 ])
-                bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
-                return  # ⬅ после кнопки "Личный кабинет" сразу выходим
-
-                        bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
+                
+            bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
             return
 
             # Если не кнопка и не команда — можно в будущем обрабатывать через OpenAI
