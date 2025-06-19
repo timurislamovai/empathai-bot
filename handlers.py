@@ -84,9 +84,6 @@ async def handle_update(update: dict):
         db.close()
 
 
-        telegram_id = str(message["from"]["id"])  # получаем уникальный Telegram ID пользователя (строка)
-        text = message.get("text", "")  # получаем текст сообщения, если есть
-        chat_id = message["chat"]["id"]  # ID чата, куда нужно отправлять ответы
 
         # --- Обработка команды /start с реферальным параметром ---
         ref_code = None  # по умолчанию реферальный код отсутствует
