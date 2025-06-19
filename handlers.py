@@ -42,16 +42,18 @@ async def handle_update(update: dict):
     
         if data == "withdraw_request":
             telegram_id = query["from"]["id"]
-    
+            
+            user = get_user_by_telegram_id(SessionLocal(), str(telegram_id))
+
             message_text = (
-                    f"Ваш Telegram ID: {telegram_id}\n"
-                    f"Сообщений использовано: {user.free_messages_used} из 50\n"
-                    f"Пробный период: активен\n\n"
-                    f"Ваша реферальная ссылка:\nhttps://t.me/EmpathAI_Bot?start={telegram_id}\n\n"
-                    f"Баланс: {user.balance:.2f}\n"
-                    f"Заработано всего: {user.total_earned:.2f}\n\n"
-                    f"Выплаты возможны в тенге, рублях или долларах"
-                )
+                f"👤 Ваш Telegram ID: {telegram_id}\n"
+                f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
+                f"⏳ Пробный период: активен\n\n"
+                f"🔗 Ваша реферальная ссылка:\nhttps://t.me/EmpathAI_Bot?start={telegram_id}\n\n"
+                f"💰 Баланс: {user.balance:.2f}\n"
+                f"📈 Всего заработано: {user.total_earned:.2f}\n\n"
+                f"💱 Выплаты возможны в тенге, рублях или долларах"
+            )
             keyboard = {
                 "inline_keyboard": [[
                     {
