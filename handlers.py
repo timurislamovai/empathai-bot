@@ -59,6 +59,15 @@ async def handle_update(update: dict):
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
 
+            if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+                user = get_user_by_telegram_id(db, telegram_id)
+                if not user:
+                    bot.send_message(chat_id, "Пользователь не найден.")
+                    return
+                message_text, markup = generate_cabinet_message(user, telegram_id, db)
+                bot.send_message(chat_id, message_text, reply_markup=main_menu())
+                return
+
             # --- Реферальный старт ---
             ref_code = None
             if text.startswith("/start"):
@@ -103,13 +112,6 @@ async def handle_update(update: dict):
                 return
 
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-    user = get_user_by_telegram_id(db, telegram_id)
-    if not user:
-        bot.send_message(chat_id, "Пользователь не найден.")
-        return
-    message_text, markup = generate_cabinet_message(user, telegram_id, db)
-    bot.send_message(chat_id, message_text, reply_markup=main_menu())
-    return
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
