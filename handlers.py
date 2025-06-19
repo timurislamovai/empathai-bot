@@ -33,60 +33,100 @@ def main_menu():
 async def handle_update(update: dict):
     print("✅ Webhook получен от Telegram")
     print("📦 update:", update)
-    
-       # === Обработка inline-кнопок (callback_query) ===
-    if text == "👤 Личный кабинет":
-        from datetime import datetime, timezone
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    
-        chat_id = message["chat"]["id"]  # ← вот это нужно!
-        telegram_id = str(chat_id)
-        user = get_user_by_telegram_id(db, telegram_id)
-    
-        total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
-        now = datetime.now(timezone.utc)
-        month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-    
-        monthly_referrals = db.query(User).filter(
-            User.referrer_code == telegram_id,
-            User.created_at >= month_start
-        ).count()
-    
-        referrals_info = (
-            f"\n👥 Вы пригласили:\n— Всего: {total_referrals} человек\n— В этом месяце: {monthly_referrals} человек"
-            if total_referrals > 0 else
-            "\n👥 Вы ещё никого не пригласили."
-        )
-    
-        message_text = (
-            f"👤 Ваш Telegram ID: {telegram_id}\n"
-            f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
-            f"⏳ Пробный период: активен\n\n"
-            f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
-            f"💰 Поделитесь ссылкой — и получайте доход"
-            f"{referrals_info}\n"
-            f"💰 Баланс: {user.balance:.2f}\n"
-            f"📈 Всего заработано: {user.total_earned:.2f}\n"
-            f"💱 Выплаты возможны в тенге, рублях или долларах"
-        )
-    
-        withdraw_button = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
-        ])
-    
-        bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
-        return
 
-
-       
     db = SessionLocal()  # создаём сессию для работы с базой данных
+
     try:
-        message = update.get("message")  # извлекаем объект сообщения из обновления
-        
-        print("DEBUG: message =", message)
-        if not message:
-            print("⚠️ Нет поля 'message'")
-            return  # если сообщение отсутствует — выходим из функции
+        # === 1. Обработка inline-кнопок (callback_query) ===
+        if "callback_query" in update:
+            query = update["callback_query"]
+            data = query["data"]
+            chat_id = query["message"]["chat"]["id"]
+            telegram_id = str(query["from"]["id"])
+
+            # === Кнопка "💵 Вывод средств"
+            if data == "withdraw_request":
+                from models import get_user_by_telegram_id
+                user = get_user_by_telegram_id(db, telegram_id)
+                if user is None:
+                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+                    return
+
+                message_text = (
+                    f"👤 Ваш Telegram ID: {telegram_id}\n"
+                    f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
+                    f"Баланс: {user.balance:.2f}\n"
+                    f"Заработано всего: {user.total_earned:.2f}\n\n"
+                    f"Чтобы вывести средства, напишите администратору @Timur146\n"
+                    "Пожалуйста, укажите:\n"
+                    f"• Ваш Telegram ID: {telegram_id}\n"
+                    "• Сумму для вывода (не менее 500)\n"
+                    "• Номер карты\n"
+                    "• ФИО\n"
+                    "• Страну проживания\n\n"
+                    "После этого администратор свяжется с вами."
+                )
+
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                withdraw_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💬 Написать в Telegram", url="https://t.me/Timur146")]
+                ])
+                bot.send_message(chat_id, message_text, reply_markup=withdraw_keyboard)
+                return
+
+        # === 2. Обычные сообщения (текстовые) ===
+        message = update.get("message")
+        if message:
+            text = message.get("text", "")
+            chat_id = message["chat"]["id"]
+            telegram_id = str(message["from"]["id"])
+            from models import get_user_by_telegram_id
+            user = get_user_by_telegram_id(db, telegram_id)
+
+            # --- Личный кабинет ---
+            if text == "👤 Личный кабинет":
+                from datetime import datetime, timezone
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+                total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
+                now = datetime.now(timezone.utc)
+                month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+                monthly_referrals = db.query(User).filter(
+                    User.referrer_code == telegram_id,
+                    User.created_at >= month_start
+                ).count()
+                if total_referrals > 0:
+                    referrals_info = f"\n👥 Вы пригласили:\n— Всего: {total_referrals} человек\n— В этом месяце: {monthly_referrals} человек"
+                else:
+                    referrals_info = "\n👥 Вы ещё никого не пригласили."
+
+                message_text = (
+                    f"👤 Ваш Telegram ID: {telegram_id}\n"
+                    f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
+                    f"⏳ Пробный период: активен\n\n"
+                    f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
+                    f"💰 Поделитесь ссылкой — и получайте доход"
+                    f"{referrals_info}\n"
+                    f"💰 Баланс: {user.balance:.2f}\n"
+                    f"📈 Всего заработано: {user.total_earned:.2f}\n"
+                    f"💱 Выплаты возможны в тенге, рублях или долларах"
+                )
+
+                withdraw_button = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
+                ])
+
+                bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
+                return
+
+            # --- (тут остальные команды, если есть) ---
+            # ... (оставь остальную логику как была)
+
+    except Exception as e:
+        print("❌ Ошибка в handle_update:", e)
+    finally:
+        db.close()
+
 
         telegram_id = str(message["from"]["id"])  # получаем уникальный Telegram ID пользователя (строка)
         text = message.get("text", "")  # получаем текст сообщения, если есть
