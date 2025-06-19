@@ -64,7 +64,7 @@ async def handle_update(update: dict):
                 ]]
             }
     
-            bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+            bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
             return
 
             
