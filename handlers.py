@@ -114,10 +114,18 @@ async def handle_update(update: dict):
                 bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
                 return  # ⬅ после кнопки "Личный кабинет" сразу выходим
 
-            # Если не команда — отправим в GPT (assistant)
-            assistant_response = get_openai_reply(text)
-            bot.send_message(chat_id, assistant_response)
+                        bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
             return
+
+            # Если не кнопка и не команда — можно в будущем обрабатывать через OpenAI
+            # Пока временно не вызываем, чтобы не было ошибки
+
+            # Пример:
+            # from openai_api import assistant_api_reply
+            # assistant_response = assistant_api_reply(user, text)
+            # bot.send_message(chat_id, assistant_response)
+            return
+
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
