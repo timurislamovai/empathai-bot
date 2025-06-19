@@ -43,7 +43,6 @@ async def handle_update(update: dict):
             chat_id = query["message"]["chat"]["id"]
             telegram_id = str(query["from"]["id"])
 
-            # Кнопка "💵 Вывод средств"
             if data == "withdraw_request":
                 user = get_user_by_telegram_id(db, telegram_id)
                 if user is None:
@@ -79,9 +78,7 @@ async def handle_update(update: dict):
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
-            
-            
-            # --- Личный кабинет ---
+
             if text == "👤 Личный кабинет":
                 from datetime import datetime, timezone
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -93,6 +90,7 @@ async def handle_update(update: dict):
                     User.referrer_code == telegram_id,
                     User.created_at >= month_start
                 ).count()
+
                 if total_referrals > 0:
                     referrals_info = f"\n👥 Вы пригласили:\n— Всего: {total_referrals} человек\n— В этом месяце: {monthly_referrals} человек"
                 else:
@@ -113,15 +111,19 @@ async def handle_update(update: dict):
                 withdraw_button = InlineKeyboardMarkup([
                     [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
                 ])
-
                 bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
-                return
-                return
-        
+                return  # ⬅ важно! Останавливаем здесь
+
+            # Если это не кнопка, а обычное сообщение — можно тут обработать Assistant API
+            # Например:
+            # assistant_response = get_openai_reply(text, ...)
+            # bot.send_message(chat_id, assistant_response)
+
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
     finally:
         db.close()
+
 
         telegram_id = str(message["from"]["id"])  # получаем уникальный Telegram ID пользователя (строка)
         text = message.get("text", "")  # получаем текст сообщения, если есть
