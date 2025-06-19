@@ -50,8 +50,5 @@ def generate_withdraw_info(user, telegram_id):
         "После этого администратор свяжется с вами."
     )
 
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("💬 Написать в Telegram", url="https://t.me/Timur146")]
-    ])
+    return message_text, None  # или main_menu()
 
-    return message_text, markup
