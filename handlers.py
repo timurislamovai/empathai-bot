@@ -72,7 +72,7 @@ async def handle_update(update: dict):
                 return
 
         # === 2. Обычные сообщения (текстовые) ===
-        message = update.get("message")
+                message = update.get("message")
         if message:
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
@@ -112,12 +112,13 @@ async def handle_update(update: dict):
                     [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
                 ])
                 bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
-                return  # ⬅ важно! Останавливаем здесь
+                return  # ⬅ важно: полностью останавливает всё дальше
 
-            # Если это не кнопка, а обычное сообщение — можно тут обработать Assistant API
-            # Например:
-            # assistant_response = get_openai_reply(text, ...)
-            # bot.send_message(chat_id, assistant_response)
+            # === если дошло до сюда — это не команда, значит отправим в Assistant ===
+            assistant_response = get_openai_reply(text)
+            bot.send_message(chat_id, assistant_response)
+            return
+
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
