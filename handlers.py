@@ -33,61 +33,56 @@ def main_menu():
 
 async def handle_update(update: dict):
     print("👉 START handle_update")
-    print("✅ Webhook получен от Telegram")
     print("📦 update:", update)
 
     db = SessionLocal()
     try:
-        # === 1. Обработка inline-кнопок (callback_query) ===
+        # === 1. Обработка inline-кнопок ===
         if "callback_query" in update:
-                query = update["callback_query"]
-                data = query["data"]
-                chat_id = query["message"]["chat"]["id"]
-                telegram_id = str(query["from"]["id"])
+            query = update["callback_query"]
+            data = query["data"]
+            chat_id = query["message"]["chat"]["id"]
+            telegram_id = str(query["from"]["id"])
 
-        if data == "withdraw_request":
             if data == "withdraw_request":
-                print("💵 Обрабатываем вывод")
+                print("💵 Обработка вывода средств")
                 user = get_user_by_telegram_id(db, telegram_id)
-            if user is None:
-                bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+                if user is None:
+                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+                    return
+
+                message_text, markup = generate_withdraw_info(user, telegram_id)
+                bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
-        
-            message_text, markup = generate_withdraw_info(user, telegram_id)
-            bot.send_message(chat_id, message_text, reply_markup=markup)
-            return
 
-
-        # === 2. Обычные сообщения (текстовые) ===
+        # === 2. Обычные сообщения ===
         message = update.get("message")
         if message:
-            print("📩 Получено обычное сообщение")
+            print("📩 Обработка текстового сообщения")
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
-        
-            # --- Обработка команды /start с реферальным кодом ---
-            ref_code = None  # по умолчанию нет
+
+            # --- Реферальный старт ---
+            ref_code = None
             if text.startswith("/start"):
                 parts = text.split(" ", 1)
                 if len(parts) > 1:
                     ref_code = parts[1].strip()
-                print(f"⚡ Старт с рефкодом: {ref_code}")
-        
+                    print(f"⚡ Старт с рефкодом: {ref_code}")
+
             # --- Личный кабинет ---
             if text == "👤 Личный кабинет":
+                print("📥 Открытие личного кабинета")
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
-        
-            # --- Заглушка: в будущем — Assistant API ---
-            # from openai_api import assistant_api_reply
-            # assistant_response = assistant_api_reply(user, text)
+
+            # --- Здесь можно подключить Assistant API ---
+            # assistant_response = ask_assistant(user, text)
             # bot.send_message(chat_id, assistant_response)
             return
-
-
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
