@@ -79,7 +79,8 @@ async def handle_update(update: dict):
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
-
+            
+            
             # --- Личный кабинет ---
             if text == "👤 Личный кабинет":
                 from datetime import datetime, timezone
@@ -115,10 +116,8 @@ async def handle_update(update: dict):
 
                 bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
                 return
-
-            # --- здесь могут быть другие твои команды ---
-            # ...
-
+         return
+        
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
     finally:
