@@ -37,6 +37,40 @@ async def handle_update(update: dict):
     db = SessionLocal()  # создаём сессию для работы с базой данных
     try:
         message = update.get("message")  # извлекаем объект сообщения из обновления
+
+            # === Обработка inline-кнопок (callback_query) ===
+    if "callback_query" in update:
+        query = update["callback_query"]
+        data = query["data"]
+        chat_id = query["message"]["chat"]["id"]
+
+        if data == "withdraw_request":
+            telegram_id = query["from"]["id"]
+
+            text = (
+                f"Чтобы вывести средства, напишите администратору:\n\n"
+                f"👉 @Timur146\n\n"
+                f"Пожалуйста, укажите:\n"
+                f"• Ваш Telegram ID: `{telegram_id}`\n"
+                f"• Сумму для вывода (не менее 500₸)\n"
+                f"• Номер карты\n"
+                f"• ФИО\n"
+                f"• Страну проживания\n\n"
+                f"После этого администратор свяжется с вами."
+            )
+
+            keyboard = {
+                "inline_keyboard": [[
+                    {
+                        "text": "💬 Написать в Telegram",
+                        "url": "https://t.me/Timur146"
+                    }
+                ]]
+            }
+
+            bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown", reply_markup=keyboard)
+            return
+
         print("DEBUG: message =", message)
         if not message:
             print("⚠️ Нет поля 'message'")
