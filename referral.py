@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import KeyboardButton, ReplyKeyboardMarkup
 from datetime import datetime, timezone
 from models import User
 
@@ -28,9 +28,9 @@ def generate_cabinet_message(user, telegram_id, db):
         f"💱 Выплаты возможны в тенге, рублях или долларах"
     )
 
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
-    ])
+    markup = ReplyKeyboardMarkup([
+        [KeyboardButton("💵 Вывод средств")]
+    ], resize_keyboard=True)
 
     return message_text, markup
 
