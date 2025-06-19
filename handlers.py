@@ -33,12 +33,8 @@ def main_menu():
 async def handle_update(update: dict):
     print("✅ Webhook получен от Telegram")
     print("📦 update:", update)
-
-    db = SessionLocal()  # создаём сессию для работы с базой данных
-    try:
-        message = update.get("message")  # извлекаем объект сообщения из обновления
-
-            # === Обработка inline-кнопок (callback_query) ===
+    
+       # === Обработка inline-кнопок (callback_query) ===
     if "callback_query" in update:
         query = update["callback_query"]
         data = query["data"]
@@ -70,7 +66,11 @@ async def handle_update(update: dict):
 
             bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown", reply_markup=keyboard)
             return
-
+            
+    db = SessionLocal()  # создаём сессию для работы с базой данных
+    try:
+        message = update.get("message")  # извлекаем объект сообщения из обновления
+        
         print("DEBUG: message =", message)
         if not message:
             print("⚠️ Нет поля 'message'")
