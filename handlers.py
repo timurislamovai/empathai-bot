@@ -32,6 +32,7 @@ def main_menu():
 
 
 async def handle_update(update: dict):
+    print("👉 START handle_update")
     print("✅ Webhook получен от Telegram")
     print("📦 update:", update)
 
@@ -45,6 +46,9 @@ async def handle_update(update: dict):
             telegram_id = str(query["from"]["id"])
 
         if data == "withdraw_request":
+            if data == "withdraw_request":
+            print("💵 Обрабатываем вывод")
+
             user = get_user_by_telegram_id(db, telegram_id)
             if user is None:
                 bot.send_message(chat_id, "Ошибка: пользователь не найден.")
@@ -64,6 +68,9 @@ async def handle_update(update: dict):
             user = get_user_by_telegram_id(db, telegram_id)
 
             if text == "👤 Личный кабинет":
+                if text == "👤 Личный кабинет":
+                print("📥 Обрабатываем Личный кабинет")
+
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
