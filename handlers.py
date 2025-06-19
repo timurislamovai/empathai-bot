@@ -26,7 +26,11 @@ def main_menu():
     buttons = [
         [KeyboardButton("💳 Купить подписку")],
         [KeyboardButton("📜 Условия пользования"), KeyboardButton("❓ Гид по боту")],
-        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")]
+        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")],
+        [KeyboardButton("💵 Вывод средств")]  # ← добавили кнопку!
+    ]
+    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+
     ]
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
@@ -116,9 +120,9 @@ async def handle_update(update: dict):
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-            if text == "🔄 Сбросить диалог":
-                reset_user_thread(db, user)
-                bot.send_message(chat_id, "Диалог сброшен. Можем начать сначала 🌀", reply_markup=main_menu())
+            if text == "💵 Вывод средств":
+                message_text, markup = generate_withdraw_info(user, telegram_id)
+                bot.send_message(chat_id, message_text, reply_markup=main_menu())
                 return
 
             if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
