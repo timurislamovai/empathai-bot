@@ -91,10 +91,10 @@ async def handle_update(update: dict):
 
         # --- Обработка команды /start с реферальным параметром ---
         ref_code = None  # по умолчанию реферальный код отсутствует
-        if text.startswith("/start"):  # если сообщение начинается с команды /start
-            parts = text.split(" ", 1)  # разделяем по пробелу на команду и параметр (если есть)
-            if len(parts) > 1:
-                ref_code = parts[1].strip()  # берем параметр после /start как реферальный код
+            if text.startswith("/start"):  # если сообщение начинается с команды /start
+                parts = text.split(" ", 1)  # разделяем по пробелу на команду и параметр (если есть)
+                if len(parts) > 1:
+                    ref_code = parts[1].strip()  # берем параметр после /start как реферальный код
 
         # Проверяем, есть ли пользователь в базе
             user = get_user_by_telegram_id(db, telegram_id)
