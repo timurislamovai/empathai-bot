@@ -35,38 +35,48 @@ async def handle_update(update: dict):
     print("📦 update:", update)
     
        # === Обработка inline-кнопок (callback_query) ===
-    if "callback_query" in update:
-        query = update["callback_query"]
-        data = query["data"]
-        chat_id = query["message"]["chat"]["id"]
+    if text == "👤 Личный кабинет":
+        from datetime import datetime, timezone
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     
-        if data == "withdraw_request":
-            telegram_id = query["from"]["id"]
-            
-            user = get_user_by_telegram_id(SessionLocal(), str(telegram_id))
-
-            message_text = (
-                f"👤 Ваш Telegram ID: {telegram_id}\n"
-                f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
-                f"⏳ Пробный период: активен\n\n"
-                f"🔗 Ваша реферальная ссылка:\nhttps://t.me/EmpathAI_Bot?start={telegram_id}\n\n"
-                f"💰 Баланс: {user.balance:.2f}\n"
-                f"📈 Всего заработано: {user.total_earned:.2f}\n\n"
-                f"💱 Выплаты возможны в тенге, рублях или долларах"
-            )
-            keyboard = {
-                "inline_keyboard": [[
-                    {
-                        "text": "💬 Написать в Telegram",
-                        "url": "https://t.me/Timur146"
-                    }
-                ]]
-            }
+        telegram_id = str(message["chat"]["id"])
+        user = get_user_by_telegram_id(db, telegram_id)
     
-            bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
-            return
+        total_referrals = db.query(User).filter(User.referrer_code == telegram_id).count()
+        now = datetime.now(timezone.utc)
+        month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    
+        monthly_referrals = db.query(User).filter(
+            User.referrer_code == telegram_id,
+            User.created_at >= month_start
+        ).count()
+    
+        referrals_info = (
+            f"\n👥 Вы пригласили:\n— Всего: {total_referrals} человек\n— В этом месяце: {monthly_referrals} человек"
+            if total_referrals > 0 else
+            "\n👥 Вы ещё никого не пригласили."
+        )
+    
+        message_text = (
+            f"👤 Ваш Telegram ID: {telegram_id}\n"
+            f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
+            f"⏳ Пробный период: активен\n\n"
+            f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
+            f"💰 Поделитесь ссылкой — и получайте доход"
+            f"{referrals_info}\n"
+            f"💰 Баланс: {user.balance:.2f}\n"
+            f"📈 Всего заработано: {user.total_earned:.2f}\n"
+            f"💱 Выплаты возможны в тенге, рублях или долларах"
+        )
+    
+        withdraw_button = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💵 Вывод средств", callback_data="withdraw_request")]
+        ])
+    
+        bot.send_message(chat_id, message_text, reply_markup=withdraw_button)
+        return
 
-            
+       
     db = SessionLocal()  # создаём сессию для работы с базой данных
     try:
         message = update.get("message")  # извлекаем объект сообщения из обновления
