@@ -44,33 +44,16 @@ async def handle_update(update: dict):
             chat_id = query["message"]["chat"]["id"]
             telegram_id = str(query["from"]["id"])
 
-            if data == "withdraw_request":
-                user = get_user_by_telegram_id(db, telegram_id)
-                if user is None:
-                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
-                    return
-
-                message_text = (
-                    f"👤 Ваш Telegram ID: {telegram_id}\n"
-                    f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
-                    f"Баланс: {user.balance:.2f}\n"
-                    f"Заработано всего: {user.total_earned:.2f}\n\n"
-                    f"Чтобы вывести средства, напишите администратору @Timur146\n"
-                    "Пожалуйста, укажите:\n"
-                    f"• Ваш Telegram ID: {telegram_id}\n"
-                    "• Сумму для вывода (не менее 500)\n"
-                    "• Номер карты\n"
-                    "• ФИО\n"
-                    "• Страну проживания\n\n"
-                    "После этого администратор свяжется с вами."
-                )
-
-                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-                withdraw_keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💬 Написать в Telegram", url="https://t.me/Timur146")]
-                ])
-                bot.send_message(chat_id, message_text, reply_markup=withdraw_keyboard)
+        if data == "withdraw_request":
+            user = get_user_by_telegram_id(db, telegram_id)
+            if user is None:
+                bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                 return
+        
+            message_text, markup = generate_withdraw_info(user, telegram_id)
+            bot.send_message(chat_id, message_text, reply_markup=markup)
+            return
+
 
         # === 2. Обычные сообщения (текстовые) ===
         message = update.get("message")
