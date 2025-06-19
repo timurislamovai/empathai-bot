@@ -27,9 +27,10 @@ def main_menu():
         [KeyboardButton("💳 Купить подписку")],
         [KeyboardButton("📜 Условия пользования"), KeyboardButton("❓ Гид по боту")],
         [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")],
-        [KeyboardButton("💵 Вывод средств")]  # ← добавили кнопку!
+        [KeyboardButton("💵 Вывод средств")]
     ]
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+
 
 async def handle_update(update: dict):
     print("👉 START handle_update")
