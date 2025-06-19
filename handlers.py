@@ -61,25 +61,32 @@ async def handle_update(update: dict):
         # === 2. Обычные сообщения (текстовые) ===
         message = update.get("message")
         if message:
+            print("📩 Получено обычное сообщение")
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
-
+        
+            # --- Обработка команды /start с реферальным кодом ---
+            ref_code = None  # по умолчанию нет
+            if text.startswith("/start"):
+                parts = text.split(" ", 1)
+                if len(parts) > 1:
+                    ref_code = parts[1].strip()
+                print(f"⚡ Старт с рефкодом: {ref_code}")
+        
+            # --- Личный кабинет ---
             if text == "👤 Личный кабинет":
-                print("📥 Обрабатываем Личный кабинет")
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
-
-            # Если не кнопка и не команда — можно в будущем обрабатывать через OpenAI
-            # Пока временно не вызываем, чтобы не было ошибки
-
-            # Пример:
+        
+            # --- Заглушка: в будущем — Assistant API ---
             # from openai_api import assistant_api_reply
             # assistant_response = assistant_api_reply(user, text)
             # bot.send_message(chat_id, assistant_response)
             return
+
 
 
     except Exception as e:
