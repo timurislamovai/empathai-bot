@@ -27,7 +27,7 @@ def main_menu():
         [KeyboardButton("💳 Купить подписку")],
         [KeyboardButton("📜 Условия пользования"), KeyboardButton("❓ Гид по боту")],
         [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")],
-        [KeyboardButton("💵 Вывод средств")]
+        [KeyboardButton("🤝 Партнёрская программа")]
     ]
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
@@ -93,7 +93,7 @@ async def handle_update(update: dict):
                 bot.send_message(
                     chat_id,
                     "👋 Добро пожаловать!\n\n"
-                    "Привет, я Ила — твой виртуальный помощник.\n\n"
+                    "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
                     "🆓 Вам доступно 50 бесплатных сообщений.\n"
                     "💳 После окончания лимита можно оформить подписку.\n\n"
                     "📋 Выберите пункт меню или напишите свой вопрос.",
@@ -118,7 +118,7 @@ async def handle_update(update: dict):
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-            if text == "💵 Вывод средств":
+            if text == "🤝 Партнёрская программа":
                 message_text, markup = generate_withdraw_info(user, telegram_id)
                 bot.send_message(chat_id, message_text, reply_markup=main_menu())
                 return
