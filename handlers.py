@@ -58,26 +58,6 @@ async def handle_update(update: dict):
         message = update.get("message")
         if message:
             text = message.get("text", "")
-            chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])
-            user = get_user_by_telegram_id(db, telegram_id)
-
-            if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-                user = get_user_by_telegram_id(db, telegram_id)
-                if not user:
-                    bot.send_message(chat_id, "Пользователь не найден.")
-                    return
-                message_text, markup = generate_cabinet_message(user, telegram_id, db)
-                bot.send_message(chat_id, message_text, reply_markup=main_menu())
-                return
-
-            # --- Реферальный старт ---
-            ref_code = None
-            if text.startswith("/start"):
-                parts = text.split(" ", 1)
-                if len(parts) > 1:
-                    ref_code = parts[1].strip()
-                    print(f"⚡ Старт с рефкодом: {ref_code}")
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
@@ -98,7 +78,27 @@ async def handle_update(update: dict):
                     bot.send_message(chat_id, "❌ Пользователь не найден.")
                 return
 
-                
+            chat_id = message["chat"]["id"]
+            telegram_id = str(message["from"]["id"])
+            user = get_user_by_telegram_id(db, telegram_id)
+
+            if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+                user = get_user_by_telegram_id(db, telegram_id)
+                if not user:
+                    bot.send_message(chat_id, "Пользователь не найден.")
+                    return
+                message_text, markup = generate_cabinet_message(user, telegram_id, db)
+                bot.send_message(chat_id, message_text, reply_markup=main_menu())
+                return
+
+            # --- Реферальный старт ---
+            ref_code = None
+            if text.startswith("/start"):
+                parts = text.split(" ", 1)
+                if len(parts) > 1:
+                    ref_code = parts[1].strip()
+                    print(f"⚡ Старт с рефкодом: {ref_code}")
+
                 if not user:
                     print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
                     user = create_user(db, telegram_id, referrer_code=ref_code)
