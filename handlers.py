@@ -138,9 +138,15 @@ async def handle_update(update: dict):
                 return
 
             # --- Проверка лимита ---
-            if user.free_messages_used >= FREE_MESSAGES_LIMIT:
-                bot.send_message(chat_id, "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.", reply_markup=main_menu())
-                return
+            if not user.is_unlimited:
+                if user.free_messages_used >= FREE_MESSAGES_LIMIT:
+                    bot.send_message(
+                        chat_id,
+                        "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
+                        reply_markup=main_menu()
+                    )
+                    return
+
 
             # --- Assistant API (OpenAI) ---
             try:
