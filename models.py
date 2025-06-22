@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Float
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Float, Boolean
 from database import Base
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -11,18 +11,19 @@ class User(Base):
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
     
-    
     # 👇 Дополнительные поля для аналитики:
     first_seen_at = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
     total_messages = Column(Integer, default=0)
 
-    
     referrer_code = Column(String, nullable=True)    # Новое поле для хранения реферального кода пригласившего пользователя
     created_at = Column(DateTime, default=datetime.utcnow)  # Дата регистрации пользователя (нужна для подсчёта рефералов за месяц)
 
     balance = Column(Float, default=0.0)       # Баланс пользователя (начисления от рефералов)
     total_earned = Column(Float, default=0.0)  # Сколько всего заработал
+
+    # ✅ Новое поле — разрешает пользователю использовать бота без ограничений
+    is_unlimited = Column(Boolean, default=False)
 
 
 def get_user_by_telegram_id(db: Session, telegram_id: str):
