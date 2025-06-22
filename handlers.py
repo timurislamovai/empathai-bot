@@ -57,16 +57,20 @@ async def handle_update(update: dict):
         message = update.get("message")
         if message:
             text = message.get("text", "")
+            chat_id = message["chat"]["id"]
+            telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
+            user = get_user_by_telegram_id(db, telegram_id)
+        
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
-
+        
                 parts = text.strip().split()
                 if len(parts) != 2:
                     bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
                     return
-
+        
                 target_id = parts[1]
                 target_user = get_user_by_telegram_id(db, target_id)
                 if target_user:
@@ -77,9 +81,6 @@ async def handle_update(update: dict):
                     bot.send_message(chat_id, "❌ Пользователь не найден.")
                 return
 
-            chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])
-            user = get_user_by_telegram_id(db, telegram_id)
 
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
                 user = get_user_by_telegram_id(db, telegram_id)
