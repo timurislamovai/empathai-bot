@@ -1,3 +1,13 @@
+# --- ВРЕМЕННЫЙ БЛОК: создаёт колонку is_unlimited в базе ---
+from database import engine
+from sqlalchemy import text
+
+with engine.connect() as conn:
+    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_unlimited BOOLEAN DEFAULT FALSE;"))
+    print("✅ Поле is_unlimited добавлено (повторно).")
+# --- КОНЕЦ временного блока ---
+
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from handlers import handle_update  # Импортируем только обработчик сообщений
