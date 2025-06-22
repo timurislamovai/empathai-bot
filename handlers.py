@@ -78,7 +78,27 @@ async def handle_update(update: dict):
                 if len(parts) > 1:
                     ref_code = parts[1].strip()
                     print(f"⚡ Старт с рефкодом: {ref_code}")
+            if text.startswith("/give_unlimited"):
+                if telegram_id not in ADMIN_IDS:
+                    bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+                    return
 
+                parts = text.strip().split()
+                if len(parts) != 2:
+                    bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
+                    return
+
+                target_id = parts[1]
+                target_user = get_user_by_telegram_id(db, target_id)
+                if target_user:
+                    target_user.is_unlimited = True
+                    db.commit()
+                    bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимит.")
+                else:
+                    bot.send_message(chat_id, "❌ Пользователь не найден.")
+                return
+
+                
                 if not user:
                     print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
                     user = create_user(db, telegram_id, referrer_code=ref_code)
