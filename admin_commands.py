@@ -40,3 +40,38 @@ def handle_admin_stats(db: Session, chat_id: int, bot: Bot):
 
     # Отправляем сообщение администратору
     bot.send_message(chat_id, stats_text)
+
+from database import SessionLocal
+from models import get_user_by_telegram_id
+from telegram import Update
+from telegram.ext import ContextTypes
+from telegram.ext import CommandHandler
+
+# ✅ Команда для админа: выдача безлимита пользователю по Telegram ID
+async def give_unlimited(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = str(update.effective_user.id)
+
+    if telegram_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔ У вас нет доступа к этой команде.")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("⚠️ Использование: /give_unlimited <telegram_id>")
+        return
+
+    target_id = context.args[0]
+    db = SessionLocal()
+
+    try:
+        user = get_user_by_telegram_id(db, target_id)
+        if user:
+            user.is_unlimited = True
+            db.commit()
+            await update.message.reply_text(f"✅ Пользователю {target_id} выдан безлимит.")
+        else:
+            await update.message.reply_text("❌ Пользователь не найден.")
+    except Exception as e:
+        print("❌ Ошибка в /give_unlimited:", e)
+        await update.message.reply_text("❌ Ошибка при выполнении.")
+    finally:
+        db.close()
