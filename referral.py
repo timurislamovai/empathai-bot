@@ -33,7 +33,7 @@ def generate_withdraw_info(user, telegram_id):
     )
 
     message_text = (
-        f"🔗 Ваша ссылка: https://t.me/EmpathAI_Bot?start={telegram_id}\n"
+        f"🔗 Ваша ссылка: https://t.me/EmpathAIChat_bot?start={telegram_id}\n"
         f"💰 Поделитесь ссылкой — и получайте доход\n"
         f"{referrals_info}\n"
         f"💰 Баланс: {user.balance:.2f}\n"
