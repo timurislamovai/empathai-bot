@@ -4,6 +4,7 @@ from models import User
 from diagnostics import diagnose_topic, generate_topic_hint
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
@@ -208,4 +209,16 @@ async def handle_update(update: dict):
                 increment_message_count(db, user)
                 assistant_response = clean_markdown(assistant_response)
                 bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
+                
+            # 🔁 Показываем фидбек-вопрос каждые 5 сообщений
+            if user.total_messages % 5 == 0:
+                feedback_question = "Как ты себя сейчас чувствуешь?"
+            
+                feedback_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
+                    [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
+                    [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
+                ])
+            
+                bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
 
