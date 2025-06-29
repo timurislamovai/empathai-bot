@@ -69,6 +69,9 @@ async def handle_update(update: dict):
                 if not user:
                     bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                     return
+    except Exception as e:
+            print("❌ Ошибка при обработке callback_query:", e)
+
                 message_text, markup = generate_withdraw_info(user, telegram_id)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
@@ -211,7 +214,7 @@ async def handle_update(update: dict):
             
             try:
                 assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
-                except Exception as e:
+            except Exception as e:
                     if "run is active" in str(e):
                         print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
                         user.thread_id = None
