@@ -63,7 +63,7 @@ async def handle_update(update: dict):
             data = query["data"]
             chat_id = query["message"]["chat"]["id"]
             telegram_id = str(query["from"]["id"])
-
+    
             if data == "withdraw_request":
                 user = get_user_by_telegram_id(db, telegram_id)
                 if not user:
@@ -72,18 +72,16 @@ async def handle_update(update: dict):
                 message_text, markup = generate_withdraw_info(user, telegram_id)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
-
-    except Exception as e:
-            print("❌ Ошибка при обработке callback_query:", e)
-
-
+    
+        # ✅ А вот здесь — уже обрабатываем обычное сообщение (вне if)
         message = update.get("message")
         if message:
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
+            telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
-        
+
+
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
