@@ -69,12 +69,13 @@ async def handle_update(update: dict):
                 if not user:
                     bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                     return
-    except Exception as e:
-            print("❌ Ошибка при обработке callback_query:", e)
-
                 message_text, markup = generate_withdraw_info(user, telegram_id)
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
+
+    except Exception as e:
+            print("❌ Ошибка при обработке callback_query:", e)
+
 
         message = update.get("message")
         if message:
