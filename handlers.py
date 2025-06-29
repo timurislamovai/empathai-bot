@@ -183,6 +183,7 @@ async def handle_update(update: dict):
 
             if not user.thread_id:
                 update_user_thread_id(db, user, thread_id)
+
             increment_message_count(db, user)
             assistant_response = clean_markdown(assistant_response)
             bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
@@ -195,4 +196,5 @@ async def handle_update(update: dict):
                     [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
                     [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
                 ])
+                bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
                 bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
