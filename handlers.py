@@ -1,6 +1,7 @@
 import os
 import requests
 from models import User
+from diagnostics import diagnose_topic, generate_topic_hint
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 from utils import clean_markdown
@@ -171,6 +172,13 @@ async def handle_update(update: dict):
 
             # --- Assistant API (OpenAI) ---
 
+            # Диагностика темы и уточнение
+            topic = diagnose_topic(text)
+            if topic:
+                hint = generate_topic_hint(topic)
+                text = f"{text}\n\n{hint}"
+
+
             from diagnostics import contains_crisis_words
             
             if contains_crisis_words(text):
@@ -183,17 +191,17 @@ async def handle_update(update: dict):
                 print(f"⚠️ Кризисное сообщение от пользователя {telegram_id}: {text}")
                 return
             
-                try:
-                    assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
-                except Exception as e:
-                    if "run is active" in str(e):
-                        print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
-                        user.thread_id = None
-                        db.commit()
-                        assistant_response, thread_id = send_message_to_assistant(None, text)
-                    else:
-                        raise e
-                
+            try:
+                assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+            except Exception as e:
+                if "run is active" in str(e):
+                    print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
+                    user.thread_id = None
+                    db.commit()
+                    assistant_response, thread_id = send_message_to_assistant(None, text)
+                else:
+                    raise e
+            
                 if not user.thread_id:
                     update_user_thread_id(db, user, thread_id)
                 
