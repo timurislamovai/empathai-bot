@@ -38,6 +38,23 @@ def main_menu():
 async def handle_update(update: dict):
     print("👉 START handle_update")
     print("📦 update:", update)
+    # 📥 Обработка нажатий на inline-кнопки (фидбек по настроению)
+    if update.callback_query:
+        query = update.callback_query           # Объект callback-запроса от Telegram
+        data = query.data                       # Содержимое кнопки (например: "feedback_good")
+        chat_id = query.message.chat.id         # ID чата, куда нужно отправить ответ
+
+        # Если нажата одна из кнопок фидбека
+        if data.startswith("feedback_"):
+            bot.answer_callback_query(callback_query_id=query.id)  # Подтверждаем нажатие (обязательно)
+            
+            # Отправляем благодарность и показываем главное меню
+            bot.send_message(
+                chat_id,
+                "Спасибо, что поделился своим самочувствием ❤️",
+                reply_markup=main_menu()
+            )
+            return  # Завершаем обработку — чтобы не продолжалось как обычное сообщение
 
     db = SessionLocal()
     try:
