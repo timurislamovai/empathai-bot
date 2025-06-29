@@ -235,6 +235,4 @@ async def handle_update(update: dict):
                     [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
                     [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
                 ])
-            
                 bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
-
