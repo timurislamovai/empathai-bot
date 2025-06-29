@@ -230,7 +230,6 @@ async def handle_update(update: dict):
             # 🔁 Показываем фидбек-вопрос каждые 5 сообщений
             if user.total_messages % 5 == 0:
                 feedback_question = "Как ты себя сейчас чувствуешь?"
-            
                 feedback_keyboard = InlineKeyboardMarkup([
                     [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
                     [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
