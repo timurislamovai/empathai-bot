@@ -211,15 +211,16 @@ async def handle_update(update: dict):
             
             try:
                 assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
-            except Exception as e:
-                if "run is active" in str(e):
-                    print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
-                    user.thread_id = None
-                    db.commit()
-                    assistant_response, thread_id = send_message_to_assistant(None, text)
-                else:
-                    raise e
-            
+                except Exception as e:
+                    if "run is active" in str(e):
+                        print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
+                        user.thread_id = None
+                        db.commit()
+                        assistant_response, thread_id = send_message_to_assistant(None, text)
+                    else:
+                        raise e
+                
+                # ✅ Вот здесь продолжается основной поток, ВНЕ try/except
                 if not user.thread_id:
                     update_user_thread_id(db, user, thread_id)
                 
@@ -227,12 +228,12 @@ async def handle_update(update: dict):
                 assistant_response = clean_markdown(assistant_response)
                 bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
                 
-            # 🔁 Показываем фидбек-вопрос каждые 5 сообщений
-            if user.total_messages % 5 == 0:
-                feedback_question = "Как ты себя сейчас чувствуешь?"
-                feedback_keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
-                    [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
-                    [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
-                ])
-                bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
+                # 🔁 Показываем фидбек-вопрос каждые 5 сообщений
+                if user.total_messages % 5 == 0:
+                    feedback_question = "Как ты себя сейчас чувствуешь?"
+                    feedback_keyboard = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
+                        [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
+                        [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
+                    ])
+                    bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
