@@ -38,7 +38,23 @@ async def handle_update(update: dict):
 
     db = SessionLocal()
     try:
+        
         if "callback_query" in update:
+            query = update["callback_query"]
+            data = query["data"]
+            chat_id = query["message"]["chat"]["id"]
+
+            feedback_responses = {
+                "feedback_good": "Рад это слышать! 😊",
+                "feedback_neutral": "Спасибо, что делишься. Я рядом 🙏",
+                "feedback_bad": "Сочувствую. Пожалуйста, береги себя. Я здесь 💙"
+            }
+
+            if data in feedback_responses:
+                bot.answer_callback_query(callback_query_id=query["id"])
+                bot.send_message(chat_id, feedback_responses[data])
+                return
+    
             query = update["callback_query"]
             data = query["data"]
             chat_id = query["message"]["chat"]["id"]
@@ -187,6 +203,17 @@ async def handle_update(update: dict):
                 update_user_thread_id(db, user, thread_id)
 
             increment_message_count(db, user)
+
+        # 🔁 Показываем фидбек-вопрос каждые 5 сообщений
+        if user.total_messages % 5 == 0:
+            feedback_question = "Как ты себя сейчас чувствуешь?"
+            feedback_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
+                [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
+                [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
+            ])
+            bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
+
             assistant_response = clean_markdown(assistant_response)
             bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
