@@ -2,7 +2,7 @@ import os
 import requests
 from models import User
 from referral import generate_cabinet_message, generate_withdraw_info
-from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
@@ -32,7 +32,6 @@ def main_menu():
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
 
-
 async def handle_update(update: dict):
     print("👉 START handle_update")
     print("📦 update:", update)
@@ -58,19 +57,19 @@ async def handle_update(update: dict):
         if message:
             text = message.get("text", "")
             chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
+            telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
-        
+
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
-        
+
                 parts = text.strip().split()
                 if len(parts) != 2:
                     bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
                     return
-        
+
                 target_id = parts[1]
                 target_user = get_user_by_telegram_id(db, target_id)
                 if target_user:
@@ -80,7 +79,6 @@ async def handle_update(update: dict):
                 else:
                     bot.send_message(chat_id, "❌ Пользователь не найден.")
                 return
-
 
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
                 user = get_user_by_telegram_id(db, telegram_id)
@@ -168,7 +166,6 @@ async def handle_update(update: dict):
                     )
                     return
 
-
             # --- Assistant API (OpenAI) ---
             try:
                 assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
@@ -177,9 +174,14 @@ async def handle_update(update: dict):
                     print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
                     user.thread_id = None
                     db.commit()
-                    assistant_response, thread_id = send_message_to_assistant(None, text)
+                    try:
+                        assistant_response, thread_id = send_message_to_assistant(None, text)
+                    except Exception as e2:
+                        bot.send_message(chat_id, "Произошла ошибка при повторной попытке.")
+                        return
                 else:
-                    raise e
+                    bot.send_message(chat_id, "Произошла ошибка при обработке сообщения.")
+                    return
 
             if not user.thread_id:
                 update_user_thread_id(db, user, thread_id)
@@ -197,4 +199,5 @@ async def handle_update(update: dict):
                     [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
                 ])
                 bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
-                bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
+    finally:
+        db.close()
