@@ -170,25 +170,34 @@ async def handle_update(update: dict):
 
 
             # --- Assistant API (OpenAI) ---
-            try:
-                assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
-            except Exception as e:
-                if "run is active" in str(e):
-                    print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
-                    user.thread_id = None
-                    db.commit()
-                    assistant_response, thread_id = send_message_to_assistant(None, text)
-                else:
-                    raise e
 
-            if not user.thread_id:
-                update_user_thread_id(db, user, thread_id)
+            from diagnostics import contains_crisis_words
+            
+            if contains_crisis_words(text):
+                crisis_response = (
+                    "Мне жаль слышать, что тебе сейчас тяжело. "
+                    "Если ты переживаешь острый кризис, пожалуйста, обратись к живому специалисту или позвони в службу поддержки. "
+                    "Ты не один. Забота есть рядом."
+                )
+                bot.send_message(chat_id, crisis_response, reply_markup=main_menu())
+                print(f"⚠️ Кризисное сообщение от пользователя {telegram_id}: {text}")
+                return
+            
+                try:
+                    assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+                except Exception as e:
+                    if "run is active" in str(e):
+                        print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
+                        user.thread_id = None
+                        db.commit()
+                        assistant_response, thread_id = send_message_to_assistant(None, text)
+                    else:
+                        raise e
+                
+                if not user.thread_id:
+                    update_user_thread_id(db, user, thread_id)
+                
+                increment_message_count(db, user)
+                assistant_response = clean_markdown(assistant_response)
+                bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
-            increment_message_count(db, user)
-            assistant_response = clean_markdown(assistant_response)
-            bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
-
-    except Exception as e:
-        print("❌ Ошибка в handle_update:", e)
-    finally:
-        db.close()
