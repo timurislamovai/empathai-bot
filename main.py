@@ -1,14 +1,13 @@
-
-from payment_routes import router as payment_router
-app.include_router(payment_router)
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from handlers import handle_update  # Импортируем только обработчик сообщений
 import traceback
 from datetime import datetime
-
+from fastapi import FastAPI
 app = FastAPI()
+
+from payment_routes import router as payment_router
+app.include_router(payment_router)
 
 @app.get("/")
 async def root():
