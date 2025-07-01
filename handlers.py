@@ -7,6 +7,7 @@ from filters import classify_crisis_level, log_crisis_message
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 import time
+from robokassa import generate_payment_url
 from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
