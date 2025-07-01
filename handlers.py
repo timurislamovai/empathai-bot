@@ -51,212 +51,212 @@ def main_menu():
 
 async def handle_update(update: dict, db):
     try:
-        print("👉 START handle_update")
-        print("📦 update:", update)
+    print("👉 START handle_update")
+    print("📦 update:", update)
 
-        db = SessionLocal()
-        try:
-            if "callback_query" in update:
-                query = update["callback_query"]
-                data = query["data"]
-                chat_id = query["message"]["chat"]["id"]
-                telegram_id = str(query["from"]["id"])
+    db = SessionLocal()
+    try:
+    if "callback_query" in update:
+    query = update["callback_query"]
+    data = query["data"]
+    chat_id = query["message"]["chat"]["id"]
+    telegram_id = str(query["from"]["id"])
 
-                if data == "withdraw_request":
-                    user = get_user_by_telegram_id(db, telegram_id)
+    if data == "withdraw_request":
+    user = get_user_by_telegram_id(db, telegram_id)
 
     if text == "🗓 Купить на 1 месяц":
-                plan = "monthly"
-            elif text == "📅 Купить на 1 год":
-                plan = "yearly"
-            else:
-                plan = None
+    plan = "monthly"
+    elif text == "📅 Купить на 1 год":
+    plan = "yearly"
+    else:
+    plan = None
 
-            if plan:
-                invoice_id = int(time.time())
-                payment_url = generate_payment_url(telegram_id, invoice_id, plan)
+    if plan:
+    invoice_id = int(time.time())
+    payment_url = generate_payment_url(telegram_id, invoice_id, plan)
 
-                bot.send_message(
-                    chat_id,
-                    "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💳 Перейти к оплате", url=payment_url)]
-                    ])
-                )
-                return
-                    if not user:
-                        bot.send_message(chat_id, "Ошибка: пользователь не найден.")
-                        return
-                    message_text, markup = generate_withdraw_info(user, telegram_id)
-                    bot.send_message(chat_id, message_text, reply_markup=markup)
-                    return
+    bot.send_message(
+    chat_id,
+    "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
+    reply_markup=InlineKeyboardMarkup([
+    [InlineKeyboardButton("💳 Перейти к оплате", url=payment_url)]
+    ])
+    )
+    return
+    if not user:
+    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+    return
+    message_text, markup = generate_withdraw_info(user, telegram_id)
+    bot.send_message(chat_id, message_text, reply_markup=markup)
+    return
 
-            message = update.get("message")
-            if message:
-                text = message.get("text", "")
-                print(f"👀 Получено сообщение: {repr(text)}")
-                text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
-                chat_id = message["chat"]["id"]
-                telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
-                user = get_user_by_telegram_id(db, telegram_id)
+    message = update.get("message")
+    if message:
+    text = message.get("text", "")
+    print(f"👀 Получено сообщение: {repr(text)}")
+    text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
+    chat_id = message["chat"]["id"]
+    telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
+    user = get_user_by_telegram_id(db, telegram_id)
 
-           # 🔁 Кнопка "Купить подписку"
-            if text == "💳 Купить подписку":
-                print("👉 Нажата кнопка Купить подписку")
-                text = (
-                    "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
-                    "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
-                    "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
-                    "Выбери вариант подписки ниже:"
-                )
-                bot.send_message(chat_id, text, reply_markup=ReplyKeyboardMarkup(
-                    keyboard=[
-                        [KeyboardButton("🗓 Купить на 1 месяц")],
-                        [KeyboardButton("📅 Купить на 1 год")],
-                        [KeyboardButton("🔙 Назад в главное меню")]
-                    ],
-                    resize_keyboard=True
-                ), parse_mode="Markdown")
-                return
+    # 🔁 Кнопка "Купить подписку"
+    if text == "💳 Купить подписку":
+    print("👉 Нажата кнопка Купить подписку")
+    text = (
+    "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
+    "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
+    "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
+    "Выбери вариант подписки ниже:"
+    )
+    bot.send_message(chat_id, text, reply_markup=ReplyKeyboardMarkup(
+    keyboard=[
+    [KeyboardButton("🗓 Купить на 1 месяц")],
+    [KeyboardButton("📅 Купить на 1 год")],
+    [KeyboardButton("🔙 Назад в главное меню")]
+    ],
+    resize_keyboard=True
+    ), parse_mode="Markdown")
+    return
 
-            # 🔁 Назад в главное меню
-            if text == "🔙 Назад в главное меню":
-                print("↩ Возврат в главное меню")
-                bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
-                return
+    # 🔁 Назад в главное меню
+    if text == "🔙 Назад в главное меню":
+    print("↩ Возврат в главное меню")
+    bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+    return
 
-            # 🔁 Обработка выбора тарифа с кнопкой оплаты
-
-
-
-                # 🔒 Классификация уровня тревожности и реакция
-                crisis_level = classify_crisis_level(text)
-
-                if crisis_level in ["high", "medium", "low"]:
-                    log_crisis_message(telegram_id, text, level=crisis_level)
-
-                    if crisis_level == "high":
-                        bot.send_message(chat_id, (
-                            "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
-                            "Если тебе тяжело и возникают мысли навредить себе — важно не оставаться с этим наедине. "
-                            "Обратись к специалисту или кризисной службе. 💙\n\n"
-                            "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
-                        ))
-                        return
-
-                if text.startswith("/give_unlimited"):
-                    if telegram_id not in ADMIN_IDS:
-                        bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
-                        return
-
-                    parts = text.strip().split()
-                    if len(parts) != 2:
-                        bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
-                        return
-
-                    target_id = parts[1]
-                    target_user = get_user_by_telegram_id(db, target_id)
-                    if target_user:
-                        target_user.is_unlimited = True
-                        db.commit()
-                        bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимит.")
-                    else:
-                        bot.send_message(chat_id, "❌ Пользователь не найден.")
-                    return
+    # 🔁 Обработка выбора тарифа с кнопкой оплаты
 
 
-                if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-                    user = get_user_by_telegram_id(db, telegram_id)
-                    if not user:
-                        bot.send_message(chat_id, "Пользователь не найден.")
-                        return
-                    message_text, markup = generate_cabinet_message(user, telegram_id, db)
-                    bot.send_message(chat_id, message_text, reply_markup=main_menu())
-                    return
 
-                # --- Реферальный старт ---
-                ref_code = None
-                if text.startswith("/start"):
-                    parts = text.split(" ", 1)
-                    if len(parts) > 1:
-                        ref_code = parts[1].strip()
-                        print(f"⚡ Старт с рефкодом: {ref_code}")
+    # 🔒 Классификация уровня тревожности и реакция
+    crisis_level = classify_crisis_level(text)
 
-                    if not user:
-                        print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
-                        user = create_user(db, telegram_id, referrer_code=ref_code)
-                        BONUS_AMOUNT = 100.0
-                        if ref_code:
-                            inviter = db.query(User).filter(User.telegram_id == ref_code).first()
-                            if inviter:
-                                inviter.balance += BONUS_AMOUNT
-                                inviter.total_earned += BONUS_AMOUNT
-                                db.commit()
-                                print(f"✅ Начислено {BONUS_AMOUNT} пригласившему: {ref_code}")
+    if crisis_level in ["high", "medium", "low"]:
+    log_crisis_message(telegram_id, text, level=crisis_level)
 
-                    bot.send_message(
-                        chat_id,
-                        "👋 Добро пожаловать!\n\n"
-                        "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
-                        "🆓 Вам доступно 50 бесплатных сообщений.\n"
-                        "💳 После окончания лимита можно оформить подписку.\n\n"
-                        "📋 Выберите пункт меню или напишите свой вопрос.",
-                        reply_markup=main_menu()
-                    )
-                    return
+    if crisis_level == "high":
+    bot.send_message(chat_id, (
+    "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
+    "Если тебе тяжело и возникают мысли навредить себе — важно не оставаться с этим наедине. "
+    "Обратись к специалисту или кризисной службе. 💙\n\n"
+    "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
+    ))
+    return
 
-                # --- Команды ---
-                if text == "/admin_stats" and user.telegram_id in ADMIN_IDS:
-                    from utils import get_stats_summary
-                    stats = get_stats_summary(db)
-                    bot.send_message(chat_id, stats)
-                    return
+    if text.startswith("/give_unlimited"):
+    if telegram_id not in ADMIN_IDS:
+    bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+    return
 
-                if text == "/admin_referrals" and user.telegram_id in ADMIN_IDS:
-                    from admin_commands import handle_admin_stats
-                    handle_admin_stats(db, chat_id, bot)
-                    return
+    parts = text.strip().split()
+    if len(parts) != 2:
+    bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
+    return
 
-                if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-                    message_text, markup = generate_cabinet_message(user, telegram_id, db)
-                    bot.send_message(chat_id, message_text, reply_markup=markup)
-                    return
-
-                if text == "🤝 Партнёрская программа":
-                    message_text, markup = generate_withdraw_info(user, telegram_id)
-                    bot.send_message(chat_id, message_text, reply_markup=main_menu())
-                    return
-
-                if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
-                    filename = {
-                        "💳 Купить подписку": "subscribe.txt",
-                        "❓ Гид по боту": "guide.txt",
-                        "📜 Условия пользования": "rules.txt"
-                    }[text]
-                    try:
-                        with open(f"texts/{filename}", "r", encoding="utf-8") as f:
-                            response = f.read()
-                    except FileNotFoundError:
-                        response = "Файл с информацией пока не загружен."
-                    bot.send_message(chat_id, response, reply_markup=main_menu())
-                    return
-
-                # --- Проверка лимита ---
-                if not user.is_unlimited:
-                    if user.free_messages_used >= FREE_MESSAGES_LIMIT:
-                        bot.send_message(
-                            chat_id,
-                            "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
-                            reply_markup=main_menu()
-                        )
-                        return
+    target_id = parts[1]
+    target_user = get_user_by_telegram_id(db, target_id)
+    if target_user:
+    target_user.is_unlimited = True
+    db.commit()
+    bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимит.")
+    else:
+    bot.send_message(chat_id, "❌ Пользователь не найден.")
+    return
 
 
-                # --- Assistant API (OpenAI) ---
-                try:
-                    assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+    if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+    user = get_user_by_telegram_id(db, telegram_id)
+    if not user:
+    bot.send_message(chat_id, "Пользователь не найден.")
+    return
+    message_text, markup = generate_cabinet_message(user, telegram_id, db)
+    bot.send_message(chat_id, message_text, reply_markup=main_menu())
+    return
+
+    # --- Реферальный старт ---
+    ref_code = None
+    if text.startswith("/start"):
+    parts = text.split(" ", 1)
+    if len(parts) > 1:
+    ref_code = parts[1].strip()
+    print(f"⚡ Старт с рефкодом: {ref_code}")
+
+    if not user:
+    print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
+    user = create_user(db, telegram_id, referrer_code=ref_code)
+    BONUS_AMOUNT = 100.0
+    if ref_code:
+    inviter = db.query(User).filter(User.telegram_id == ref_code).first()
+    if inviter:
+    inviter.balance += BONUS_AMOUNT
+    inviter.total_earned += BONUS_AMOUNT
+    db.commit()
+    print(f"✅ Начислено {BONUS_AMOUNT} пригласившему: {ref_code}")
+
+    bot.send_message(
+    chat_id,
+    "👋 Добро пожаловать!\n\n"
+    "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
+    "🆓 Вам доступно 50 бесплатных сообщений.\n"
+    "💳 После окончания лимита можно оформить подписку.\n\n"
+    "📋 Выберите пункт меню или напишите свой вопрос.",
+    reply_markup=main_menu()
+    )
+    return
+
+    # --- Команды ---
+    if text == "/admin_stats" and user.telegram_id in ADMIN_IDS:
+    from utils import get_stats_summary
+    stats = get_stats_summary(db)
+    bot.send_message(chat_id, stats)
+    return
+
+    if text == "/admin_referrals" and user.telegram_id in ADMIN_IDS:
+    from admin_commands import handle_admin_stats
+    handle_admin_stats(db, chat_id, bot)
+    return
+
+    if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+    message_text, markup = generate_cabinet_message(user, telegram_id, db)
+    bot.send_message(chat_id, message_text, reply_markup=markup)
+    return
+
+    if text == "🤝 Партнёрская программа":
+    message_text, markup = generate_withdraw_info(user, telegram_id)
+    bot.send_message(chat_id, message_text, reply_markup=main_menu())
+    return
+
+    if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
+    filename = {
+    "💳 Купить подписку": "subscribe.txt",
+    "❓ Гид по боту": "guide.txt",
+    "📜 Условия пользования": "rules.txt"
+    }[text]
+    try:
+    with open(f"texts/{filename}", "r", encoding="utf-8") as f:
+    response = f.read()
+    except FileNotFoundError:
+    response = "Файл с информацией пока не загружен."
+    bot.send_message(chat_id, response, reply_markup=main_menu())
+    return
+
+    # --- Проверка лимита ---
+    if not user.is_unlimited:
+    if user.free_messages_used >= FREE_MESSAGES_LIMIT:
+    bot.send_message(
+    chat_id,
+    "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
+    reply_markup=main_menu()
+    )
+    return
+
+
+    # --- Assistant API (OpenAI) ---
+    try:
+    assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
     except Exception as e:
-        print('Ошибка в handle_update:', e)
+        print('❌ Ошибка в handle_update:', e)
                 if "run is active" in str(e):
                     print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
                     user.thread_id = None
