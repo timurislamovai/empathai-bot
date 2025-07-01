@@ -6,6 +6,7 @@ from models import User
 from filters import classify_crisis_level, log_crisis_message
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
+import time
 from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
@@ -22,8 +23,8 @@ from openai_api import send_message_to_assistant
 def subscription_plan_keyboard():
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton("🗓 1 месяц"), KeyboardButton("📅 1 год")],
-            [KeyboardButton("🔙 Назад в меню")]
+            [KeyboardButton("🗓 Купить на 1 месяц"), KeyboardButton("📅 Купить на 1 год")],
+            [KeyboardButton("🔙 Назад в главное меню")]
         ],
         resize_keyboard=True
     )
