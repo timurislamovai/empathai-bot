@@ -55,21 +55,6 @@ async def handle_update(update: dict):
 
     db = SessionLocal()
     try:
-        if "callback_query" in update:
-            query = update["callback_query"]
-            data = query["data"]
-            chat_id = query["message"]["chat"]["id"]
-            telegram_id = str(query["from"]["id"])
-
-            if data == "withdraw_request":
-                user = get_user_by_telegram_id(db, telegram_id)
-                if not user:
-                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
-                    return
-                message_text, markup = generate_withdraw_info(user, telegram_id)
-                bot.send_message(chat_id, message_text, reply_markup=markup)
-                return
-
         message = update.get("message")
         if message:
             text = message.get("text", "")
@@ -78,6 +63,19 @@ async def handle_update(update: dict):
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
+        if "callback_query" in update:
+            query = update["callback_query"]
+            data = query["data"]
+
+            if data == "withdraw_request":
+                if not user:
+                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+                    return
+                message_text, markup = generate_withdraw_info(user, telegram_id)
+                bot.send_message(chat_id, message_text, reply_markup=markup)
+                return
+
+        message = update.get("message")
         if message:
 
        # 🔁 Кнопка "Купить подписку"
