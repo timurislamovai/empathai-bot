@@ -57,3 +57,18 @@ def update_user_thread_id(db: Session, user: User, thread_id: str):
 
 def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
+    
+def update_user_subscription(db: Session, user: User, plan: str):
+    now = datetime.utcnow()
+
+    if plan == "monthly":
+        expires = now + timedelta(days=30)
+    elif plan == "yearly":
+        expires = now + timedelta(days=365)
+    else:
+        expires = now  # fallback на случай ошибки
+
+    user.has_paid = True
+    user.subscription_expires_at = expires
+    user.free_messages_used = 0
+    db.commit()
