@@ -70,20 +70,19 @@ async def handle_update(update: dict):
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-                   message = update.get("message")
-            if message:
-                text = message.get("text", "")
-            
-                # 🔧 Очистка текста и логирование
-                print(f"👀 Получено сообщение: {repr(text)}")
-                text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
-                
-                chat_id = message["chat"]["id"]
-                telegram_id = str(message["from"]["id"])
-                user = get_user_by_telegram_id(db, telegram_id)
+        message = update.get("message")
+        if message:
+            text = message.get("text", "")
+            print(f"👀 Получено сообщение: {repr(text)}")
+            text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
+            chat_id = message["chat"]["id"]
+            telegram_id = str(message["from"]["id"])
+            user = get_user_by_telegram_id(db, telegram_id)
+        if message:
 
        # 🔁 Кнопка "Купить подписку"
         if text == "💳 Купить подписку":
+            print("👉 Нажата кнопка Купить подписку")
             response_text = (
                 "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
                 "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
@@ -159,7 +158,6 @@ async def handle_update(update: dict):
                     return
         
                 target_id = parts[1]
-                target_user = get_user_by_telegram_id(db, target_id)
                 if target_user:
                     target_user.is_unlimited = True
                     db.commit()
@@ -170,7 +168,6 @@ async def handle_update(update: dict):
 
 
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-                user = get_user_by_telegram_id(db, telegram_id)
                 if not user:
                     bot.send_message(chat_id, "Пользователь не найден.")
                     return
@@ -191,7 +188,6 @@ async def handle_update(update: dict):
                     user = create_user(db, telegram_id, referrer_code=ref_code)
                     BONUS_AMOUNT = 100.0
                     if ref_code:
-                        inviter = db.query(User).filter(User.telegram_id == ref_code).first()
                         if inviter:
                             inviter.balance += BONUS_AMOUNT
                             inviter.total_earned += BONUS_AMOUNT
