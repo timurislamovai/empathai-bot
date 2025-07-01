@@ -66,8 +66,11 @@ async def handle_update(update: dict):
         if "callback_query" in update:
             query = update["callback_query"]
             data = query["data"]
+            chat_id = query["message"]["chat"]["id"]
+            telegram_id = str(query["from"]["id"])
 
             if data == "withdraw_request":
+                user = get_user_by_telegram_id(db, telegram_id)
                 if not user:
                     bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                     return
@@ -77,6 +80,10 @@ async def handle_update(update: dict):
 
         message = update.get("message")
         if message:
+            text = message.get("text", "")
+            chat_id = message["chat"]["id"]
+            telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
+            user = get_user_by_telegram_id(db, telegram_id)
 
        # 🔁 Кнопка "Купить подписку"
         if text == "💳 Купить подписку":
@@ -156,6 +163,7 @@ async def handle_update(update: dict):
                     return
         
                 target_id = parts[1]
+                target_user = get_user_by_telegram_id(db, target_id)
                 if target_user:
                     target_user.is_unlimited = True
                     db.commit()
@@ -166,6 +174,7 @@ async def handle_update(update: dict):
 
 
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+                user = get_user_by_telegram_id(db, telegram_id)
                 if not user:
                     bot.send_message(chat_id, "Пользователь не найден.")
                     return
@@ -186,6 +195,7 @@ async def handle_update(update: dict):
                     user = create_user(db, telegram_id, referrer_code=ref_code)
                     BONUS_AMOUNT = 100.0
                     if ref_code:
+                        inviter = db.query(User).filter(User.telegram_id == ref_code).first()
                         if inviter:
                             inviter.balance += BONUS_AMOUNT
                             inviter.total_earned += BONUS_AMOUNT
