@@ -78,19 +78,20 @@ async def handle_update(update: dict):
                 print("👉 Нажата кнопка Купить подписку")
                 text = (
                     "💳 Подписка на EmpathAI\n\n"
-                    "🗓 1 месяц: ~~1 800 ₽~~ → 1 199 ₽\n"
-                    "📅 1 год: ~~14 400 ₽~~ → 11 999 ₽\n\n"
+                    "🗓 1 месяц: → 1 199 ₽\n"
+                    "📅 1 год:  → 11 999 ₽\n\n"
                     "Выбери нужный вариант:"
                 )
                 bot.send_message(chat_id, text, reply_markup=subscription_plan_keyboard(), parse_mode="Markdown")
                 return
 
-                if text.startswith("🗓 1 месяц"):
+                if "1 месяц" in text:
                     plan = "monthly"
-                elif text.startswith("📅 1 год"):
+                elif "1 год" in text:
                     plan = "yearly"
                 else:
                     plan = None
+
             
                 if plan:
                     invoice_id = int(time.time())
