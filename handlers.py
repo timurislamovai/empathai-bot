@@ -70,16 +70,20 @@ async def handle_update(update: dict):
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-        message = update.get("message")
-        if message:
-            text = message.get("text", "")
-            chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
-            user = get_user_by_telegram_id(db, telegram_id)
+                   message = update.get("message")
+            if message:
+                text = message.get("text", "")
+            
+                # 🔧 Очистка текста и логирование
+                print(f"👀 Получено сообщение: {repr(text)}")
+                text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
+                
+                chat_id = message["chat"]["id"]
+                telegram_id = str(message["from"]["id"])
+                user = get_user_by_telegram_id(db, telegram_id)
 
        # 🔁 Кнопка "Купить подписку"
         if text == "💳 Купить подписку":
-            print("👉 Нажата кнопка Купить подписку")
             response_text = (
                 "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
                 "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
