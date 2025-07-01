@@ -11,7 +11,6 @@ from models import (
     create_user,
     update_user_thread_id,
     increment_message_count,
-            user = get_user_by_telegram_id(db, telegram_id)
     reset_user_thread
 )
 from openai_api import send_message_to_assistant
