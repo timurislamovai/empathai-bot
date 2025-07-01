@@ -57,6 +57,11 @@ def update_user_thread_id(db: Session, user: User, thread_id: str):
 
 def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
+    db.commit()
+
+def reset_user_thread(db: Session, user: User):
+    user.thread_id = None
+    db.commit()
     
 def update_user_subscription(db: Session, user: User, plan: str):
     now = datetime.utcnow()
