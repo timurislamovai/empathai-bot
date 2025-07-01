@@ -1,4 +1,6 @@
 
+from payment_routes import router as payment_router
+app.include_router(payment_router)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
