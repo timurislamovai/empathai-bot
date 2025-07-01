@@ -3,6 +3,7 @@ import requests
 from diagnostics import contains_crisis_words
 from datetime import datetime  # если ещё не импортирован
 from models import User
+from filters import classify_crisis_level, log_crisis_message
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton
 from utils import clean_markdown
@@ -63,20 +64,21 @@ async def handle_update(update: dict):
             telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
             user = get_user_by_telegram_id(db, telegram_id)
 
-            # 🔒 Проверка на кризисные фразы
-            if contains_crisis_words(text):
-                try:
-                    with open("logs/crisis_log.txt", "a", encoding="utf-8") as f:
-                        f.write(f"[{datetime.now()}] 🚨 Кризисное сообщение от {telegram_id}: {text}\n")
-                except:
-                    pass
-        
-                bot.send_message(chat_id, "Похоже, ты переживаешь непростой момент. "
-                                          "Если тебе срочно нужна помощь — обратись в службу поддержки или к специалисту.")
-                return
-        
-            user = get_user_by_telegram_id(db, telegram_id)
-    
+            # 🔒 Классификация уровня тревожности и реакция
+            crisis_level = classify_crisis_level(text)
+            
+            if crisis_level in ["high", "medium", "low"]:
+                log_crisis_message(telegram_id, text, level=crisis_level)
+            
+                if crisis_level == "high":
+                    bot.send_message(chat_id, (
+                        "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
+                        "Если тебе тяжело и возникают мысли навредить себе — важно не оставаться с этим наедине. "
+                        "Обратись к специалисту или кризисной службе. 💙\n\n"
+                        "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
+                    ))
+                    return
+
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
