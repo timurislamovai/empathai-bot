@@ -64,68 +64,68 @@ async def handle_update(update: dict):
             if data == "withdraw_request":
                 user = get_user_by_telegram_id(db, telegram_id)
 
-if text == "🗓 Купить на 1 месяц":
-            plan = "monthly"
-        elif text == "📅 Купить на 1 год":
-            plan = "yearly"
-        else:
-            plan = None
-        
-        if plan:
-            invoice_id = int(time.time())
-            payment_url = generate_payment_url(telegram_id, invoice_id, plan)
-        
-            bot.send_message(
-                chat_id,
-                "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💳 Перейти к оплате", url=payment_url)]
-                ])
-            )
-            return
-                if not user:
-                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+        if text == "🗓 Купить на 1 месяц":
+                    plan = "monthly"
+                elif text == "📅 Купить на 1 год":
+                    plan = "yearly"
+                else:
+                    plan = None
+                
+                if plan:
+                    invoice_id = int(time.time())
+                    payment_url = generate_payment_url(telegram_id, invoice_id, plan)
+                
+                    bot.send_message(
+                        chat_id,
+                        "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("💳 Перейти к оплате", url=payment_url)]
+                        ])
+                    )
                     return
-                message_text, markup = generate_withdraw_info(user, telegram_id)
-                bot.send_message(chat_id, message_text, reply_markup=markup)
-                return
-
-        message = update.get("message")
-        if message:
-            text = message.get("text", "")
-            print(f"👀 Получено сообщение: {repr(text)}")
-            text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
-            chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
-            user = get_user_by_telegram_id(db, telegram_id)
-
-       # 🔁 Кнопка "Купить подписку"
-        if text == "💳 Купить подписку":
-            print("👉 Нажата кнопка Купить подписку")
-            text = (
-                "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
-                "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
-                "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
-                "Выбери вариант подписки ниже:"
-            )
-            bot.send_message(chat_id, text, reply_markup=ReplyKeyboardMarkup(
-                keyboard=[
-                    [KeyboardButton("🗓 Купить на 1 месяц")],
-                    [KeyboardButton("📅 Купить на 1 год")],
-                    [KeyboardButton("🔙 Назад в главное меню")]
-                ],
-                resize_keyboard=True
-            ), parse_mode="Markdown")
-            return
+                        if not user:
+                            bot.send_message(chat_id, "Ошибка: пользователь не найден.")
+                            return
+                        message_text, markup = generate_withdraw_info(user, telegram_id)
+                        bot.send_message(chat_id, message_text, reply_markup=markup)
+                        return
         
-        # 🔁 Назад в главное меню
-        if text == "🔙 Назад в главное меню":
-            print("↩ Возврат в главное меню")
-            bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
-            return
+                message = update.get("message")
+                if message:
+                    text = message.get("text", "")
+                    print(f"👀 Получено сообщение: {repr(text)}")
+                    text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
+                    chat_id = message["chat"]["id"]
+                    telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
+                    user = get_user_by_telegram_id(db, telegram_id)
         
-        # 🔁 Обработка выбора тарифа с кнопкой оплаты
-        
+               # 🔁 Кнопка "Купить подписку"
+                if text == "💳 Купить подписку":
+                    print("👉 Нажата кнопка Купить подписку")
+                    text = (
+                        "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
+                        "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
+                        "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
+                        "Выбери вариант подписки ниже:"
+                    )
+                    bot.send_message(chat_id, text, reply_markup=ReplyKeyboardMarkup(
+                        keyboard=[
+                            [KeyboardButton("🗓 Купить на 1 месяц")],
+                            [KeyboardButton("📅 Купить на 1 год")],
+                            [KeyboardButton("🔙 Назад в главное меню")]
+                        ],
+                        resize_keyboard=True
+                    ), parse_mode="Markdown")
+                    return
+                
+                # 🔁 Назад в главное меню
+                if text == "🔙 Назад в главное меню":
+                    print("↩ Возврат в главное меню")
+                    bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+                    return
+                
+                # 🔁 Обработка выбора тарифа с кнопкой оплаты
+                
 
 
             # 🔒 Классификация уровня тревожности и реакция
