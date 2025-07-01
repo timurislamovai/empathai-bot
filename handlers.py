@@ -93,13 +93,13 @@ async def handle_update(update: dict):
 
             # Обработка через Assistant API
             try:
-                response, thread_id = send_message_to_assistant(user, text)
+                response, thread_id = send_message_to_assistant(user.thread_id, text)
                 if not user.thread_id:
                     update_user_thread_id(db, user, thread_id)
             except Exception as e:
                 if "run is already active" in str(e).lower():
                     update_user_thread_id(db, user, None)
-                    response, thread_id = send_message_to_assistant(user, text)
+                    response, thread_id = send_message_to_assistant(user.thread_id, text)
                 else:
                     raise e
 
