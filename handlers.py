@@ -76,40 +76,39 @@ async def handle_update(update: dict):
             telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
             user = get_user_by_telegram_id(db, telegram_id)
 
-            # 🔁 Обработка выбора тарифа
-            if "1 месяц" in text:
-                plan = "monthly"
-            elif "1 год" in text:
-                plan = "yearly"
-            else:
-                plan = None
-        
-            if plan:
-                invoice_id = int(time.time())
-                payment_url = generate_payment_url(telegram_id, invoice_id, plan)
-                bot.send_message(chat_id, f"🔗 Ваша ссылка для оплаты:\n{payment_url}")
-                return
-        
-            # 🔁 Обработка кнопки Назад
-            if text == "🔙 Назад в меню":
-                bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
-                return
-        
-            # 🔁 Кнопка Купить подписку
+            # 🔁 Кнопка "Купить подписку"
             if text == "💳 Купить подписку":
                 print("👉 Нажата кнопка Купить подписку")
                 text = (
-                    "💳 Подписка на EmpathAI\n\n"
-                    "🗓 1 месяц:\n"
-                    "   🔸 Старая цена: 1 800 ₽\n"
-                    "   🔹 Сейчас: 1 199 ₽\n\n"
-                    "📅 1 год:\n"
-                    "   🔸 Старая цена: 14 400 ₽\n"
-                    "   🔹 Сейчас: 11 999 ₽\n\n"
-                    "Выбери нужный вариант:"
+                    "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
+                    "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
+                    "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
+                    "Выбери вариант подписки ниже:"
                 )
-                bot.send_message(chat_id, text, reply_markup=subscription_plan_keyboard(), parse_mode="Markdown")
+                bot.send_message(chat_id, text, reply_markup=ReplyKeyboardMarkup(
+                    keyboard=[
+                        [KeyboardButton("Купить на 1 месяц")],
+                        [KeyboardButton("Купить на 1 год")],
+                        [KeyboardButton("🔙 Назад в главное меню")]
+                    ],
+                    resize_keyboard=True
+                ), parse_mode="Markdown")
                 return
+            
+            # 🔁 Обработка выбора тарифа
+            if text == "Купить на 1 месяц":
+                plan = "monthly"
+            elif text == "Купить на 1 год":
+                plan = "yearly"
+            else:
+                plan = None
+            
+            if plan:
+                invoice_id = int(time.time())
+                payment_url = generate_payment_url(telegram_id, invoice_id, plan)
+                bot.send_message(chat_id, f"🔗 Нажми, чтобы перейти к оплате:\n{payment_url}")
+                return
+
 
 
             # 🔒 Классификация уровня тревожности и реакция
