@@ -53,7 +53,7 @@ async def handle_update(update: dict, db):
     try:
         print("👉 START handle_update")
         print("📦 update:", update)
-    
+
         db = SessionLocal()
         try:
         if "callback_query" in update:
@@ -61,21 +61,21 @@ async def handle_update(update: dict, db):
         data = query["data"]
         chat_id = query["message"]["chat"]["id"]
         telegram_id = str(query["from"]["id"])
-    
+
         if data == "withdraw_request":
         user = get_user_by_telegram_id(db, telegram_id)
-    
+
         if text == "🗓 Купить на 1 месяц":
         plan = "monthly"
         elif text == "📅 Купить на 1 год":
         plan = "yearly"
         else:
         plan = None
-    
+
         if plan:
         invoice_id = int(time.time())
         payment_url = generate_payment_url(telegram_id, invoice_id, plan)
-    
+
         bot.send_message(
         chat_id,
         "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
@@ -90,7 +90,7 @@ async def handle_update(update: dict, db):
         message_text, markup = generate_withdraw_info(user, telegram_id)
         bot.send_message(chat_id, message_text, reply_markup=markup)
         return
-    
+
         message = update.get("message")
         if message:
         text = message.get("text", "")
@@ -99,7 +99,7 @@ async def handle_update(update: dict, db):
         chat_id = message["chat"]["id"]
         telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
         user = get_user_by_telegram_id(db, telegram_id)
-    
+
         # 🔁 Кнопка "Купить подписку"
         if text == "💳 Купить подписку":
         print("👉 Нажата кнопка Купить подписку")
@@ -118,23 +118,23 @@ async def handle_update(update: dict, db):
         resize_keyboard=True
         ), parse_mode="Markdown")
         return
-    
+
         # 🔁 Назад в главное меню
         if text == "🔙 Назад в главное меню":
         print("↩ Возврат в главное меню")
         bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
         return
-    
+
         # 🔁 Обработка выбора тарифа с кнопкой оплаты
-    
-    
-    
+
+
+
         # 🔒 Классификация уровня тревожности и реакция
         crisis_level = classify_crisis_level(text)
-    
+
         if crisis_level in ["high", "medium", "low"]:
         log_crisis_message(telegram_id, text, level=crisis_level)
-    
+
         if crisis_level == "high":
         bot.send_message(chat_id, (
         "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
@@ -143,17 +143,17 @@ async def handle_update(update: dict, db):
         "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
         ))
         return
-    
+
         if text.startswith("/give_unlimited"):
         if telegram_id not in ADMIN_IDS:
         bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
         return
-    
+
         parts = text.strip().split()
         if len(parts) != 2:
         bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
         return
-    
+
         target_id = parts[1]
         target_user = get_user_by_telegram_id(db, target_id)
         if target_user:
@@ -163,8 +163,8 @@ async def handle_update(update: dict, db):
         else:
         bot.send_message(chat_id, "❌ Пользователь не найден.")
         return
-    
-    
+
+
         if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
         user = get_user_by_telegram_id(db, telegram_id)
         if not user:
@@ -173,7 +173,7 @@ async def handle_update(update: dict, db):
         message_text, markup = generate_cabinet_message(user, telegram_id, db)
         bot.send_message(chat_id, message_text, reply_markup=main_menu())
         return
-    
+
         # --- Реферальный старт ---
         ref_code = None
         if text.startswith("/start"):
@@ -181,7 +181,7 @@ async def handle_update(update: dict, db):
         if len(parts) > 1:
         ref_code = parts[1].strip()
         print(f"⚡ Старт с рефкодом: {ref_code}")
-    
+
         if not user:
         print(f"👤 Новый пользователь. Telegram ID: {telegram_id}, рефкод: {ref_code}")
         user = create_user(db, telegram_id, referrer_code=ref_code)
@@ -193,7 +193,7 @@ async def handle_update(update: dict, db):
         inviter.total_earned += BONUS_AMOUNT
         db.commit()
         print(f"✅ Начислено {BONUS_AMOUNT} пригласившему: {ref_code}")
-    
+
         bot.send_message(
         chat_id,
         "👋 Добро пожаловать!\n\n"
@@ -204,29 +204,29 @@ async def handle_update(update: dict, db):
         reply_markup=main_menu()
         )
         return
-    
+
         # --- Команды ---
         if text == "/admin_stats" and user.telegram_id in ADMIN_IDS:
         from utils import get_stats_summary
         stats = get_stats_summary(db)
         bot.send_message(chat_id, stats)
         return
-    
+
         if text == "/admin_referrals" and user.telegram_id in ADMIN_IDS:
         from admin_commands import handle_admin_stats
         handle_admin_stats(db, chat_id, bot)
         return
-    
+
         if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
         message_text, markup = generate_cabinet_message(user, telegram_id, db)
         bot.send_message(chat_id, message_text, reply_markup=markup)
         return
-    
+
         if text == "🤝 Партнёрская программа":
         message_text, markup = generate_withdraw_info(user, telegram_id)
         bot.send_message(chat_id, message_text, reply_markup=main_menu())
         return
-    
+
         if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
         filename = {
         "💳 Купить подписку": "subscribe.txt",
@@ -240,7 +240,7 @@ async def handle_update(update: dict, db):
         response = "Файл с информацией пока не загружен."
         bot.send_message(chat_id, response, reply_markup=main_menu())
         return
-    
+
         # --- Проверка лимита ---
         if not user.is_unlimited:
         if user.free_messages_used >= FREE_MESSAGES_LIMIT:
@@ -250,29 +250,29 @@ async def handle_update(update: dict, db):
         reply_markup=main_menu()
         )
         return
-    
-    
+
+
         # --- Assistant API (OpenAI) ---
         try:
         assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
-        except Exception as e:
-            print('❌ Ошибка в handle_update:', e)
-                    if "run is active" in str(e):
-                        print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
-                        user.thread_id = None
-                        db.commit()
-                        assistant_response, thread_id = send_message_to_assistant(None, text)
-                    else:
-                        raise e
-    
-                if not user.thread_id:
-                    update_user_thread_id(db, user, thread_id)
-    
-                increment_message_count(db, user)
-                assistant_response = clean_markdown(assistant_response)
-                bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
-    
-        except Exception as e:
-            print("❌ Ошибка в handle_update:", e)
-        finally:
-            db.close()
+    except Exception as e:
+        print('❌ Ошибка в handle_update:', e)
+                if "run is active" in str(e):
+                    print("⚠️ Предыдущий run ещё выполняется. Сбрасываю thread.")
+                    user.thread_id = None
+                    db.commit()
+                    assistant_response, thread_id = send_message_to_assistant(None, text)
+                else:
+                    raise e
+
+            if not user.thread_id:
+                update_user_thread_id(db, user, thread_id)
+
+            increment_message_count(db, user)
+            assistant_response = clean_markdown(assistant_response)
+            bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
+
+    except Exception as e:
+        print("❌ Ошибка в handle_update:", e)
+    finally:
+        db.close()
