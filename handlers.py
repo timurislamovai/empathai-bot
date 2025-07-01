@@ -63,6 +63,26 @@ async def handle_update(update: dict):
 
             if data == "withdraw_request":
                 user = get_user_by_telegram_id(db, telegram_id)
+
+if text == "🗓 Купить на 1 месяц":
+            plan = "monthly"
+        elif text == "📅 Купить на 1 год":
+            plan = "yearly"
+        else:
+            plan = None
+        
+        if plan:
+            invoice_id = int(time.time())
+            payment_url = generate_payment_url(telegram_id, invoice_id, plan)
+        
+            bot.send_message(
+                chat_id,
+                "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💳 Перейти к оплате", url=payment_url)]
+                ])
+            )
+            return
                 if not user:
                     bot.send_message(chat_id, "Ошибка: пользователь не найден.")
                     return
@@ -105,25 +125,7 @@ async def handle_update(update: dict):
             return
         
         # 🔁 Обработка выбора тарифа с кнопкой оплаты
-        if text == "🗓 Купить на 1 месяц":
-            plan = "monthly"
-        elif text == "📅 Купить на 1 год":
-            plan = "yearly"
-        else:
-            plan = None
         
-        if plan:
-            invoice_id = int(time.time())
-            payment_url = generate_payment_url(telegram_id, invoice_id, plan)
-        
-            bot.send_message(
-                chat_id,
-                "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💳 Перейти к оплате", url=payment_url)]
-                ])
-            )
-            return
 
 
             # 🔒 Классификация уровня тревожности и реакция
