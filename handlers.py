@@ -55,14 +55,6 @@ async def handle_update(update: dict):
 
     db = SessionLocal()
     try:
-        message = update.get("message")
-        if message:
-            text = message.get("text", "")
-            print(f"👀 Получено сообщение: {repr(text)}")
-            text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
-            chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])
-            user = get_user_by_telegram_id(db, telegram_id)
         if "callback_query" in update:
             query = update["callback_query"]
             data = query["data"]
@@ -81,6 +73,8 @@ async def handle_update(update: dict):
         message = update.get("message")
         if message:
             text = message.get("text", "")
+            print(f"👀 Получено сообщение: {repr(text)}")
+            text = text.strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
             user = get_user_by_telegram_id(db, telegram_id)
@@ -88,25 +82,20 @@ async def handle_update(update: dict):
        # 🔁 Кнопка "Купить подписку"
         if text == "💳 Купить подписку":
             print("👉 Нажата кнопка Купить подписку")
-            response_text = (
+            text = (
                 "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
                 "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
                 "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
                 "Выбери вариант подписки ниже:"
             )
-            bot.send_message(
-                chat_id,
-                response_text,
-                reply_markup=ReplyKeyboardMarkup(
-                    keyboard=[
-                        [KeyboardButton("Купить на 1 месяц")],
-                        [KeyboardButton("Купить на 1 год")],
-                        [KeyboardButton("🔙 Назад в главное меню")]
-                    ],
-                    resize_keyboard=True
-                ),
-                parse_mode="Markdown"
-            )
+            bot.send_message(chat_id, text, reply_markup=ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton("🗓 Купить на 1 месяц")],
+                    [KeyboardButton("📅 Купить на 1 год")],
+                    [KeyboardButton("🔙 Назад в главное меню")]
+                ],
+                resize_keyboard=True
+            ), parse_mode="Markdown")
             return
         
         # 🔁 Назад в главное меню
@@ -115,10 +104,10 @@ async def handle_update(update: dict):
             bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
             return
         
-        # 🔁 Обработка выбора тарифа с кнопкой оплаты (обязательно отдельно, на верхнем уровне!)
-        if text == "Купить на 1 месяц":
+        # 🔁 Обработка выбора тарифа с кнопкой оплаты
+        if text == "🗓 Купить на 1 месяц":
             plan = "monthly"
-        elif text == "Купить на 1 год":
+        elif text == "📅 Купить на 1 год":
             plan = "yearly"
         else:
             plan = None
