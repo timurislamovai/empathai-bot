@@ -11,6 +11,15 @@ from models import (
     create_user,
     update_user_thread_id,
     increment_message_count,
+            user = get_user_by_telegram_id(db, telegram_id)
+            if user.total_messages % 5 == 0:
+                feedback_question = "Как ты себя сейчас чувствуешь?"
+                feedback_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
+                    [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
+                    [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
+                ])
+                bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
     reset_user_thread
 )
 from openai_api import send_message_to_assistant
@@ -67,6 +76,26 @@ async def handle_update(update: dict):
         message = update.get("message")
         if message:
             text = message.get("text", "")
+            if text == "❓ Гид по боту":
+                with open("texts/guide.txt", "r", encoding="utf-8") as f:
+                    bot.send_message(chat_id, f.read())
+                return
+
+            elif text == "📜 Условия пользования":
+                with open("texts/rules.txt", "r", encoding="utf-8") as f:
+                    bot.send_message(chat_id, f.read())
+                return
+
+            elif text == "👤 Личный кабинет":
+                message_text = generate_cabinet_message(user, telegram_id, db)
+                bot.send_message(chat_id, message_text)
+                return
+
+            elif text == "🔄 Сбросить диалог":
+                reset_user_thread(db, user)
+                update_user_thread_id(db, user, None)
+                bot.send_message(chat_id, "🧠 Диалог сброшен. Ты можешь начать сначала.")
+                return
             chat_id = message["chat"]["id"]
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
@@ -93,13 +122,13 @@ async def handle_update(update: dict):
 
             # Обработка через Assistant API
             try:
-                response, thread_id = send_message_to_assistant(user.thread_id, text)
+                response, thread_id = send_message_to_assistant(user, text)
                 if not user.thread_id:
                     update_user_thread_id(db, user, thread_id)
             except Exception as e:
                 if "run is already active" in str(e).lower():
                     update_user_thread_id(db, user, None)
-                    response, thread_id = send_message_to_assistant(user.thread_id, text)
+                    response, thread_id = send_message_to_assistant(user, text)
                 else:
                     raise e
 
