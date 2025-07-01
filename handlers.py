@@ -65,6 +65,7 @@ async def handle_update(update: dict):
             user = get_user_by_telegram_id(db, telegram_id)
 
             if text == "💳 Купить подписку":
+                print("👉 Нажата кнопка Купить подписку")
                 text = (
                     "💳 Подписка на EmpathAI\n\n"
                     "🗓 1 месяц: ~~1 800 ₽~~ → 1 199 ₽\n"
