@@ -22,7 +22,7 @@ from openai_api import send_message_to_assistant
 def subscription_plan_keyboard():
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton("🗓 1 месяц — 1 199 ₽"), KeyboardButton("📅 1 год — 11 999 ₽")],
+            [KeyboardButton("🗓 1 месяц"), KeyboardButton("📅 1 год")],
             [KeyboardButton("🔙 Назад в меню")]
         ],
         resize_keyboard=True
