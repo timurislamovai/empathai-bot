@@ -18,6 +18,16 @@ from models import (
 )
 from openai_api import send_message_to_assistant
 
+# 👇 Клавиатура с выбором тарифа подписки
+def subscription_plan_keyboard():
+    return ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("🗓 1 месяц — 1 199 ₽"), KeyboardButton("📅 1 год — 11 999 ₽")],
+            [KeyboardButton("🔙 Назад в меню")]
+        ],
+        resize_keyboard=True
+    )
+
 # ✅ Telegram ID админов, которым разрешена команда /admin_stats
 ADMIN_IDS = ["944583273", "396497806"]  # 🔁 Замени на свой Telegram ID из личного кабинета
 
