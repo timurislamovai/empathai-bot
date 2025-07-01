@@ -1,16 +1,10 @@
-# --- ВРЕМЕННЫЙ БЛОК: создаёт колонку is_unlimited в базе ---
-from database import engine
-from sqlalchemy import text
-
-with engine.connect() as conn:
-    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_unlimited BOOLEAN DEFAULT FALSE;"))
-    print("✅ Поле is_unlimited добавлено (повторно).")
-# --- КОНЕЦ временного блока ---
 
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from handlers import handle_update  # Импортируем только обработчик сообщений
+import traceback
+from datetime import datetime
 
 app = FastAPI()
 
@@ -20,11 +14,15 @@ async def root():
 
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
-    data = await request.json()
     try:
+        data = await request.json()
         return await handle_update(data)  # Обработка сообщения и лимитов в handlers.py
     except Exception as e:
-        import traceback
         print("❗ Ошибка в обработчике Webhook:")
         traceback.print_exc()
+        try:
+            with open("logs/error.log", "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.now()}] ❌ Ошибка: {str(e)}\n")
+        except:
+            pass
         return JSONResponse(status_code=500, content={"error": str(e)})
