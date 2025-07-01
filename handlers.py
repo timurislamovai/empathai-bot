@@ -12,14 +12,6 @@ from models import (
     update_user_thread_id,
     increment_message_count,
             user = get_user_by_telegram_id(db, telegram_id)
-            if user.total_messages % 5 == 0:
-                feedback_question = "Как ты себя сейчас чувствуешь?"
-                feedback_keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("😊 Хорошо", callback_data="feedback_good")],
-                    [InlineKeyboardButton("😐 Нейтрально", callback_data="feedback_neutral")],
-                    [InlineKeyboardButton("😢 Плохо", callback_data="feedback_bad")]
-                ])
-                bot.send_message(chat_id, feedback_question, reply_markup=feedback_keyboard)
     reset_user_thread
 )
 from openai_api import send_message_to_assistant
