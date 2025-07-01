@@ -64,6 +64,15 @@ async def handle_update(update: dict):
             telegram_id = str(message["from"]["id"])  # ✅ теперь переменные доступны заранее
             user = get_user_by_telegram_id(db, telegram_id)
 
+            if text == "💳 Купить подписку":
+                text = (
+                    "💳 Подписка на EmpathAI\n\n"
+                    "🗓 1 месяц: ~~1 800 ₽~~ → 1 199 ₽\n"
+                    "📅 1 год: ~~14 400 ₽~~ → 11 999 ₽\n\n"
+                    "Выбери нужный вариант:"
+                )
+                bot.send_message(chat_id, text, reply_markup=subscription_plan_keyboard(), parse_mode="Markdown")
+                return
             # 🔒 Классификация уровня тревожности и реакция
             crisis_level = classify_crisis_level(text)
             
