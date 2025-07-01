@@ -95,7 +95,13 @@ async def handle_update(update: dict):
                 ), parse_mode="Markdown")
                 return
             
-            # 🔁 Обработка выбора тарифа
+            # 🔁 Назад в главное меню
+            if text == "🔙 Назад в главное меню":
+                print("↩ Возврат в главное меню")
+                bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+                return
+            
+            # 🔁 Обработка тарифа
             if text == "Купить на 1 месяц":
                 plan = "monthly"
             elif text == "Купить на 1 год":
@@ -108,8 +114,6 @@ async def handle_update(update: dict):
                 payment_url = generate_payment_url(telegram_id, invoice_id, plan)
                 bot.send_message(chat_id, f"🔗 Нажми, чтобы перейти к оплате:\n{payment_url}")
                 return
-
-
 
             # 🔒 Классификация уровня тревожности и реакция
             crisis_level = classify_crisis_level(text)
