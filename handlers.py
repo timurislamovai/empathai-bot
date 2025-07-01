@@ -73,6 +73,20 @@ async def handle_update(update: dict):
                 )
                 bot.send_message(chat_id, text, reply_markup=subscription_plan_keyboard(), parse_mode="Markdown")
                 return
+
+                if text.startswith("🗓 1 месяц"):
+                    plan = "monthly"
+                elif text.startswith("📅 1 год"):
+                    plan = "yearly"
+                else:
+                    plan = None
+            
+                if plan:
+                    invoice_id = int(time.time())
+                    payment_url = generate_payment_url(telegram_id, invoice_id, plan)
+                    bot.send_message(chat_id, f"🔗 Ваша ссылка для оплаты:\n{payment_url}")
+                    return
+
             # 🔒 Классификация уровня тревожности и реакция
             crisis_level = classify_crisis_level(text)
             
