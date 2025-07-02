@@ -76,6 +76,13 @@ def handle_update(update, db):
             telegram_id = str(message["from"]["id"])
             user = get_user_by_telegram_id(db, telegram_id)
 
+            # ✅ Автоматическое отключение доступа, если срок подписки истёк
+            if user.has_paid and user.subscription_expires_at:
+                if user.subscription_expires_at < datetime.utcnow():
+                    user.has_paid = False
+                    user.subscription_expires_at = None
+                    db.commit()
+
             if text == "💳 Купить подписку":
                 bot.send_message(
                     chat_id,
