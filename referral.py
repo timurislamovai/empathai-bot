@@ -1,17 +1,23 @@
-
-from telegram import KeyboardButton, ReplyKeyboardMarkup
-from datetime import datetime, timezone
 from models import User
+from telegram import KeyboardButton, ReplyKeyboardMarkup
+from datetime import datetime
 
 def generate_cabinet_message(user, telegram_id, db):
-    message_text = (
-        f"👤 Ваш Telegram ID: {telegram_id}\n"
-        f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
-        f"⏳ Пробный период: активен"
-    )
+    message_text = f"👤 Ваш Telegram ID: {telegram_id}\n"
+
+    if user.is_unlimited:
+        message_text += "✅ У вас безлимитный доступ к боту\n"
+    elif user.has_paid and user.subscription_expires_at:
+        days_left = (user.subscription_expires_at - datetime.utcnow()).days
+        message_text += f"📅 Подписка активна до {user.subscription_expires_at.strftime('%d.%m.%Y')} ({days_left} дней осталось)\n"
+    else:
+        message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
+        message_text += "⏳ Пробный период: активен\n"
+
     return message_text, ReplyKeyboardMarkup([
         [KeyboardButton("🤝 Партнёрская программа")]
     ], resize_keyboard=True)
+
 
 def generate_withdraw_info(user, telegram_id):
     total_referrals = 0
