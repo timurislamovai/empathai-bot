@@ -27,8 +27,11 @@ def generate_payment_url(telegram_id: str, invoice_id: int, plan: str) -> str:
     shp_plan = plan
 
     # ❗ Формируем подпись с учётом дополнительных параметров
-    signature_raw = f"{ROBO_LOGIN}:{out_summ}:{invoice_id}:shp_id={shp_id}:shp_plan={shp_plan}:{ROBO_PASSWORD1}"
+    
+    # ❗ Новый порядок: после Password1 идут shp_ параметры
+    signature_raw = f"{ROBO_LOGIN}:{out_summ}:{invoice_id}:{ROBO_PASSWORD1}:shp_id={shp_id}:shp_plan={shp_plan}"
     signature = hashlib.md5(signature_raw.encode()).hexdigest()
+
 
     params = {
         "MerchantLogin": ROBO_LOGIN,
