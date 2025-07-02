@@ -15,11 +15,6 @@ PLAN_PRICES = {
 def generate_payment_url(telegram_id: str, invoice_id: int, plan: str) -> str:
     """
     Генерирует платёжную ссылку Robokassa для выбранного плана.
-    
-    :param telegram_id: Telegram ID пользователя
-    :param invoice_id: Уникальный ID счёта (можно использовать timestamp или ID пользователя)
-    :param plan: 'monthly' или 'yearly'
-    :return: URL для оплаты через Robokassa
     """
     if plan not in PLAN_PRICES:
         raise ValueError("Недопустимый тип плана. Используй 'monthly' или 'yearly'.")
@@ -27,11 +22,14 @@ def generate_payment_url(telegram_id: str, invoice_id: int, plan: str) -> str:
     out_summ = str(PLAN_PRICES[plan])
     description = "Подписка на EmpathAI: 1 месяц" if plan == "monthly" else "Подписка на EmpathAI: 1 год"
 
-    # Формируем подпись: Login:OutSum:InvId:Password1
-    signature_raw = f"{ROBO_LOGIN}:{out_summ}:{invoice_id}:{ROBO_PASSWORD1}"
+    # Параметры shp_ — строго по алфавиту
+    shp_id = telegram_id
+    shp_plan = plan
+
+    # ❗ Формируем подпись с учётом дополнительных параметров
+    signature_raw = f"{ROBO_LOGIN}:{out_summ}:{invoice_id}:shp_id={shp_id}:shp_plan={shp_plan}:{ROBO_PASSWORD1}"
     signature = hashlib.md5(signature_raw.encode()).hexdigest()
 
-    # Дополнительные параметры shp_ — Robokassa их сохраняет и возвращает при callback
     params = {
         "MerchantLogin": ROBO_LOGIN,
         "OutSum": out_summ,
@@ -41,8 +39,8 @@ def generate_payment_url(telegram_id: str, invoice_id: int, plan: str) -> str:
         "Culture": "ru",
         "Encoding": "utf-8",
         "IsTest": 0,
-        "shp_id": telegram_id,
-        "shp_plan": plan
+        "shp_id": shp_id,
+        "shp_plan": shp_plan
     }
 
     base_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
