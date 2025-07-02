@@ -8,7 +8,7 @@ ROBO_PASSWORD1 = os.environ["ROBO_PASSWORD1"]
 
 # Цены подписки (в рублях)
 PLAN_PRICES = {
-    "monthly": 1199,
+    "monthly": 1,
     "yearly": 11999
 }
 
