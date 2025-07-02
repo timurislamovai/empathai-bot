@@ -19,8 +19,8 @@ async def payment_result(request: Request):
     telegram_id = form.get("shp_id")
     plan = form.get("shp_plan")
 
-    # ❗ Формируем подпись с учётом shp_ параметров (в алфавитном порядке!)
-    signature_raw = f"{out_summ}:{inv_id}:shp_id={telegram_id}:shp_plan={plan}:{ROBO_PASSWORD2}"
+    # ❗ Новый порядок — сначала пароль, потом shp_ параметры
+    signature_raw = f"{out_summ}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     if signature_value != expected_signature:
