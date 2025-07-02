@@ -19,19 +19,19 @@ async def payment_result(request: Request):
     telegram_id = form.get("shp_id")
     plan = form.get("shp_plan")
 
-    # Проверка подписи (по схеме Robokassa)
-    signature_raw = f"{out_summ}:{inv_id}:{ROBO_PASSWORD2}"
+    # ❗ Формируем подпись с учётом shp_ параметров (в алфавитном порядке!)
+    signature_raw = f"{out_summ}:{inv_id}:shp_id={telegram_id}:shp_plan={plan}:{ROBO_PASSWORD2}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     if signature_value != expected_signature:
         return PlainTextResponse("bad sign", status_code=400)
 
-    # Обновляем данные пользователя
+    # Обновляем пользователя
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
 
     if user:
-        update_user_subscription(db, user, plan)  # ты можешь задать дату окончания внутри этой функции
+        update_user_subscription(db, user, plan)
         db.commit()
 
     return PlainTextResponse("OK")
