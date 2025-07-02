@@ -46,7 +46,7 @@ def main_menu():
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
 
-async def handle_update(update: dict, db):
+def handle_update(update, db):
     print("👉 START handle_update")
     print("📦 update:", update)
 
