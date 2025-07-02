@@ -38,7 +38,6 @@ def generate_payment_url(telegram_id: str, invoice_id: int, plan: str) -> str:
         "SignatureValue": signature,
         "Culture": "ru",
         "Encoding": "utf-8",
-        "IsTest": 0,
         "shp_id": shp_id,
         "shp_plan": shp_plan
     }
