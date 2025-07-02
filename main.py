@@ -1,23 +1,33 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from handlers import handle_update  # Импортируем только обработчик сообщений
+from handlers import handle_update
+from database import SessionLocal  # ✅ для подключения к БД
+from payment_routes import router as payment_router
 import traceback
 from datetime import datetime
-from fastapi import FastAPI
-app = FastAPI()
 
-from payment_routes import router as payment_router
+app = FastAPI()
 app.include_router(payment_router)
+
 
 @app.get("/")
 async def root():
     return {"status": "ok"}
 
+
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     try:
         data = await request.json()
-        return await handle_update(data)  # Обработка сообщения и лимитов в handlers.py
+
+        # ✅ создаём сессию БД и передаём в handle_update
+        db = SessionLocal()
+
+        # ✅ вызываем обычную функцию — без await!
+        handle_update(data, db)
+
+        return {"ok": True}
+
     except Exception as e:
         print("❗ Ошибка в обработчике Webhook:")
         traceback.print_exc()
