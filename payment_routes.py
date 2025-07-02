@@ -9,7 +9,8 @@ router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 
-@router.post("/payment_result")
+@router.post("/payment/robokassa/result")
+
 async def payment_result(request: Request):
     form = await request.form()
 
