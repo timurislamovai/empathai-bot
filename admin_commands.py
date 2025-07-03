@@ -1,15 +1,27 @@
 # admin_commands.py
 
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from models import User, get_user_by_telegram_id, create_user
 from telegram import Bot
-from models import User
+from sqlalchemy.orm import Session
 
-# 📊 Обработчик команды /admin_referrals
-# Показывает ТОП 10 пользователей, которые пригласили больше всего людей по своей реферальной ссылке
-# Также выводит общее количество приглашений и количество уникальных пригласивших
+# ✅ /admin_stats — общая статистика
 def handle_admin_stats(db: Session, chat_id: int, bot: Bot):
-    # Получаем топ 10 пользователей по количеству рефералов (их referrer_code)
+    total_users = db.query(User).count()
+    paid_users = db.query(User).filter(User.has_paid == True).count()
+    unlimited_users = db.query(User).filter(User.is_unlimited == True).count()
+
+    bot.send_message(
+        chat_id,
+        f"📊 Общая статистика:\n"
+        f"👥 Всего пользователей: {total_users}\n"
+        f"💳 С подпиской: {paid_users}\n"
+        f"♾ Безлимит: {unlimited_users}"
+    )
+
+# ✅ /admin_referrals — ТОП пригласивших
+def handle_admin_referrals(db: Session, chat_id: int, bot: Bot):
+    from sqlalchemy import func
+
     top_referrers = (
         db.query(User.referrer_code, func.count(User.id).label("ref_count"))
         .filter(User.referrer_code.isnot(None))
@@ -19,22 +31,31 @@ def handle_admin_stats(db: Session, chat_id: int, bot: Bot):
         .all()
     )
 
-    # Подсчитываем общее количество приглашённых пользователей
-    total_invited = db.query(User).filter(User.referrer_code.isnot(None)).count()
+    total_referrals = db.query(User).filter(User.referrer_code.isnot(None)).count()
+    unique_referrers = db.query(User.referrer_code).distinct().count()
 
-    # Подсчитываем количество уникальных пользователей, которые кого-то пригласили
-    unique_referrers = db.query(User.referrer_code).filter(User.referrer_code.isnot(None)).distinct().count()
+    message = "📊 Реферальная статистика (ТОП 10):\n"
+    for i, (ref_code, count) in enumerate(top_referrers, start=1):
+        message += f"{i}. {ref_code} — {count} приглашённых\n"
 
-    # Формируем текст для отправки
-    if not top_referrers:
-        stats_text = "📊 Пока никто никого не пригласил."
-    else:
-        stats_text = "📊 Реферальная статистика (ТОП 10):\n"
-        for i, (ref_code, count) in enumerate(top_referrers, start=1):
-            stats_text += f"{i}. {ref_code} — {count} приглашённых\n"
+    message += f"\n🔢 Всего приглашённых: {total_referrals}"
+    message += f"\n💸 Уникальных рефереров: {unique_referrers}"
 
-        stats_text += f"\n🔢 Всего приглашённых: {total_invited}\n"
-        stats_text += f"💸 Уникальных рефереров: {unique_referrers}"
+    bot.send_message(chat_id, message)
 
-    # ✅ Отправляем результат в любом случае
-    bot.send_message(chat_id, stats_text)
+# ✅ /give_unlimited <id> — выдать безлимит
+def give_unlimited_access(db: Session, bot: Bot, chat_id: int, text: str):
+    parts = text.strip().split()
+    if len(parts) != 2:
+        bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
+        return
+
+    target_id = parts[1]
+    target_user = get_user_by_telegram_id(db, target_id)
+    if not target_user:
+        target_user = create_user(db, target_id)
+
+    target_user.is_unlimited = True
+    db.commit()
+
+    bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимитный доступ.")
