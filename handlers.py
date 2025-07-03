@@ -196,9 +196,16 @@ def handle_update(update, db):
                 return
 
             if text == "🤝 Партнёрская программа":
-                message_text, markup = generate_withdraw_info(user, telegram_id)
-                bot.send_message(chat_id, message_text, reply_markup=main_menu())
+                referrals_count = db.query(User).filter(User.referrer_code == str(user.telegram_id)).count()
+                total_earned = user.ref_earned or 0
+                balance = user.ref_earned or 0
+            
+                message_text = generate_withdraw_info(user, referrals_count, total_earned, balance)
+                markup = ReplyKeyboardMarkup([[KeyboardButton("👤 Личный кабинет")]], resize_keyboard=True)
+            
+                bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
+
 
             if text in ["💳 Купить подписку", "📜 Условия пользования", "❓ Гид по боту"]:
                 filename = {
