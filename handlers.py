@@ -1,4 +1,5 @@
 from robokassa import generate_payment_url
+from admin_commands import handle_admin_stats
 import os
 import requests
 from diagnostics import contains_crisis_words
@@ -8,7 +9,6 @@ from filters import classify_crisis_level, log_crisis_message
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import time
-from admin_commands import handle_admin_stats
 from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
