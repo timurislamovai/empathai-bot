@@ -1,5 +1,5 @@
 from robokassa import generate_payment_url
-
+from ui import main_menu
 import os
 import requests
 from diagnostics import contains_crisis_words
@@ -36,17 +36,6 @@ def subscription_plan_keyboard():
         ],
         resize_keyboard=True
     )
-
-
-def main_menu():
-    buttons = [
-        [KeyboardButton("💳 Купить подписку")],
-        [KeyboardButton("📜 Условия пользования"), KeyboardButton("❓ Гид по боту")],
-        [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")],
-        [KeyboardButton("🤝 Партнёрская программа")]
-    ]
-    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-
 
 def handle_update(update, db):
     print("👉 START handle_update")
