@@ -16,13 +16,19 @@ def generate_cabinet_message(user, telegram_id, db):
         message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
         message_text += "⏳ Пробный период: активен\n"
 
+    # 👥 Партнёрская информация
+    message_text += "\n🤝 Партнёрская программа:\n"
+    message_text += f"👥 Приглашено: {user.ref_count} чел.\n"
+    message_text += f"💰 Заработано: {user.ref_earned} ₽\n"
+    message_text += f"🔗 Ссылка: https://t.me/EmpathAIChat_bot?start={user.telegram_id}\n"
+
     return message_text, main_menu()
 
 
 def generate_withdraw_info(user, referrals_count, total_earned, balance):
     return (
         f"🔗 Ваша реферальная ссылка:\n"
-        f"https://t.me/EmpathAIChat_bot?start={user.telegram_id}"
+        f"https://t.me/EmpathAIChat_bot?start={user.telegram_id}\n"
         f"🤝 Приглашайте — и зарабатывайте!\n"
         f"💸 Вы получаете 30% от каждой оплаченной подписки по вашей ссылке.\n\n"
         f"📊 Статистика:\n"
