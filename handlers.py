@@ -265,6 +265,12 @@ async def handle_update(update, db):
                     )
                     return
 
+
+            if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+                message_text, markup = generate_cabinet_message(user, str(message["from"]["id"]), db)
+                bot.send_message(chat_id, message_text, reply_markup=markup)
+                return
+
             try:
                 assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
             except Exception as e:
