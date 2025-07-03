@@ -130,16 +130,22 @@ def handle_update(update, db):
 
             # ✅ Обработка команды /admin_referrals
             if text == "/admin_referrals":
+                print(f"📌 Твой telegram_id: {telegram_id}")
+                print(f"🛂 ADMIN_IDS: {ADMIN_IDS}")
+            
                 if telegram_id not in ADMIN_IDS:
+                    print("❌ Нет доступа к команде")
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
+            
+                print("✅ Вход в handle_admin_stats")
                 try:
                     handle_admin_stats(db, chat_id, bot)
+                    print("✅ handle_admin_stats выполнена")
                 except Exception as e:
                     print(f"❌ Ошибка в handle_admin_stats: {e}")
                     bot.send_message(chat_id, f"❌ Ошибка при получении статистики: {e}")
                 return
-
 
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
