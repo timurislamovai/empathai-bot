@@ -9,7 +9,7 @@ from telegram import Bot
 router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
-REFERRAL_REWARD_PERCENT = int(os.environ.get("REFERRAL_REWARD_PERCENT", 20))  # ✅ можно изменить через .env
+REFERRAL_REWARD_PERCENT = 30  # ✅ Жёстко заданный процент (можно поменять здесь)
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
