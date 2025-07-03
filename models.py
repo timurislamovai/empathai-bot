@@ -19,9 +19,6 @@ class User(Base):
     referrer_code = Column(String, nullable=True)    # Реферальный код
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    balance = Column(Float, default=0.0)
-    total_earned = Column(Float, default=0.0)
-
     # ✅ Новые поля для рефералов:
     ref_count = Column(Integer, default=0)
     ref_earned = Column(Integer, default=0)
