@@ -122,6 +122,7 @@ def handle_update(update, db):
             bot.send_message(chat_id, message_text, reply_markup=main_menu())
             return
 
+        # 📊 Команда /admin_referrals — показать топ пригласивших
         if text == "/admin_referrals":
             if telegram_id not in ADMIN_IDS:
                 bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
@@ -129,27 +130,55 @@ def handle_update(update, db):
             try:
                 handle_admin_stats(db, chat_id, bot)
             except Exception as e:
+                print(f"❌ Ошибка в handle_admin_stats: {e}")
                 bot.send_message(chat_id, f"❌ Ошибка: {e}")
             return
-
+        
+        # 📈 Команда /admin_stats — статистика по базе
+        if text == "/admin_stats":
+            if telegram_id not in ADMIN_IDS:
+                bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+                return
+            try:
+                total_users = db.query(User).count()
+                paid_users = db.query(User).filter(User.has_paid == True).count()
+                unlimited_users = db.query(User).filter(User.is_unlimited == True).count()
+        
+                bot.send_message(
+                    chat_id,
+                    f"📊 Общая статистика:\n"
+                    f"👥 Всего пользователей: {total_users}\n"
+                    f"💳 С подпиской: {paid_users}\n"
+                    f"♾ Безлимит: {unlimited_users}"
+                )
+            except Exception as e:
+                print(f"❌ Ошибка в /admin_stats: {e}")
+                bot.send_message(chat_id, f"❌ Ошибка: {e}")
+            return
+        
+        # 🆓 Команда /give_unlimited <telegram_id> — выдать безлимит
         if text.startswith("/give_unlimited"):
             if telegram_id not in ADMIN_IDS:
                 bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                 return
-
+        
             parts = text.strip().split()
             if len(parts) != 2:
                 bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
                 return
-
+        
             target_id = parts[1]
             target_user = get_user_by_telegram_id(db, target_id)
+        
             if not target_user:
                 target_user = create_user(db, target_id)
+        
             target_user.is_unlimited = True
             db.commit()
+        
             bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимитный доступ.")
             return
+
 
         if text.startswith("/start"):
             parts = text.strip().split(" ", 1)
