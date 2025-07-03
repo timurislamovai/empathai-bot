@@ -1,7 +1,7 @@
 from models import User
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from datetime import datetime
-from handlers import main_menu  # Подключаем основное меню
+from ui import main_menu  # Подключаем основное меню
 
 
 def generate_cabinet_message(user, telegram_id, db):
