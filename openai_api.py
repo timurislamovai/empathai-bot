@@ -2,6 +2,8 @@
 
 import openai
 import os
+from sqlalchemy.orm import Session
+from models import User, update_user_thread_id
 
 client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 ASSISTANT_ID = os.environ["ASSISTANT_ID"]
@@ -31,3 +33,8 @@ def send_message_to_assistant(thread_id: str | None, user_message: str) -> tuple
     response = messages.data[0].content[0].text.value
 
     return response, thread.id
+
+def reset_user_thread(db: Session, user: User):
+    user.thread_id = None
+    db.commit()
+
