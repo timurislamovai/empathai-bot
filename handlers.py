@@ -131,7 +131,7 @@ def handle_update(update, db):
              # ✅ Обработка команды /admin_referrals
             if text == "/admin_referrals" and telegram_id in ADMIN_IDS:
                 try:
-                    handle_admin_stats(update, context=None, db=db)
+                    handle_admin_stats(db, chat_id, bot)
                 except Exception as e:
                     print(f"❌ Ошибка в handle_admin_stats: {e}")
                 return
@@ -178,11 +178,6 @@ def handle_update(update, db):
                 stats = get_stats_summary(db)
                 bot.send_message(chat_id, stats)
                 return
-
-            if text == "/admin_referrals" and user.telegram_id in ADMIN_IDS:
-                handle_admin_stats(db, chat_id, bot)
-                return
-
 
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
                 message_text, markup = generate_cabinet_message(user, telegram_id, db)
