@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Float, Boo
 from database import Base
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import Date
 
 class User(Base):
     __tablename__ = "users"
@@ -10,6 +11,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True)
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
+    last_message_date = Column(Date, default=None)
 
     # 👇 Дополнительные поля для аналитики:
     first_seen_at = Column(DateTime, default=datetime.utcnow)
@@ -59,7 +61,7 @@ def update_user_thread_id(db: Session, user: User, thread_id: str):
 def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
     db.commit()
-
+last_message_date = Column(Date, default=None)
 
 def reset_user_thread(db: Session, user: User):
     user.thread_id = None
