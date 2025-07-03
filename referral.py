@@ -1,6 +1,7 @@
 from models import User
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from datetime import datetime
+from handlers import main_menu  # Подключаем основное меню
 
 
 def generate_cabinet_message(user, telegram_id, db):
@@ -15,9 +16,7 @@ def generate_cabinet_message(user, telegram_id, db):
         message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
         message_text += "⏳ Пробный период: активен\n"
 
-    return message_text, ReplyKeyboardMarkup([
-        [KeyboardButton("🤝 Партнёрская программа")]
-    ], resize_keyboard=True)
+    return message_text, main_menu()
 
 
 def generate_withdraw_info(user, referrals_count, total_earned, balance):
@@ -42,4 +41,3 @@ def generate_withdraw_info(user, referrals_count, total_earned, balance):
         f"• Страну проживания\n\n"
         f"👤 После этого администратор свяжется с вами для подтверждения и перевода."
     )
-
