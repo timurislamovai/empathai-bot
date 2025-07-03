@@ -5,7 +5,7 @@ from utils import clean_markdown
 from openai_api import send_message_to_assistant, reset_user_thread
 from models import increment_message_count
 from filters import contains_crisis_words, log_crisis_message
-
+from admin_commands import handle_admin_stats
 
 
 from telegram import Bot
@@ -14,9 +14,48 @@ from models import User
 
 
 
+
+
+ADMIN_IDS = ["944583273", "396497806"]  # замените на ваши реальные ID
+
 def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    # Здесь в будущем будет обработка команд
-    pass
+    if text == "/start":
+        bot.send_message(chat_id, "👋 Привет! Я — Ила, ИИ-психолог от EmpathAI. Расскажи, что тебя беспокоит.", reply_markup=main_menu())
+        return
+
+    if text == "/admin_referrals":
+        if str(user.telegram_id) in ADMIN_IDS:
+            try:
+                handle_admin_stats(db, chat_id, bot)
+            except Exception as e:
+                print(f"❌ Ошибка в handle_admin_stats: {e}")
+        else:
+            bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+        return
+
+    if text.startswith("/give_unlimited"):
+        if str(user.telegram_id) not in ADMIN_IDS:
+            bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+            return
+
+        parts = text.strip().split()
+        if len(parts) != 2:
+            bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
+            return
+
+        target_id = parts[1]
+        target_user = get_user_by_telegram_id(db, target_id)
+        if target_user:
+            target_user.is_unlimited = True
+            db.commit()
+            bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимит.")
+        else:
+            bot.send_message(chat_id, f"⚠️ Пользователь с ID {target_id} не найден.")
+        return
+
+    # По умолчанию — неизвестная команда
+    bot.send_message(chat_id, "🤖 Неизвестная команда.", reply_markup=main_menu())
+
 
 
 
