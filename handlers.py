@@ -161,6 +161,7 @@ def handle_update(update, db):
 
                 if not user:
                     user = create_user(db, telegram_id, referrer_code=ref_code)
+                    bot.send_message(
                         chat_id,
                         "👋 Добро пожаловать!\n\n"
                         "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
