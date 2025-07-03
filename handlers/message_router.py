@@ -6,15 +6,21 @@ from admin_commands import handle_admin_stats
 from robokassa import generate_payment_url
 from openai_api import reset_user_thread
 from ui import main_menu, subscription_plan_keyboard
-
+from admin_commands import (
+    handle_admin_stats,
+    handle_admin_referrals,
+    give_unlimited_access
+)
 import time
 from datetime import datetime
 
 ADMIN_IDS = ["944583273", "396497806"]  # 🔁 Укажи своих админов
 
 def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    if text == "/admin_referrals":
-        if str(user.telegram_id) not in ADMIN_IDS:
+    telegram_id = str(user.telegram_id)
+
+    if text == "/admin_stats":
+        if telegram_id not in ADMIN_IDS:
             bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
             return
         try:
@@ -24,26 +30,25 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
             bot.send_message(chat_id, f"❌ Ошибка: {e}")
         return
 
-    if text == "/admin_stats":
-        if str(user.telegram_id) not in ADMIN_IDS:
+    if text == "/admin_referrals":
+        if telegram_id not in ADMIN_IDS:
             bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
             return
         try:
-            total_users = db.query(User).count()
-            paid_users = db.query(User).filter(User.has_paid == True).count()
-            unlimited_users = db.query(User).filter(User.is_unlimited == True).count()
-
-            bot.send_message(
-                chat_id,
-                f"📊 Общая статистика:"
-                f"👥 Всего пользователей: {total_users}"
-                f"💳 С подпиской: {paid_users}"
-                f"♾ Безлимит: {unlimited_users}"
-            )
+            handle_admin_referrals(db, chat_id, bot)
         except Exception as e:
-            print(f"❌ Ошибка в /admin_stats: {e}")
+            print(f"❌ Ошибка в handle_admin_referrals: {e}")
             bot.send_message(chat_id, f"❌ Ошибка: {e}")
         return
+
+    if text.startswith("/give_unlimited") and telegram_id in ADMIN_IDS:
+        try:
+            give_unlimited_access(db, bot, chat_id, text)
+        except Exception as e:
+            print(f"❌ Ошибка в give_unlimited_access: {e}")
+            bot.send_message(chat_id, f"❌ Ошибка: {e}")
+        return
+
 
 def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
     if text == "💳 Купить подписку":
