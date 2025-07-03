@@ -47,7 +47,7 @@ async def handle_update(update, db):
             query = update["callback_query"]
             data = query["data"]
             chat_id = query["message"]["chat"]["id"]
-            telegram_id = str(query["from"]["id"])
+            telegram_id = query["from"]["id"]
             user = get_user_by_telegram_id(db, telegram_id)
 
             if data == "withdraw_request":
@@ -64,7 +64,7 @@ async def handle_update(update, db):
             text = message.get("text", "").strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
             print(f"👀 Получено сообщение: {repr(text)}")
             chat_id = message["chat"]["id"]
-            telegram_id = str(message["from"]["id"])
+            telegram_id = message["from"]["id"]
             user = get_user_by_telegram_id(db, telegram_id)
 
             # ✅ Автоматическое отключение доступа, если срок подписки истёк
