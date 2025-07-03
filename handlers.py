@@ -1,5 +1,5 @@
 from robokassa import generate_payment_url
-from admin_commands import handle_admin_stats
+
 import os
 import requests
 from diagnostics import contains_crisis_words
@@ -7,6 +7,7 @@ from datetime import datetime
 from models import User
 from filters import classify_crisis_level, log_crisis_message
 from referral import generate_cabinet_message, generate_withdraw_info
+from admin_commands import handle_admin_stats
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import time
 from utils import clean_markdown
@@ -179,7 +180,6 @@ def handle_update(update, db):
                 return
 
             if text == "/admin_referrals" and user.telegram_id in ADMIN_IDS:
-                from admin_commands import handle_admin_stats
                 handle_admin_stats(db, chat_id, bot)
                 return
 
