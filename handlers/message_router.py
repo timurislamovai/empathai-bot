@@ -74,37 +74,31 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
 
 
 def handle_menu_button(text, user, chat_id, bot, db):
-    if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-        handle_personal_cabinet(user, chat_id, bot, db)
+    if text in ["💳 Купить подписку", "🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
+        bot.send_message(chat_id, "Выберите срок подписки:", reply_markup=subscription_plan_keyboard())
         return
-
+        
+     if text == "📜 Условия пользования":
+        handle_terms(chat_id, bot) 
+        return
+         
     if text == "🔁 Сбросить диалог":
         handle_reset(user, chat_id, bot, db)
         return
 
-    if text == "📜 Условия пользования":
-        handle_terms(chat_id, bot)
-        return
-
     if text == "🧠 Гид по боту":
         handle_guide(chat_id, bot)
+        return
+        
+    if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
+        handle_personal_cabinet(user, chat_id, bot, db)
         return
 
     if text == "🤝 Партнёрская программа":
         handle_referral_info(user, chat_id, bot, db)
         return
 
-    if text == "🆘 Помощь":
-        handle_support(chat_id, bot)
-        return
-
-    if text == "ℹ️ О нас":
-        handle_about(chat_id, bot)
-        return
-
-    if text in ["💳 Купить подписку", "🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
-        bot.send_message(chat_id, "Выберите срок подписки:", reply_markup=subscription_plan_keyboard())
-        return
+    
 
 
     # Если ни одно из меню не подошло — это обычное сообщение
