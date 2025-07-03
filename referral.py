@@ -22,7 +22,7 @@ def generate_cabinet_message(user, telegram_id, db):
 def generate_withdraw_info(user, referrals_count, total_earned, balance):
     return (
         f"🔗 Ваша реферальная ссылка:\n"
-        f"https://t.me/EmpathAIChat_bot?start=ref{user.telegram_id}\n\n"
+        f"https://t.me/EmpathAIChat_bot?start={user.telegram_id}"
         f"🤝 Приглашайте — и зарабатывайте!\n"
         f"💸 Вы получаете 30% от каждой оплаченной подписки по вашей ссылке.\n\n"
         f"📊 Статистика:\n"
