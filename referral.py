@@ -20,30 +20,18 @@ def generate_cabinet_message(user, telegram_id, db):
 
 
 def generate_withdraw_info(user, telegram_id):
-    total_referrals = 0
-    from models import User as U
-    from database import SessionLocal
-    db = SessionLocal()
-
-    try:
-        total_referrals = db.query(U).filter(U.referrer_code == telegram_id).count()
-    except:
-        pass
-    finally:
-        db.close()
-
     referrals_info = (
         f"👥 Вы ещё никого не пригласили."
-        if total_referrals == 0 else
-        f"👥 Вы пригласили: {total_referrals} человек(а)"
+        if user.ref_count == 0 else
+        f"👥 Вы пригласили: {user.ref_count} человек(а)"
     )
 
     message_text = (
-        f"🔗 Ваша ссылка: https://t.me/EmpathAIChat_bot?start={telegram_id}\n"
+        f"🔗 Ваша ссылка: https://t.me/EmpathAIChat_bot?start=ref{telegram_id}\n"
         f"💰 Поделитесь ссылкой — и получайте доход\n"
         f"{referrals_info}\n"
-        f"💰 Баланс: {user.balance:.2f}\n"
-        f"📈 Всего заработано: {user.total_earned:.2f}\n"
+        f"💰 Баланс: {user.ref_earned}₸\n"
+        f"📈 Всего заработано: {user.ref_earned}₸\n"
         f"💱 Выплаты возможны в тенге, рублях или долларах\n\n"
 
         f"Чтобы вывести средства, напишите администратору empathpay@bk.ru\n"
