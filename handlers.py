@@ -47,7 +47,7 @@ async def handle_update(update, db):
 # 🤖 GPT-ОБРАБОТКА СООБЩЕНИЯ
 ######################################################################
 
-            try:
+    try:
         if "callback_query" in update:
             query = update["callback_query"]
             data = query["data"]
