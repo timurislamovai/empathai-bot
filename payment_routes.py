@@ -4,10 +4,14 @@ import hashlib
 import os
 from database import SessionLocal
 from models import get_user_by_telegram_id, update_user_subscription
+from telegram import Bot
 
 router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
+REFERRAL_REWARD_PERCENT = int(os.environ.get("REFERRAL_REWARD_PERCENT", 20))  # ✅ можно изменить через .env
+
+bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
 @router.post("/payment/robokassa/result")
 async def payment_result(request: Request):
@@ -33,5 +37,24 @@ async def payment_result(request: Request):
     if user:
         update_user_subscription(db, user, plan)
         db.commit()
+
+        # ✅ Начисление процентов пригласившему
+        if user.referrer_id:
+            referrer = get_user_by_telegram_id(db, user.referrer_id)
+            if referrer:
+                try:
+                    amount = int(float(out_summ))
+                    reward = int(amount * REFERRAL_REWARD_PERCENT / 100)
+                    referrer.ref_earned += reward
+                    referrer.ref_count += 1
+                    db.commit()
+
+                    # Уведомление пригласившему
+                    bot.send_message(
+                        chat_id=referrer.telegram_id,
+                        text=f"🎉 Ваш приглашённый оплатил подписку!\nВы получили {reward}₸ на баланс."
+                    )
+                except Exception as e:
+                    print(f"Ошибка при начислении реферального вознаграждения: {e}")
 
     return PlainTextResponse("OK")
