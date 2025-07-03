@@ -9,12 +9,19 @@ def generate_cabinet_message(user, telegram_id, db):
 
     if user.is_unlimited:
         message_text += "✅ У вас безлимитный доступ к боту\n"
+
     elif user.has_paid and user.subscription_expires_at:
         days_left = (user.subscription_expires_at - datetime.utcnow()).days
-        message_text += f"📅 Подписка активна до {user.subscription_expires_at.strftime('%d.%m.%Y')} ({days_left} дней осталось)\n"
+        message_text += (
+            f"📅 Подписка активна до {user.subscription_expires_at.strftime('%d.%m.%Y')} "
+            f"({days_left} дней осталось)\n"
+        )
+
     else:
         message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
         message_text += "⏳ Пробный период: активен\n"
+
+    return message_text, main_menu()
 
     # 👥 Партнёрская информация
     message_text += "\n🤝 Партнёрская программа:\n"
