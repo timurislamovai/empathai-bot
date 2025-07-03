@@ -31,11 +31,11 @@ class User(Base):
     subscription_expires_at = Column(DateTime, nullable=True)
 
 
-def get_user_by_telegram_id(db: Session, telegram_id: str):
+def get_user_by_telegram_id(db: Session, telegram_id: int):
     return db.query(User).filter(User.telegram_id == telegram_id).first()
 
 
-def create_user(db: Session, telegram_id: str, referrer_code: str = None):
+def create_user(db: Session, telegram_id: int, referrer_code: str = None):
     user = User(
         telegram_id=telegram_id,
         referrer_code=referrer_code,
