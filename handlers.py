@@ -42,12 +42,18 @@ async def handle_update(update, db):
     print("📦 update:", update)
 
     db = SessionLocal()
-    try:
+    
+######################################################################
+# 🤖 GPT-ОБРАБОТКА СООБЩЕНИЯ
+######################################################################
+
+            try:
         if "callback_query" in update:
             query = update["callback_query"]
             data = query["data"]
             chat_id = query["message"]["chat"]["id"]
             telegram_id = query["from"]["id"]
+                        # 👤 Получаем пользователя из базы по Telegram ID
             user = get_user_by_telegram_id(db, telegram_id)
             
             # ✅ Автоматическое отключение доступа, если срок подписки истёк
@@ -58,7 +64,8 @@ async def handle_update(update, db):
                     db.commit()
 
             if text == "💳 Купить подписку":
-                bot.send_message(
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(
                     chat_id,
                     "💡 _С EmpathAI ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
                     "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
@@ -70,14 +77,16 @@ async def handle_update(update, db):
                 return
 
             if text == "🔙 Назад в главное меню":
-                bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
                 return
 
             if text in ["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
                 plan = "monthly" if text == "🗓 Купить на 1 месяц" else "yearly"
                 invoice_id = int(time.time())
                 payment_url = generate_payment_url(telegram_id, invoice_id, plan)
-                bot.send_message(
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(
                     chat_id,
                     "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
                     reply_markup=InlineKeyboardMarkup([
@@ -91,7 +100,8 @@ async def handle_update(update, db):
                 log_crisis_message(telegram_id, text, level=crisis_level)
 
                 if crisis_level == "high":
-                    bot.send_message(chat_id, (
+                            # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, (
                         "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
                         "Если тебе тяжело и возникают мысли навредить себе — важно не оставаться с этим наедине. "
                         "Обратись к специалисту или кризисной службе. 💙\n\n"
@@ -108,54 +118,81 @@ async def handle_update(update, db):
             
                 if telegram_id not in ADMIN_IDS:
                     print("❌ Нет доступа к команде")
-                    bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+                            # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
             
                 print("✅ Вход в handle_admin_stats")
-                try:
+                
+######################################################################
+# 🤖 GPT-ОБРАБОТКА СООБЩЕНИЯ
+######################################################################
+
+            try:
                     handle_admin_stats(db, chat_id, bot)
                     print("✅ handle_admin_stats выполнена")
                 except Exception as e:
                     print(f"❌ Ошибка в handle_admin_stats: {e}")
-                    bot.send_message(chat_id, f"❌ Ошибка при получении статистики: {e}")
+                            # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, f"❌ Ошибка при получении статистики: {e}")
                 return
+
+            
+######################################################################
+# 🔐 АДМИН-КОМАНДЫ: /give_unlimited
+######################################################################
 
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
-                    bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+                            # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
 
                 parts = text.strip().split()
                 if len(parts) != 2:
-                    bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
+                            # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, "⚠️ Использование: /give_unlimited <telegram_id>")
                     return
 
                 target_id = parts[1]
                 target_user = get_user_by_telegram_id(db, target_id)
                             # 🔧 Создаём пользователя, если его нет
                             # ✅ ОБРАБОТКА /start с учётом реферального кода
-            if text.startswith("/start"):
-                parts = text.strip().split(" ", 1)
+            
+        
+######################################################################
+# 🚀 ОБРАБОТКА КОМАНДЫ /start
+######################################################################
+
+        if text.startswith("/start"):
+                            # 📦 Разбираем текст команды, выделяем реферальный код
+            parts = text.strip().split(" ", 1)
                 ref_code = parts[1].strip() if len(parts) > 1 else None
             
                 # 🔄 Поддержка старого формата refID
-                if ref_code and ref_code.startswith("ref"):
+                            # 🔄 Поддержка старого формата "refXXXX"
+            if ref_code and ref_code.startswith("ref"):
                     ref_code = ref_code.replace("ref", "", 1)
             
                 # 🛡 Проверка, что это число (telegram_id)
-                if ref_code and not ref_code.isdigit():
+                            # 🛡 Проверка: если это не число (не Telegram ID) — обнуляем
+            if ref_code and not ref_code.isdigit():
                     ref_code = None
             
                 # 👤 Получаем или создаём пользователя
-                user = get_user_by_telegram_id(db, telegram_id)
+                            # 👤 Получаем пользователя из базы по Telegram ID
+            user = get_user_by_telegram_id(db, telegram_id)
                 if not user:
-                    user = create_user(db, telegram_id, referrer_code=ref_code)
+                                    # 👤 Создаём нового пользователя с реферальным кодом
+                user = create_user(db, telegram_id, referrer_code=ref_code)
                 elif not user.referrer_code and ref_code:
-                    user.referrer_code = ref_code
+                                    # 🧩 Обновляем рефкод, если пользователь уже был создан
+                user.referrer_code = ref_code
                     db.commit()
             
                 # 👋 Отправляем приветственное сообщение
-                bot.send_message(
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(
                     chat_id,
                     "👋 Добро пожаловать!\n\n"
                     "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
@@ -174,7 +211,8 @@ async def handle_update(update, db):
                 message_text = generate_withdraw_info(user, referrals_count, total_earned, balance)
                 markup = main_menu()
             
-                bot.send_message(chat_id, message_text, reply_markup=markup)
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
 
@@ -184,17 +222,24 @@ async def handle_update(update, db):
                     "❓ Гид по боту": "guide.txt",
                     "📜 Условия пользования": "rules.txt"
                 }.get(text)
-                try:
+                
+######################################################################
+# 🤖 GPT-ОБРАБОТКА СООБЩЕНИЯ
+######################################################################
+
+            try:
                     with open(f"texts/{filename}", "r", encoding="utf-8") as f:
                         response = f.read()
                 except FileNotFoundError:
                     response = "Файл с информацией пока не загружен."
-                bot.send_message(chat_id, response, reply_markup=main_menu())
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, response, reply_markup=main_menu())
                 return
 
             if not user.is_unlimited:
                 if user.free_messages_used >= FREE_MESSAGES_LIMIT:
-                    bot.send_message(
+                            # 📩 Отправляем приветственное сообщение
+        bot.send_message(
                         chat_id,
                         "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
                         reply_markup=main_menu()
@@ -203,17 +248,29 @@ async def handle_update(update, db):
 
             if text == "🔄 Сбросить диалог":
                 reset_user_thread(db, user)  # сброс истории GPT
-                bot.send_message(
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(
                     chat_id,
                     "🔁 Диалог сброшен. Ты можешь начать новый разговор, и я буду воспринимать всё с чистого листа.",
                     reply_markup=main_menu()
                 )
                 return
 
+            
+######################################################################
+# 📋 ОБРАБОТКА КНОПОК МЕНЮ
+######################################################################
+
             if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
                 message_text, markup = generate_cabinet_message(user, str(message["from"]["id"]), db)
-                bot.send_message(chat_id, message_text, reply_markup=markup)
+                        # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
+
+            
+######################################################################
+# 🤖 GPT-ОБРАБОТКА СООБЩЕНИЯ
+######################################################################
 
             try:
                 assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
@@ -232,7 +289,8 @@ async def handle_update(update, db):
 
             increment_message_count(db, user)
             assistant_response = clean_markdown(assistant_response)
-            bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
+                    # 📩 Отправляем приветственное сообщение
+        bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
     except Exception as e:
         print("❌ Ошибка в handle_update:", e)
