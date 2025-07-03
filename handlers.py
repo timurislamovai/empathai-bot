@@ -49,6 +49,17 @@ async def handle_update(update, db):
             chat_id = query["message"]["chat"]["id"]
             telegram_id = query["from"]["id"]
             user = get_user_by_telegram_id(db, telegram_id)
+            # 🔧 Создаём пользователя, если его нет
+            if not user and text.startswith("/start"):
+                parts = text.split(" ", 1)
+                ref_code = parts[1].strip() if len(parts) > 1 else None
+                if ref_code and ref_code.startswith("ref"):
+                    ref_code = ref_code.replace("ref", "", 1)
+                if ref_code and not ref_code.isdigit():
+                    ref_code = None
+                user = create_user(db, telegram_id, referrer_code=ref_code)
+            elif not user:
+                user = create_user(db, telegram_id)
 
             if data == "withdraw_request":
                 if not user:
@@ -66,6 +77,17 @@ async def handle_update(update, db):
             chat_id = message["chat"]["id"]
             telegram_id = message["from"]["id"]
             user = get_user_by_telegram_id(db, telegram_id)
+            # 🔧 Создаём пользователя, если его нет
+            if not user and text.startswith("/start"):
+                parts = text.split(" ", 1)
+                ref_code = parts[1].strip() if len(parts) > 1 else None
+                if ref_code and ref_code.startswith("ref"):
+                    ref_code = ref_code.replace("ref", "", 1)
+                if ref_code and not ref_code.isdigit():
+                    ref_code = None
+                user = create_user(db, telegram_id, referrer_code=ref_code)
+            elif not user:
+                user = create_user(db, telegram_id)
 
             # ✅ Автоматическое отключение доступа, если срок подписки истёк
             if user.has_paid and user.subscription_expires_at:
@@ -148,6 +170,17 @@ async def handle_update(update, db):
 
                 target_id = parts[1]
                 target_user = get_user_by_telegram_id(db, target_id)
+                # 🔧 Создаём пользователя, если его нет
+                if not user and text.startswith("/start"):
+                    parts = text.split(" ", 1)
+                    ref_code = parts[1].strip() if len(parts) > 1 else None
+                    if ref_code and ref_code.startswith("ref"):
+                        ref_code = ref_code.replace("ref", "", 1)
+                    if ref_code and not ref_code.isdigit():
+                        ref_code = None
+                    user = create_user(db, telegram_id, referrer_code=ref_code)
+                elif not user:
+                    user = create_user(db, telegram_id)
                 if target_user:
                     target_user.is_unlimited = True
                     db.commit()
