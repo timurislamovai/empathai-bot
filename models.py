@@ -22,6 +22,10 @@ class User(Base):
     balance = Column(Float, default=0.0)
     total_earned = Column(Float, default=0.0)
 
+    # ✅ Новые поля для рефералов:
+    ref_count = Column(Integer, default=0)
+    ref_earned = Column(Integer, default=0)
+
     # ✅ Для безлимитного доступа
     is_unlimited = Column(Boolean, default=False)
 
@@ -59,10 +63,12 @@ def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
     db.commit()
 
+
 def reset_user_thread(db: Session, user: User):
     user.thread_id = None
     db.commit()
-    
+
+
 def update_user_subscription(db: Session, user: User, plan: str):
     now = datetime.utcnow()
 
