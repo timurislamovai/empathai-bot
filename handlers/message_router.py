@@ -6,6 +6,13 @@ from openai_api import send_message_to_assistant, reset_user_thread
 from models import increment_message_count
 from filters import contains_crisis_words, log_crisis_message
 from admin_commands import handle_admin_stats
+from handlers.user_actions import (
+    handle_personal_cabinet,
+    handle_reset,
+    handle_about,
+    handle_support,
+    handle_terms,
+)
 
 
 from telegram import Bot
@@ -61,30 +68,37 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
 
 def handle_menu_button(text, user, chat_id, bot, db):
     if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-        message_text, markup = generate_cabinet_message(user, str(user.telegram_id), db)
-        bot.send_message(chat_id, message_text, reply_markup=markup)
-        return
-
-    if text == "🆘 Помощь":
-        bot.send_message(chat_id, "ℹ️ Чтобы начать разговор, просто напишите, что у вас на душе. Я отвечу и постараюсь помочь 💬", reply_markup=main_menu())
-        return
-
-    if text == "ℹ️ О нас":
-        bot.send_message(chat_id, "Я — Ила, ваш ИИ-собеседник. Готова поддержать в трудную минуту.", reply_markup=main_menu())
-        return
-
-    if text == "📜 Условия пользования":
-        bot.send_message(chat_id, "Полные условия можно посмотреть на сайте: [ссылка]", reply_markup=main_menu())
+        handle_personal_cabinet(user, chat_id, bot, db)
         return
 
     if text == "🔁 Сбросить диалог":
-        reset_user_thread(db, user)
-        bot.send_message(chat_id, "♻️ Диалог сброшен. Можешь начать новый разговор, и я забуду всё, что было сказано ранее.", reply_markup=main_menu())
+        handle_reset(user, chat_id, bot, db)
+        return
+
+    if text == "📜 Условия пользования":
+        handle_terms(chat_id, bot)
+        return
+
+    if text == "🧠 Гид по боту":
+        handle_guide(chat_id, bot)
+        return
+
+    if text == "🤝 Партнёрская программа":
+        handle_referral_info(user, chat_id, bot, db)
+        return
+
+    if text == "🆘 Помощь":
+        handle_support(chat_id, bot)
+        return
+
+    if text == "ℹ️ О нас":
+        handle_about(chat_id, bot)
         return
 
     if text in ["💳 Купить подписку", "🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
         bot.send_message(chat_id, "Выберите срок подписки:", reply_markup=subscription_plan_keyboard())
         return
+
 
     # Если ни одно из меню не подошло — считается обычным сообщением
     if contains_crisis_words(text):
