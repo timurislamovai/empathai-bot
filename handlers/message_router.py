@@ -4,7 +4,7 @@ from referral import generate_cabinet_message
 from utils import clean_markdown
 from openai_api import send_message_to_assistant, reset_user_thread
 from models import increment_message_count
-from filters import contains_crisis_words, log_crisis_message
+from handlers.crisis_log import contains_crisis_words, log_crisis_message
 from admin_commands import handle_admin_stats
 from handlers.user_actions import (
     handle_personal_cabinet,
