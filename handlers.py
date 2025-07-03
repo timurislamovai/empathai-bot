@@ -161,14 +161,6 @@ def handle_update(update, db):
 
                 if not user:
                     user = create_user(db, telegram_id, referrer_code=ref_code)
-                    if ref_code:
-                        inviter = db.query(User).filter(User.telegram_id == ref_code).first()
-                        if inviter:
-                            BONUS_AMOUNT = 100.0
-                            inviter.balance += BONUS_AMOUNT
-                            inviter.total_earned += BONUS_AMOUNT
-                            db.commit()
-                    bot.send_message(
                         chat_id,
                         "👋 Добро пожаловать!\n\n"
                         "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
