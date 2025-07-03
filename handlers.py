@@ -129,12 +129,13 @@ def handle_update(update, db):
 
 
              # ✅ Обработка команды /admin_referrals
-            if text == "/admin_referrals" and telegram_id in ADMIN_IDS:
+           if text == "/admin_referrals" and telegram_id in ADMIN_IDS:
                 try:
                     handle_admin_stats(db, chat_id, bot)
                 except Exception as e:
                     print(f"❌ Ошибка в handle_admin_stats: {e}")
                 return
+
                     
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
