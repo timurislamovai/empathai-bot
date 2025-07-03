@@ -13,6 +13,12 @@ from handlers.user_actions import (
     handle_support,
     handle_terms,
 )
+from handlers.subscription_utils import (
+    is_subscription_active,
+    check_and_update_daily_limit,
+    can_send_free_message,
+    increment_message_count,
+)
 
 
 from telegram import Bot
@@ -100,16 +106,24 @@ def handle_menu_button(text, user, chat_id, bot, db):
         return
 
 
-    # Если ни одно из меню не подошло — считается обычным сообщением
+    # Если ни одно из меню не подошло — это обычное сообщение
     if contains_crisis_words(text):
         log_crisis_message(user, text)
+
+    check_and_update_daily_limit(user)
+
+    if not is_subscription_active(user):
+        if not can_send_free_message(user):
+            bot.send_message(chat_id, "💬 Лимит бесплатных сообщений на сегодня исчерпан.\nЧтобы продолжить — оформите подписку.", reply_markup=main_menu())
+            return
 
     try:
         assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
         user.thread_id = thread_id
-        increment_message_count(db, user)
+        increment_message_count(user)
         assistant_response = clean_markdown(assistant_response)
         bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
     except Exception as e:
         bot.send_message(chat_id, "⚠️ Произошла ошибка при обращении к ИИ. Попробуйте позже.")
+
 
