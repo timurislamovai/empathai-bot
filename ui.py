@@ -5,8 +5,8 @@ def main_menu():
         [
             [KeyboardButton("💳 Купить подписку")],
             [KeyboardButton("📜 Условия пользования"), KeyboardButton("❓ Гид по боту")],
-            [KeyboardButton("🔄 Сбросить диалог")],
-            [KeyboardButton("👤 Личный кабинет"), KeyboardButton("🤝 Партнёрская программа")]
+            [KeyboardButton("🔄 Сбросить диалог"), KeyboardButton("👤 Личный кабинет")],
+            [KeyboardButton("🤝 Партнёрская программа")]
         ],
         resize_keyboard=True
     )
