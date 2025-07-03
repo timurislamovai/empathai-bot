@@ -1,0 +1,7 @@
+is_subscription_active
+
+check_and_update_daily_limit
+
+can_send_free_message
+
+increment_message_count
