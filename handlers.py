@@ -59,46 +59,14 @@ async def handle_update(update, db):
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
-       db = SessionLocal()
-        try:
-            if "callback_query" in update:
-                query = update["callback_query"]
-                data = query["data"]
-                chat_id = query["message"]["chat"]["id"]
-                telegram_id = query["from"]["id"]
-                user = get_user_by_telegram_id(db, telegram_id)
-        
-                if data == "withdraw_request":
-                    if not user:
-                        bot.send_message(chat_id, "Ошибка: пользователь не найден.")
-                        return
-        
-                    message_text, markup = generate_withdraw_info(user, telegram_id)
-                    bot.send_message(chat_id, message_text, reply_markup=markup)
-                    return
-        
-            # 🟢 Важно! Этот блок должен быть ВНУТРИ try:
-            message = update.get("message")
-            if message:
-                text = message.get("text", "").strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
-                print(f"👀 Получено сообщение: {repr(text)}")
-                chat_id = message["chat"]["id"]
-                telegram_id = message["from"]["id"]
-            
-                user = get_user_by_telegram_id(db, telegram_id)  # ✅ обязательно до /start
-        
-                if text.startswith("/start"):
-                    parts = text.split(" ", 1)
-                    ref_code = parts[1].strip() if len(parts) > 1 else None
-        
-                    if ref_code and ref_code.startswith("ref"):
-                        ref_code = ref_code.replace("ref", "", 1)
-                    if ref_code and not ref_code.isdigit():
-                        ref_code = None
-        
-                    if not user:
-                        user = create_user(db, telegram_id, referrer_code=ref_code)
-        
+        message = update.get("message")
+        if message:
+            text = message.get("text", "").strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
+            print(f"👀 Получено сообщение: {repr(text)}")
+            chat_id = message["chat"]["id"]
+            telegram_id = message["from"]["id"]
+            user = get_user_by_telegram_id(db, telegram_id)
+
             # ✅ Автоматическое отключение доступа, если срок подписки истёк
             if user.has_paid and user.subscription_expires_at:
                 if user.subscription_expires_at < datetime.utcnow():
