@@ -8,6 +8,7 @@ from filters import classify_crisis_level, log_crisis_message
 from referral import generate_cabinet_message, generate_withdraw_info
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import time
+from admin_commands import handle_admin_stats
 from utils import clean_markdown
 from fastapi import Request
 from database import SessionLocal
@@ -125,6 +126,15 @@ def handle_update(update, db):
                     ))
                     return
 
+
+             # ✅ Обработка команды /admin_referrals
+            if text == "/admin_referrals" and telegram_id in ADMIN_IDS:
+                try:
+                    handle_admin_stats(update, context=None, db=db)
+                except Exception as e:
+                    print(f"❌ Ошибка в handle_admin_stats: {e}")
+                return
+                    
             if text.startswith("/give_unlimited"):
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
