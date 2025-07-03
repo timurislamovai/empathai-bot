@@ -2,6 +2,7 @@ from models import User
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from datetime import datetime
 
+
 def generate_cabinet_message(user, telegram_id, db):
     message_text = f"👤 Ваш Telegram ID: {telegram_id}\n"
 
@@ -19,16 +20,16 @@ def generate_cabinet_message(user, telegram_id, db):
     ], resize_keyboard=True)
 
 
-def generate_withdraw_info(user):
+def generate_withdraw_info(user, referrals_count, total_earned, balance):
     return (
         f"🔗 <b>Ваша реферальная ссылка:</b>\n"
         f"https://t.me/EmpathAIChat_bot?start=ref{user.telegram_id}\n\n"
         f"🤝 <b>Приглашайте — и зарабатывайте!</b>\n"
         f"💸 Вы получаете <b>30% от каждой оплаченной подписки</b> по вашей ссылке.\n\n"
         f"📊 <b>Статистика:</b>\n"
-        f"👥 Приглашено: пока никого\n"
-        f"💰 Баланс: 0 ₽\n"
-        f"📈 Всего заработано: 0 ₽\n"
+        f"👥 Приглашено: {referrals_count} чел.\n"
+        f"💰 Баланс: {balance} ₽\n"
+        f"📈 Всего заработано: {total_earned} ₽\n"
         f"💳 Выплаты доступны в рублях\n"
         f"📉 <b>Минимальная сумма вывода: 5 000 ₽</b>\n\n"
         f"🧾 <b>Как получить выплату?</b>\n"
@@ -41,7 +42,3 @@ def generate_withdraw_info(user):
         f"• Страну проживания\n\n"
         f"👤 После этого администратор свяжется с вами для подтверждения и перевода."
     )
-
-    return message_text, ReplyKeyboardMarkup([
-        [KeyboardButton("👤 Личный кабинет")]
-    ], resize_keyboard=True)
