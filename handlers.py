@@ -141,6 +141,7 @@ async def handle_update(update, db):
 
             # ✅ Обработка команды /admin_referrals
             if text == "/admin_referrals":
+                telegram_id = str(message["from"]["id"])  # ✅ Приведение к строке
                 print(f"📌 Твой telegram_id: {telegram_id}")
                 print(f"🛂 ADMIN_IDS: {ADMIN_IDS}")
             
@@ -159,7 +160,6 @@ async def handle_update(update, db):
                 return
 
             if text.startswith("/give_unlimited"):
-                telegram_id = str(message["from"]["id"])  # ✅ Приведение к строке
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
@@ -219,15 +219,15 @@ async def handle_update(update, db):
                 return
 
 
-            if text == "/admin_stats" and user.telegram_id in ADMIN_IDS:
+            if text == "/admin_stats":
+                telegram_id = str(message["from"]["id"])  # ✅ Приведение к строке
+                if telegram_id not in ADMIN_IDS:
+                    bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
+                    return
                 from utils import get_stats_summary
                 stats = get_stats_summary(db)
                 bot.send_message(chat_id, stats)
                 return
-
-            if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
-                message_text, markup = generate_cabinet_message(user, telegram_id, db)
-                bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
 
             if text == "🤝 Партнёрская программа":
