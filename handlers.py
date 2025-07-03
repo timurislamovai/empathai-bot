@@ -37,7 +37,7 @@ def subscription_plan_keyboard():
         resize_keyboard=True
     )
 
-async def handle_update(update, db):
+def handle_update(update: dict, db):
     print("👉 START handle_update")
     print("📦 update:", update)
 
