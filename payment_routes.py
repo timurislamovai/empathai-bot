@@ -33,8 +33,14 @@ async def payment_result(request: Request):
     user = get_user_by_telegram_id(db, telegram_id)
 
     if user:
+        print(f"[🔍] Пользователь найден: {user.telegram_id}")
+        print(f"[🔍] План: {plan}")
+        print(f"[🔍] Старая дата: {user.subscription_expires_at}")
+
         # ✅ Обновляем подписку
         update_user_subscription(db, user, plan)
+        print(f"[✅] Подписка обновлена: {user.has_paid}, до {user.subscription_expires_at}")
+
         db.commit()
 
         # ✅ Отправляем уведомление пользователю
