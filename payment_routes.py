@@ -3,8 +3,9 @@ from starlette.responses import PlainTextResponse
 import hashlib
 import os
 from database import SessionLocal
-from models import get_user_by_telegram_id, update_user_subscription
+from models import get_user_by_telegram_id
 from telegram import Bot
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -12,7 +13,6 @@ ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30  # % выплаты за реферала
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
-
 
 @router.post("/payment/robokassa/result")
 async def payment_result(request: Request):
@@ -34,10 +34,16 @@ async def payment_result(request: Request):
     user = get_user_by_telegram_id(db, telegram_id)
     if user:
         # ✅ Активируем подписку
-        update_user_subscription(db, user, plan)
+        user.has_paid = True
+        if plan == "monthly":
+            user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
+        elif plan == "yearly":
+            user.subscription_expires_at = datetime.utcnow() + timedelta(days=365)
+
+        db.commit()  # 💾 Фиксируем изменения ДО отправки уведомлений
 
         # ✅ Отправляем уведомление
-        bot.send_message(chat_id=telegram_id, text="🎉 Подписка активирована!")
+        bot.send_message(chat_id=int(telegram_id), text=f"🎉 Подписка активирована до {user.subscription_expires_at.strftime('%d.%m.%Y')}!")
 
         # 💸 Начисляем партнёрское вознаграждение
         if user.referrer_code:
