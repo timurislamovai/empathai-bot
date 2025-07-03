@@ -201,7 +201,7 @@ def handle_update(update, db):
                 balance = user.ref_earned or 0
             
                 message_text = generate_withdraw_info(user, referrals_count, total_earned, balance)
-                markup = ReplyKeyboardMarkup([[KeyboardButton("👤 Личный кабинет")]], resize_keyboard=True)
+                markup = main_menu()
             
                 bot.send_message(chat_id, message_text, reply_markup=markup)
                 return
