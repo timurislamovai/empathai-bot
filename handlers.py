@@ -159,6 +159,15 @@ async def handle_update(update, db):
             if text.startswith("/start"):
                 parts = text.split(" ", 1)
                 ref_code = parts[1].strip() if len(parts) > 1 else None
+            
+                # 🔄 Удаляем префикс ref, если вдруг кто-то перешёл по старой ссылке
+                if ref_code and ref_code.startswith("ref"):
+                    ref_code = ref_code.replace("ref", "", 1)
+            
+                # 🛡 Проверим, что это действительно число (telegram_id)
+                if ref_code and not ref_code.isdigit():
+                    ref_code = None
+
 
                 if not user:
                     user = create_user(db, telegram_id, referrer_code=ref_code)
