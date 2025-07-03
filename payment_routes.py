@@ -1,7 +1,8 @@
+import os
+import hashlib
 from fastapi import APIRouter, Request
 from starlette.responses import PlainTextResponse
-import hashlib
-import os
+from models import update_user_subscription
 from database import SessionLocal
 from models import get_user_by_telegram_id
 from telegram import Bot
@@ -33,14 +34,22 @@ async def payment_result(request: Request):
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
     if user:
-        # ✅ Активируем подписку
-        user.has_paid = True
-        if plan == "monthly":
-            user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
-        elif plan == "yearly":
-            user.subscription_expires_at = datetime.utcnow() + timedelta(days=365)
+        update_user_subscription(db, user, plan)
+    
+        bot.send_message(
+            chat_id=int(telegram_id),
+            text=f"🎉 Подписка активирована до {user.subscription_expires_at.strftime('%d.%m.%Y')}!"
+        )
+    
+        # 💸 Начисляем партнёрское вознаграждение
+        if user.referrer_code:
+            referrer = get_user_by_telegram_id(db, user.referrer_code)
+            if referrer:
+                reward = int(float(out_summ) * REFERRAL_REWARD_PERCENT / 100)
+                referrer.ref_earned += reward
+                referrer.ref_count += 1
+                db.commit()
 
-        db.commit()  # 💾 Фиксируем изменения ДО отправки уведомлений
 
         # ✅ Отправляем уведомление
         bot.send_message(chat_id=int(telegram_id), text=f"🎉 Подписка активирована до {user.subscription_expires_at.strftime('%d.%m.%Y')}!")
