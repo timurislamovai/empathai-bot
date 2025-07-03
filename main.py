@@ -23,8 +23,8 @@ async def telegram_webhook(request: Request):
         # ✅ создаём сессию БД и передаём в handle_update
         db = SessionLocal()
 
-        # ✅ вызываем обычную функцию — без await!
-        handle_update(data, db)
+        # ✅ вызываем обычную функцию — с await!
+        await handle_update(data, db)  # ✅ ждём выполнения
 
         return {"ok": True}
 
