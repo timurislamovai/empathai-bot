@@ -9,9 +9,10 @@ from telegram import Bot
 router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
-REFERRAL_REWARD_PERCENT = 30  # ✅ Жёстко заданный процент (можно поменять здесь)
+REFERRAL_REWARD_PERCENT = 30  # % выплаты за реферала
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
+
 
 @router.post("/payment/robokassa/result")
 async def payment_result(request: Request):
@@ -23,38 +24,28 @@ async def payment_result(request: Request):
     telegram_id = form.get("shp_id")
     plan = form.get("shp_plan")
 
-    # ❗ Новый порядок — сначала пароль, потом shp_ параметры
     signature_raw = f"{out_summ}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     if signature_value != expected_signature:
-        return PlainTextResponse("bad sign", status_code=400)
+        return PlainTextResponse("bad signature", status_code=400)
 
-    # Обновляем пользователя
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
-
     if user:
+        # ✅ Активируем подписку
         update_user_subscription(db, user, plan)
-        db.commit()
 
-        # ✅ Начисление процентов пригласившему
-        if user.referrer_id:
-            referrer = get_user_by_telegram_id(db, user.referrer_id)
+        # ✅ Отправляем уведомление
+        bot.send_message(chat_id=telegram_id, text="🎉 Подписка активирована!")
+
+        # 💸 Начисляем партнёрское вознаграждение
+        if user.referrer_code:
+            referrer = get_user_by_telegram_id(db, user.referrer_code)
             if referrer:
-                try:
-                    amount = int(float(out_summ))
-                    reward = int(amount * REFERRAL_REWARD_PERCENT / 100)
-                    referrer.ref_earned += reward
-                    referrer.ref_count += 1
-                    db.commit()
-
-                    # Уведомление пригласившему
-                    bot.send_message(
-                        chat_id=referrer.telegram_id,
-                        text=f"🎉 Ваш приглашённый оплатил подписку!\nВы получили {reward}₸ на баланс."
-                    )
-                except Exception as e:
-                    print(f"Ошибка при начислении реферального вознаграждения: {e}")
+                reward = int(float(out_summ) * REFERRAL_REWARD_PERCENT / 100)
+                referrer.ref_earned += reward
+                referrer.ref_count += 1
+                db.commit()
 
     return PlainTextResponse("OK")
