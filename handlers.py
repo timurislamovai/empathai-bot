@@ -49,46 +49,7 @@ async def handle_update(update, db):
             chat_id = query["message"]["chat"]["id"]
             telegram_id = query["from"]["id"]
             user = get_user_by_telegram_id(db, telegram_id)
-            # 🔧 Создаём пользователя, если его нет
-            if not user and text.startswith("/start"):
-                parts = text.split(" ", 1)
-                ref_code = parts[1].strip() if len(parts) > 1 else None
-                if ref_code and ref_code.startswith("ref"):
-                    ref_code = ref_code.replace("ref", "", 1)
-                if ref_code and not ref_code.isdigit():
-                    ref_code = None
-                user = create_user(db, telegram_id, referrer_code=ref_code)
-            elif not user:
-                user = create_user(db, telegram_id)
-
-            if data == "withdraw_request":
-                if not user:
-                    bot.send_message(chat_id, "Ошибка: пользователь не найден.")
-                    return
-
-                message_text, markup = generate_withdraw_info(user, telegram_id)
-                bot.send_message(chat_id, message_text, reply_markup=markup)
-                return
-
-        message = update.get("message")
-        if message:
-            text = message.get("text", "").strip().replace("\u202f", " ").replace("\xa0", " ").replace("\u200b", "")
-            print(f"👀 Получено сообщение: {repr(text)}")
-            chat_id = message["chat"]["id"]
-            telegram_id = message["from"]["id"]
-            user = get_user_by_telegram_id(db, telegram_id)
-            # 🔧 Создаём пользователя, если его нет
-            if not user and text.startswith("/start"):
-                parts = text.split(" ", 1)
-                ref_code = parts[1].strip() if len(parts) > 1 else None
-                if ref_code and ref_code.startswith("ref"):
-                    ref_code = ref_code.replace("ref", "", 1)
-                if ref_code and not ref_code.isdigit():
-                    ref_code = None
-                user = create_user(db, telegram_id, referrer_code=ref_code)
-            elif not user:
-                user = create_user(db, telegram_id)
-
+            
             # ✅ Автоматическое отключение доступа, если срок подписки истёк
             if user.has_paid and user.subscription_expires_at:
                 if user.subscription_expires_at < datetime.utcnow():
@@ -171,42 +132,29 @@ async def handle_update(update, db):
 
                 target_id = parts[1]
                 target_user = get_user_by_telegram_id(db, target_id)
-                # 🔧 Создаём пользователя, если его нет
-                if not user and text.startswith("/start"):
-                    parts = text.split(" ", 1)
-                    ref_code = parts[1].strip() if len(parts) > 1 else None
-                    if ref_code and ref_code.startswith("ref"):
-                        ref_code = ref_code.replace("ref", "", 1)
-                    if ref_code and not ref_code.isdigit():
-                        ref_code = None
-                    user = create_user(db, telegram_id, referrer_code=ref_code)
-                elif not user:
-                    user = create_user(db, telegram_id)
-                if target_user:
-                    target_user.is_unlimited = True
-                    db.commit()
-                    bot.send_message(chat_id, f"✅ Пользователю {target_id} выдан безлимит.")
-                else:
-                    bot.send_message(chat_id, "❌ Пользователь не найден.")
-                return
-
+                            # 🔧 Создаём пользователя, если его нет
+                            # ✅ ОБРАБОТКА /start с учётом реферального кода
             if text.startswith("/start"):
-                parts = text.split(" ", 1)
+                parts = text.strip().split(" ", 1)
                 ref_code = parts[1].strip() if len(parts) > 1 else None
             
                 # 🔄 Поддержка старого формата refID
                 if ref_code and ref_code.startswith("ref"):
                     ref_code = ref_code.replace("ref", "", 1)
             
-                # 🛡 Проверка, что это число
+                # 🛡 Проверка, что это число (telegram_id)
                 if ref_code and not ref_code.isdigit():
                     ref_code = None
             
-                # ✅ Создаём пользователя даже если нет параметра
+                # 👤 Получаем или создаём пользователя
+                user = get_user_by_telegram_id(db, telegram_id)
                 if not user:
                     user = create_user(db, telegram_id, referrer_code=ref_code)
+                elif not user.referrer_code and ref_code:
+                    user.referrer_code = ref_code
+                    db.commit()
             
-                # 👋 Приветствие (оставляем по твоему желанию)
+                # 👋 Отправляем приветственное сообщение
                 bot.send_message(
                     chat_id,
                     "👋 Добро пожаловать!\n\n"
@@ -216,18 +164,6 @@ async def handle_update(update, db):
                     "📋 Выберите пункт меню или напишите свой вопрос.",
                     reply_markup=main_menu()
                 )
-                return
-
-
-            if text == "/admin_stats":
-                telegram_id = str(message["from"]["id"])  # ✅ Приведение к строке
-                if telegram_id not in ADMIN_IDS:
-                    bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
-                    return
-                from utils import get_stats_summary
-                stats = get_stats_summary(db)
-                bot.send_message(chat_id, stats)
-                return
                 return
 
             if text == "🤝 Партнёрская программа":
