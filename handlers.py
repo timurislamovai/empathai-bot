@@ -159,6 +159,7 @@ async def handle_update(update, db):
                 return
 
             if text.startswith("/give_unlimited"):
+                telegram_id = str(message["from"]["id"])  # ✅ Приведение к строке
                 if telegram_id not in ADMIN_IDS:
                     bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
                     return
