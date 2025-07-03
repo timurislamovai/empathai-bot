@@ -33,19 +33,6 @@ from models import User
 ADMIN_IDS = ["944583273", "396497806"]  # замените на ваши реальные ID
 
 def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    if text == "/start":
-        bot.send_message(chat_id, "👋 Привет! Я — Ила, ИИ-психолог от EmpathAI. Расскажи, что тебя беспокоит.", reply_markup=main_menu())
-        return
-
-    if text == "/admin_referrals":
-        if str(user.telegram_id) in ADMIN_IDS:
-            try:
-                handle_admin_stats(db, chat_id, bot)
-            except Exception as e:
-                print(f"❌ Ошибка в handle_admin_stats: {e}")
-        else:
-            bot.send_message(chat_id, "⛔ У вас нет доступа к этой команде.")
-        return
 
     if text.startswith("/give_unlimited"):
         if str(user.telegram_id) not in ADMIN_IDS:
@@ -74,6 +61,10 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
 
 
 def handle_menu_button(text, user, chat_id, bot, db):
+    if text == "🔙 Назад в главное меню":
+        bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+        return
+
     if text in ["💳 Купить подписку", "🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
         bot.send_message(chat_id, "Выберите срок подписки:", reply_markup=subscription_plan_keyboard())
         return
