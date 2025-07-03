@@ -9,7 +9,7 @@ from models import User
 # Показывает ТОП 10 пользователей, которые пригласили больше всего людей по своей реферальной ссылке
 # Также выводит общее количество приглашений и количество уникальных пригласивших
 def handle_admin_stats(db: Session, chat_id: int, bot: Bot):
-    # Получаем топ 10 пользователей по количеству рефералов (их telegram_id)
+    # Получаем топ 10 пользователей по количеству рефералов (их referrer_code)
     top_referrers = (
         db.query(User.referrer_code, func.count(User.id).label("ref_count"))
         .filter(User.referrer_code.isnot(None))
@@ -33,4 +33,8 @@ def handle_admin_stats(db: Session, chat_id: int, bot: Bot):
         for i, (ref_code, count) in enumerate(top_referrers, start=1):
             stats_text += f"{i}. {ref_code} — {count} приглашённых\n"
 
-        # Добавля
+        stats_text += f"\n🔢 Всего приглашённых: {total_invited}\n"
+        stats_text += f"💸 Уникальных рефереров: {unique_referrers}"
+
+    # ✅ Отправляем результат в любом случае
+    bot.send_message(chat_id, stats_text)
