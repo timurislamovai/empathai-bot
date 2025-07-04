@@ -25,7 +25,7 @@ def handle_update(update, db):
 
     text = message.get("text", "")
     chat_id = message["chat"]["id"]
-    telegram_id = int(message["from"]["id"])
+    telegram_id = str(message["from"]["id"])
 
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
