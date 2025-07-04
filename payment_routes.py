@@ -30,6 +30,7 @@ async def payment_result(request: Request):
         return PlainTextResponse("bad signature", status_code=400)
 
     db = SessionLocal()
+    telegram_id = int(form.get("shp_id"))
     user = get_user_by_telegram_id(db, telegram_id)
     print(f"[💳] Оплата от Telegram ID: {telegram_id}")
 
