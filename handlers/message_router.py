@@ -30,6 +30,17 @@ def handle_update(update, db):
     chat_id = message["chat"]["id"]
     telegram_id = int(message["from"]["id"])
 
+    # ✅ Обработка реферального кода
+    ref_code = None
+    if text.startswith("/start"):
+        parts = text.strip().split(" ", 1)
+        ref_code = parts[1].strip() if len(parts) > 1 else None
+
+        if ref_code and ref_code.startswith("ref"):
+            ref_code = ref_code.replace("ref", "", 1)
+        if ref_code and not ref_code.isdigit():
+            ref_code = None
+
     user = get_user_by_telegram_id(db, telegram_id)
     if not user:
         print(f"🆕 Новый пользователь: {telegram_id}")
@@ -38,7 +49,12 @@ def handle_update(update, db):
     if text.startswith("/"):
         handle_command(text, user, chat_id, bot, db)
     else:
-        handle_menu_button(text, user, chat_id, bot, db)
+        try:
+            handle_menu_button(text, user, chat_id, bot, db)
+        except Exception as e:
+            print(f"❌ Ошибка в handle_menu_button: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
