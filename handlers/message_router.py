@@ -1,9 +1,15 @@
 import time
 import os
 
+from handlers.message_router import handle_command, handle_menu_button
+
+from models import get_user_by_telegram_id, create_user
+from database import SessionLocal
+import os
+
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy.orm import Session
-from models import User, increment_message_count, get_user_by_telegram_id, update_user_thread_id
+
 from referral import generate_cabinet_message, generate_withdraw_info
 from admin_commands import handle_admin_stats, handle_admin_referrals, give_unlimited_access
 from robokassa import generate_payment_url
@@ -16,6 +22,26 @@ from telegram import Bot
 
 ADMIN_IDS = ["944583273", "396497806"]  # 🔁 Укажи своих админов
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
+
+bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
+
+def handle_update(update, db):
+    message = update.get("message")
+    if not message:
+        return
+
+    text = message.get("text", "")
+    chat_id = message["chat"]["id"]
+    telegram_id = str(message["from"]["id"])
+
+    user = get_user_by_telegram_id(db, telegram_id)
+    if not user:
+    user = create_user(db, telegram_id)
+    
+    if text.startswith("/"):
+    handle_command(text, user, chat_id, bot, db)
+    else:
+    handle_menu_button(text, user, chat_id, bot, db)
 
 def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
     if text == "/admin_stats" and str(user.telegram_id) in ADMIN_IDS:
