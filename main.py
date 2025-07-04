@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from handlers import handle_update
+from main_handlers import handle_update
 from database import SessionLocal
 import traceback
 
