@@ -34,8 +34,8 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
     telegram_id = str(user.telegram_id)
 
     if text.startswith("/start"):
-    parts = text.strip().split(" ", 1)
-    ref_code = parts[1].strip() if len(parts) > 1 else None
+        parts = text.strip().split(" ", 1)
+        ref_code = parts[1].strip() if len(parts) > 1 else None
     if ref_code and ref_code.startswith("ref"):
         ref_code = ref_code.replace("ref", "", 1)
     if ref_code and not ref_code.isdigit():
