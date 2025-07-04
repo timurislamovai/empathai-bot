@@ -1,15 +1,12 @@
-from handlers.message_router import handle_command, handle_menu_button
-from robokassa import generate_payment_url
-from ui import main_menu
 import os
 import time
+from handlers.message_router import handle_command, handle_menu_button
+from ui import main_menu
 from datetime import datetime
 from models import User
-from filters import classify_crisis_level, log_crisis_message
-from referral import generate_cabinet_message, generate_withdraw_info
-from admin_commands import handle_admin_stats
+from ui import subscription_plan_keyboard
 from telegram import Bot, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from utils import clean_markdown
+from database import SessionLocal
 from models import (
     get_user_by_telegram_id,
     create_user,
@@ -17,21 +14,8 @@ from models import (
     increment_message_count,
     reset_user_thread
 )
-from openai_api import send_message_to_assistant
 
-ADMIN_IDS = ["944583273", "396497806"]
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
-FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
-
-
-def subscription_plan_keyboard():
-    return ReplyKeyboardMarkup(
-        [
-            [KeyboardButton("🗓 Купить на 1 месяц"), KeyboardButton("📅 Купить на 1 год")],
-            [KeyboardButton("🔙 Назад в главное меню")]
-        ],
-        resize_keyboard=True
-    )
 
 def handle_update(update):
     message = update.get("message")
