@@ -42,19 +42,20 @@ async def payment_result(request: Request):
     if not user:
         user = create_user(db, telegram_id)
         print(f"[➕] Новый пользователь создан: {telegram_id}")
+    
+    # ✅ Обновляем подписку для всех пользователей (и новых, и существующих)
+    update_user_subscription(db, user, plan)
+    print(f"[✅] Подписка обновлена: {user.has_paid}, до {user.subscription_expires_at}")
+    
+    db.commit()
+    
+    # ✅ Отправляем уведомление пользователю
+    message = (
+        f"🎉 Подписка активирована до {user.subscription_expires_at.strftime('%d.%m.%Y')}!\n"
+        f"Спасибо за поддержку. Теперь у тебя безлимитный доступ 🙌"
+    )
+    bot.send_message(chat_id=int(telegram_id), text=message)
 
-        # ✅ Обновляем подписку
-        update_user_subscription(db, user, plan)
-        print(f"[✅] Подписка обновлена: {user.has_paid}, до {user.subscription_expires_at}")
-
-        db.commit()
-
-        # ✅ Отправляем уведомление пользователю
-        message = (
-            f"🎉 Подписка активирована до {user.subscription_expires_at.strftime('%d.%m.%Y')}!\n"
-            f"Спасибо за поддержку. Теперь у тебя безлимитный доступ 🙌"
-        )
-        bot.send_message(chat_id=int(telegram_id), text=message)
 
         # 💸 Начисляем партнёрское вознаграждение
         if user.referrer_code:
