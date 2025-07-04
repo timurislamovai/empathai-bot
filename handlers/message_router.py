@@ -54,20 +54,24 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
 def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
     telegram_id = str(user.telegram_id)
 
-    if text.startswith("/start"):
+   if text.startswith("/start"):
         parts = text.strip().split(" ", 1)
         ref_code = parts[1].strip() if len(parts) > 1 else None
+    
         if ref_code and ref_code.startswith("ref"):
             ref_code = ref_code.replace("ref", "", 1)
         if ref_code and not ref_code.isdigit():
             ref_code = None
-
+    
+        # 🔄 Создание нового пользователя с учётом реферала
         if not user:
             user = create_user(db, telegram_id, referrer_code=ref_code)
+            print(f"[👤] Новый пользователь создан по реф. коду: {ref_code}")
         elif not user.referrer_code and ref_code:
             user.referrer_code = ref_code
             db.commit()
-
+            print(f"[🔁] Реф. код добавлен к существующему пользователю: {ref_code}")
+    
         bot.send_message(
             chat_id,
             "👋 Добро пожаловать!\n\n"
@@ -78,6 +82,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
             reply_markup=main_menu()
         )
         return
+    
 
     if text == "💳 Купить подписку":
         bot.send_message(
