@@ -32,7 +32,8 @@ def handle_update(update, db):
 
     user = get_user_by_telegram_id(db, telegram_id)
     if not user:
-        user = create_user(db, telegram_id)
+        print(f"🆕 Новый пользователь: {telegram_id}")
+        user = create_user(db, telegram_id, referrer_code=ref_code)
 
     if text.startswith("/"):
         handle_command(text, user, chat_id, bot, db)
