@@ -57,25 +57,7 @@ def handle_update(update, db):
             traceback.print_exc()
 
 
-def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    telegram_id = str(user.telegram_id)
-    
-    if text == "/admin_stats" and str(user.telegram_id) in ADMIN_IDS:
-        handle_admin_stats(db, chat_id, bot)
-        return
-
-    if text == "/admin_referrals" and str(user.telegram_id) in ADMIN_IDS:
-        handle_admin_referrals(db, chat_id, bot)
-        return
-
-    if text.startswith("/give_unlimited") and str(user.telegram_id) in ADMIN_IDS:
-        give_unlimited_access(db, bot, chat_id, text)
-        return
-
-
-def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    telegram_id = user.telegram_id
-
+    def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
     if text.startswith("/start"):
         parts = text.strip().split(" ", 1)
         ref_code = parts[1].strip() if len(parts) > 1 else None
@@ -86,7 +68,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
             ref_code = None
 
         if not user:
-            user = create_user(db, telegram_id, referrer_code=ref_code)
+            user = create_user(db, str(chat_id), referrer_code=ref_code)
             print(f"[👤] Новый пользователь создан по реф. коду: {ref_code}")
         elif not user.referrer_code and ref_code:
             user.referrer_code = ref_code
@@ -103,6 +85,23 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
             reply_markup=main_menu()
         )
         return
+
+    
+    if text == "/admin_stats" and str(user.telegram_id) in ADMIN_IDS:
+        handle_admin_stats(db, chat_id, bot)
+        return
+
+    if text == "/admin_referrals" and str(user.telegram_id) in ADMIN_IDS:
+        handle_admin_referrals(db, chat_id, bot)
+        return
+
+    if text.startswith("/give_unlimited") and str(user.telegram_id) in ADMIN_IDS:
+        give_unlimited_access(db, bot, chat_id, text)
+        return
+
+
+def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
+    telegram_id = user.telegram_id
 
     if text == "💳 Купить подписку":
         bot.send_message(
