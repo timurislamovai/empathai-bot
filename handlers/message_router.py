@@ -28,7 +28,7 @@ def handle_update(update, db):
 
     text = message.get("text", "")
     chat_id = message["chat"]["id"]
-    telegram_id = int(message["from"]["id"])
+    telegram_id = str(message["from"]["id"])
 
     # ✅ Обработка реферального кода
     ref_code = None
@@ -58,7 +58,7 @@ def handle_update(update, db):
 
 
 def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    telegram_id = int(user.telegram_id)
+    telegram_id = str(user.telegram_id)
     
     if text == "/admin_stats" and str(user.telegram_id) in ADMIN_IDS:
         handle_admin_stats(db, chat_id, bot)
