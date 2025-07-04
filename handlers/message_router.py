@@ -15,7 +15,7 @@ from utils import clean_markdown
 from filters import classify_crisis_level, log_crisis_message
 from datetime import datetime
 
-ADMIN_IDS = [944583273, 396497806]
+ADMIN_IDS = ["944583273", "396497806"]
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
