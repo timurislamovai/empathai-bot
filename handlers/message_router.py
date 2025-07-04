@@ -85,19 +85,18 @@ def handle_update(update, db):
                 reply_markup=main_menu()
             )
             return
-
-
-    if text == "/admin_stats" and str(user.telegram_id) in ADMIN_IDS:
-        handle_admin_stats(db, chat_id, bot)
-        return
-
-    if text == "/admin_referrals" and str(user.telegram_id) in ADMIN_IDS:
-        handle_admin_referrals(db, chat_id, bot)
-        return
-
-    if text.startswith("/give_unlimited") and str(user.telegram_id) in ADMIN_IDS:
-        give_unlimited_access(db, bot, chat_id, text)
-        return
+    
+        if text == "/admin_stats" and str(user.telegram_id) in ADMIN_IDS:
+            handle_admin_stats(db, chat_id, bot)
+            return
+    
+        if text == "/admin_referrals" and str(user.telegram_id) in ADMIN_IDS:
+            handle_admin_referrals(db, chat_id, bot)
+            return
+    
+        if text.startswith("/give_unlimited") and str(user.telegram_id) in ADMIN_IDS:
+            give_unlimited_access(db, bot, chat_id, text)
+            return
 
 
 def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
