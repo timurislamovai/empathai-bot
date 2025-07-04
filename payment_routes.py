@@ -31,11 +31,16 @@ async def payment_result(request: Request):
 
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
+    print(f"[💳] Оплата от Telegram ID: {telegram_id}")
 
     if user:
         print(f"[🔍] Пользователь найден: {user.telegram_id}")
         print(f"[🔍] План: {plan}")
         print(f"[🔍] Старая дата: {user.subscription_expires_at}")
+
+    if not user:
+        user = create_user(db, telegram_id)
+        print(f"[➕] Новый пользователь создан: {telegram_id}")
 
         # ✅ Обновляем подписку
         update_user_subscription(db, user, plan)
