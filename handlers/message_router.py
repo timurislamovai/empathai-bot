@@ -58,7 +58,7 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
 
 
 def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
-    telegram_id = int(message["from"]["id"])
+    telegram_id = user.telegram_id
 
     if text.startswith("/start"):
         parts = text.strip().split(" ", 1)
