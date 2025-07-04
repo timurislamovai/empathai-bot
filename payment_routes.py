@@ -20,7 +20,7 @@ async def payment_result(request: Request):
     out_summ = form.get("OutSum")
     inv_id = form.get("InvId")
     signature_value = form.get("SignatureValue", "").upper()
-    telegram_id = int(form.get("shp_id"))
+    telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
 
     signature_raw = f"{out_summ}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
