@@ -17,7 +17,8 @@ from models import (
 
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
-def handle_update(update):
+def handle_update(update, db):
+    print("👉 handle_update вызван")
     message = update.get("message")
     if not message:
         return
