@@ -58,7 +58,7 @@ async def payment_result(request: Request):
 
         # 💸 Начисляем партнёрское вознаграждение
         if user.referrer_code:
-            referrer = get_user_by_telegram_id(db, user.referrer_code)
+            referrer = get_user_by_telegram_id(db, int(user.referrer_code))
             if referrer:
                 reward = int(float(out_summ) * REFERRAL_REWARD_PERCENT / 100)
                 referrer.ref_earned += reward
