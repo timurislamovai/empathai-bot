@@ -18,7 +18,6 @@ from ui import main_menu, subscription_plan_keyboard
 from utils import clean_markdown
 from filters import classify_crisis_level, log_crisis_message
 from datetime import datetime
-from telegram import Bot
 
 ADMIN_IDS = ["944583273", "396497806"]  # 🔁 Укажи своих админов
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
@@ -28,7 +27,7 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 def handle_update(update, db):
     message = update.get("message")
     if not message:
-        return
+    return
 
     text = message.get("text", "")
     chat_id = message["chat"]["id"]
@@ -62,9 +61,9 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
     if text.startswith("/start"):
         parts = text.strip().split(" ", 1)
         ref_code = parts[1].strip() if len(parts) > 1 else None
-    if ref_code and ref_code.startswith("ref"):
+        if ref_code and ref_code.startswith("ref"):
         ref_code = ref_code.replace("ref", "", 1)
-    if ref_code and not ref_code.isdigit():
+        if ref_code and not ref_code.isdigit():
         ref_code = None
 
     if not user:
