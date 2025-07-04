@@ -105,6 +105,10 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
             reply_markup=main_menu()
         )
         return
+        
+    if text == "🔙 Назад в главное меню":
+        bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+        return
 
     if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
         message_text, markup = generate_cabinet_message(user, telegram_id, db)
