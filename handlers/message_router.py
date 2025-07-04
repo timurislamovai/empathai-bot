@@ -145,7 +145,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
         return
 
     if text == "🤝 Партнёрская программа":
-        referrals_count = db.query(User).filter(User.referrer_code == telegram_id).count()
+        referrals_count = db.query(User).filter(User.referrer_code == str(telegram_id)).count()
         total_earned = user.ref_earned or 0
         balance = user.ref_earned or 0
         message_text = generate_withdraw_info(user, referrals_count, total_earned, balance)
