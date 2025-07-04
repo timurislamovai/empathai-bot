@@ -1,3 +1,6 @@
+import time
+import os
+
 from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy.orm import Session
 from models import User, increment_message_count, get_user_by_telegram_id, update_user_thread_id
@@ -8,9 +11,8 @@ from openai_api import reset_user_thread, send_message_to_assistant
 from ui import main_menu, subscription_plan_keyboard
 from utils import clean_markdown
 from filters import classify_crisis_level, log_crisis_message
-import time
-import os
 from datetime import datetime
+from telegram import Bot
 
 ADMIN_IDS = ["944583273", "396497806"]  # 🔁 Укажи своих админов
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
