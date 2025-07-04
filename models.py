@@ -33,7 +33,7 @@ class User(Base):
     subscription_expires_at = Column(DateTime, nullable=True)
 
 
-def get_user_by_telegram_id(db: Session, telegram_id: int):
+def get_user_by_telegram_id(db: Session, telegram_id: str):
     return db.query(User).filter(User.telegram_id == telegram_id).first()
 
 
