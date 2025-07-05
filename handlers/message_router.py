@@ -159,12 +159,10 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
         return
 
     if text == "🤝 Партнёрская программа":
-        referrals_count = db.query(User).filter(User.referrer_code == str(telegram_id)).count()
-        total_earned = user.ref_earned or 0
-        balance = user.ref_earned or 0
-        message_text = generate_withdraw_info(user, referrals_count, total_earned, balance)
-        bot.send_message(chat_id, message_text, reply_markup=main_menu())
-        return
+    message_text, reply_markup = generate_withdraw_info(user, telegram_id, db, bot)
+    bot.send_message(chat_id, message_text, reply_markup=reply_markup)
+    return
+
 
     if not user.is_unlimited and user.free_messages_used >= FREE_MESSAGES_LIMIT:
         bot.send_message(
