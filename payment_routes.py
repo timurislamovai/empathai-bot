@@ -13,9 +13,10 @@ ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
-@router.post("/payment/robokassa/result")
-async def payment_result(request: Request):
-    form = await request.form()
+@router.post("/payment/robokassa/test")
+async def payment_test(request: Request):
+    print("✅ test POST получен")
+    return PlainTextResponse("OK")
 
     out_summ = float(form.get("OutSum"))
     out_summ_str = "{:.0f}".format(out_summ)
