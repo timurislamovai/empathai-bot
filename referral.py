@@ -27,3 +27,22 @@ def generate_cabinet_message(user, telegram_id, db):
     message_text += f"🔗 Ваша ссылка: https://t.me/IlaAIPsychologistBot?start=ref{user.telegram_id}"
 
     return message_text, main_menu()
+
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+
+def generate_withdraw_info(user):
+    message = f"💸 Ваш заработок: {user.ref_earned}₸\n"
+    message += "🔔 Минимальная сумма для вывода: 500₸\n"
+
+    if user.ref_earned >= 500:
+        message += "\n📝 Вы можете отправить запрос на вывод средств."
+        buttons = [
+            [InlineKeyboardButton("📤 Запросить вывод", callback_data="request_withdraw")],
+            [InlineKeyboardButton("🔙 Назад в главное меню", callback_data="back_to_menu")]
+        ]
+    else:
+        buttons = [
+            [InlineKeyboardButton("🔙 Назад в главное меню", callback_data="back_to_menu")]
+        ]
+
+    return message, InlineKeyboardMarkup(buttons)
