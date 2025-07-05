@@ -11,12 +11,12 @@ print("🔁 payment_routes.py загружен")
 
 router = APIRouter()
 
-ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 ROBO_LOGIN = os.environ["ROBO_LOGIN"]
+ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
-# ✅ Основной маршрут (https://.../payment/robokassa/result)
+
 @router.post("/result")
 async def payment_result(request: Request):
     form = await request.form()
@@ -27,19 +27,18 @@ async def payment_result(request: Request):
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
-    
+
     # Собираем параметры shp_... в строку по алфавиту
     shp_items = {"shp_id": telegram_id, "shp_plan": plan}
     shp_sorted = ":".join(f"{k}={v}" for k, v in sorted(shp_items.items()))
-    
-    # Правильная формула с учётом параметров shp_
+
+    # Формируем правильную строку подписи с учётом ROBO_LOGIN
     signature_raw = f"{ROBO_LOGIN}:{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
-    
+
     print(f"[🧾] signature_raw = {signature_raw}")
     print(f"[✅] expected_signature = {expected_signature}")
     print(f"[📨] received_signature = {signature_value}")
-
 
     if signature_value != expected_signature:
         print("❌ Подпись не совпадает.")
@@ -79,9 +78,3 @@ async def payment_result(request: Request):
         print("⚠️ Ошибка при отправке сообщения:", e)
 
     return PlainTextResponse("OK")
-
-# ✅ GET-запрос (для проверки вручную через браузер)
-@router.get("/result")
-def test_get_result():
-    print("✅ GET запрос на /result получен")
-    return PlainTextResponse("GET OK")
