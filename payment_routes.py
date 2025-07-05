@@ -17,14 +17,14 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 async def payment_result(request: Request):
     form = await request.form()
 
-    out_summ = float(form.get("OutSum"))
+    out_summ_str = "{:.0f}".format(out_summ)
     inv_id = form.get("InvId")
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
 
-    signature_raw = f"{out_summ}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
-    expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
+    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
+    eexpected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     # 🔍 Выводим для отладки
     print(f"[🧾] signature_raw = {signature_raw}")
