@@ -7,6 +7,9 @@ import os
 import hashlib
 from datetime import datetime, timedelta
 
+from fastapi import APIRouter, Request
+from starlette.responses import PlainTextResponse
+
 print("🔁 payment_routes.py загружен")
 
 router = APIRouter()
@@ -27,6 +30,11 @@ async def payment_test(request: Request):
 @router.post("/result")
 async def payment_result(request: Request):
     form = await request.form()
+
+@router.get("/result")
+def test_get_result():
+    print("✅ GET запрос на /result получен")
+    return PlainTextResponse("GET OK")
 
     out_summ = float(form.get("OutSum"))
     out_summ_str = "{:.0f}".format(out_summ)
