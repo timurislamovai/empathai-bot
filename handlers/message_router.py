@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from models import get_user_by_telegram_id, create_user, update_user_thread_id, increment_message_count, User
 from database import SessionLocal
-from referral import generate_cabinet_message, generate_withdraw_info
+from referral import generate_cabinet_message
+
 from admin_commands import handle_admin_stats, handle_admin_referrals, give_unlimited_access
 from robokassa import generate_payment_url
 from openai_api import reset_user_thread, send_message_to_assistant
