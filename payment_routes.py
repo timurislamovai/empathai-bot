@@ -15,6 +15,9 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
 @router.post("/payment/robokassa/result")
 async def payment_result(request: Request):
+    print(f"[🧾] signature_raw = {signature_raw}")
+    print(f"[✅] expected_signature = {expected_signature}")
+    print(f"[📨] received_signature = {signature_value}")
     form = await request.form()
 
     out_summ = float(form.get("OutSum"))
