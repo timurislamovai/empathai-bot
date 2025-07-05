@@ -27,7 +27,7 @@ async def payment_result(request: Request):
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
 
-    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
+    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     print(f"[🧾] signature_raw = {signature_raw}")
