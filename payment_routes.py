@@ -15,9 +15,6 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
 @router.post("/payment/robokassa/result")
 async def payment_result(request: Request):
-    print(f"[🧾] signature_raw = {signature_raw}")
-    print(f"[✅] expected_signature = {expected_signature}")
-    print(f"[📨] received_signature = {signature_value}")
     form = await request.form()
 
     out_summ = float(form.get("OutSum"))
@@ -28,6 +25,11 @@ async def payment_result(request: Request):
 
     signature_raw = f"{out_summ}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
+
+    # 🔍 Выводим для отладки
+    print(f"[🧾] signature_raw = {signature_raw}")
+    print(f"[✅] expected_signature = {expected_signature}")
+    print(f"[📨] received_signature = {signature_value}")
 
     if signature_value != expected_signature:
         return PlainTextResponse("bad sign", status_code=400)
@@ -54,8 +56,4 @@ async def payment_result(request: Request):
 
     # Сообщение пользователю
     try:
-        bot.send_message(chat_id=int(telegram_id), text="🎉 Подписка активирована! Спасибо за оплату.")
-    except Exception as e:
-        print("Ошибка при отправке сообщения:", e)
-
-    return PlainTextResponse("OK")
+        bot.send_message(chat_id=int(telegram_id), t_
