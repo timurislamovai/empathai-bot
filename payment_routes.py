@@ -7,9 +7,6 @@ import os
 import hashlib
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Request
-from starlette.responses import PlainTextResponse
-
 print("🔁 payment_routes.py загружен")
 
 router = APIRouter()
@@ -18,23 +15,10 @@ ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
-
-# ✅ Тестовый маршрут (https://.../payment/robokassa/test)
-@router.post("/test")
-async def payment_test(request: Request):
-    print("✅ test POST получен")
-    return PlainTextResponse("OK")
-
-
 # ✅ Основной маршрут (https://.../payment/robokassa/result)
 @router.post("/result")
 async def payment_result(request: Request):
     form = await request.form()
-
-@router.get("/result")
-def test_get_result():
-    print("✅ GET запрос на /result получен")
-    return PlainTextResponse("GET OK")
 
     out_summ = float(form.get("OutSum"))
     out_summ_str = "{:.0f}".format(out_summ)
@@ -88,3 +72,9 @@ def test_get_result():
         print("⚠️ Ошибка при отправке сообщения:", e)
 
     return PlainTextResponse("OK")
+
+# ✅ GET-запрос (для проверки вручную через браузер)
+@router.get("/result")
+def test_get_result():
+    print("✅ GET запрос на /result получен")
+    return PlainTextResponse("GET OK")
