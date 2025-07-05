@@ -161,7 +161,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
 
     elif text == "🤝 Партнёрская программа":
         try:
-            with open("partner.txt", "r", encoding="utf-8") as file:
+            with open("texts/partner.txt", "r", encoding="utf-8") as file:
                 partner_info = file.read()
             bot.send_message(chat_id, partner_info, reply_markup=main_menu())
         except Exception as e:
