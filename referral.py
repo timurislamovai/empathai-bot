@@ -46,4 +46,4 @@ def generate_withdraw_info(user, telegram_id, db, bot):
         ]
 
     markup = InlineKeyboardMarkup(buttons)
-    return {"text": message, "reply_markup": markup.to_dict()}
+    return message, markup
