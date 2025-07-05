@@ -26,13 +26,19 @@ async def payment_result(request: Request):
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
-
-    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}"
+    
+    # Собираем параметры shp_... в строку по алфавиту
+    shp_items = {"shp_id": telegram_id, "shp_plan": plan}
+    shp_sorted = ":".join(f"{k}={v}" for k, v in sorted(shp_items.items()))
+    
+    # Правильная формула с учётом параметров shp_
+    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
-
+    
     print(f"[🧾] signature_raw = {signature_raw}")
     print(f"[✅] expected_signature = {expected_signature}")
     print(f"[📨] received_signature = {signature_value}")
+
 
     if signature_value != expected_signature:
         print("❌ Подпись не совпадает.")
