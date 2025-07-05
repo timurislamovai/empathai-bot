@@ -45,4 +45,5 @@ def generate_withdraw_info(user, telegram_id, db, bot):
             [InlineKeyboardButton("🔙 Назад в главное меню", callback_data="back_to_menu")]
         ]
 
-    return message, InlineKeyboardMarkup(buttons)
+    markup = InlineKeyboardMarkup(buttons)
+    return {"text": message, "reply_markup": markup.to_dict()}
