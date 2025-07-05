@@ -37,9 +37,13 @@ async def payment_result(request: Request):
 
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
+    print(f"📥 Получен telegram_id из Robokassa: {telegram_id} (тип: {type(telegram_id)})")
 
     if not user:
+        print(f"❌ Пользователь не найден в БД по telegram_id = {telegram_id}")
         return PlainTextResponse("user not found", status_code=404)
+    else:
+        print(f"✅ Пользователь найден: {user.telegram_id}")
 
     # Активируем подписку
     user.has_paid = True
