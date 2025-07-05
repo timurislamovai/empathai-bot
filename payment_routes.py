@@ -15,10 +15,16 @@ ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
+# ✅ Тестовый маршрут для проверки POST
 @router.post("/payment/robokassa/test")
 async def payment_test(request: Request):
     print("✅ test POST получен")
     return PlainTextResponse("OK")
+
+# ✅ Основной маршрут для оплаты
+@router.post("/payment/robokassa/result")
+async def payment_result(request: Request):
+    form = await request.form()
 
     out_summ = float(form.get("OutSum"))
     out_summ_str = "{:.0f}".format(out_summ)
@@ -26,14 +32,13 @@ async def payment_test(request: Request):
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
-    
+
     signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
-    
+
     print(f"[🧾] signature_raw = {signature_raw}")
     print(f"[✅] expected_signature = {expected_signature}")
     print(f"[📨] received_signature = {signature_value}")
-
 
     if signature_value != expected_signature:
         return PlainTextResponse("bad sign", status_code=400)
@@ -48,12 +53,10 @@ async def payment_test(request: Request):
     else:
         print(f"✅ Пользователь найден: {user.telegram_id}")
 
-    # Активируем подписку
     user.has_paid = True
     user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
     db.commit()
 
-    # Реферальное начисление
     if user.referrer_code and user.referrer_code.isdigit():
         ref_user = get_user_by_telegram_id(db, user.referrer_code)
         if ref_user:
@@ -62,8 +65,9 @@ async def payment_test(request: Request):
             ref_user.ref_count += 1
             db.commit()
 
-    # Сообщение пользователю
     try:
         bot.send_message(chat_id=int(telegram_id), text="🎉 Подписка активирована! Спасибо за оплату.")
     except Exception as e:
         print("Ошибка при отправке сообщения:", e)
+
+    return PlainTextResponse("OK")
