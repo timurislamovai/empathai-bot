@@ -1,5 +1,3 @@
-print("🔁 payment_routes.py загружен")
-
 from fastapi import APIRouter, Request
 from starlette.responses import PlainTextResponse
 from models import get_user_by_telegram_id
@@ -9,20 +7,24 @@ import os
 import hashlib
 from datetime import datetime, timedelta
 
+print("🔁 payment_routes.py загружен")
+
 router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
-# ✅ Тестовый маршрут для проверки POST
-@router.post("/payment/robokassa/test")
+
+# ✅ Тестовый маршрут (https://.../payment/robokassa/test)
+@router.post("/test")
 async def payment_test(request: Request):
     print("✅ test POST получен")
     return PlainTextResponse("OK")
 
-# ✅ Основной маршрут для оплаты
-@router.post("/payment/robokassa/result")
+
+# ✅ Основной маршрут (https://.../payment/robokassa/result)
+@router.post("/result")
 async def payment_result(request: Request):
     form = await request.form()
 
@@ -41,6 +43,7 @@ async def payment_result(request: Request):
     print(f"[📨] received_signature = {signature_value}")
 
     if signature_value != expected_signature:
+        print("❌ Подпись не совпадает.")
         return PlainTextResponse("bad sign", status_code=400)
 
     db = SessionLocal()
@@ -53,10 +56,13 @@ async def payment_result(request: Request):
     else:
         print(f"✅ Пользователь найден: {user.telegram_id}")
 
+    # Активируем подписку
     user.has_paid = True
     user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
     db.commit()
+    print("✅ Подписка активирована и сохранена в БД.")
 
+    # Реферальное начисление
     if user.referrer_code and user.referrer_code.isdigit():
         ref_user = get_user_by_telegram_id(db, user.referrer_code)
         if ref_user:
@@ -64,10 +70,13 @@ async def payment_result(request: Request):
             ref_user.ref_earned += reward
             ref_user.ref_count += 1
             db.commit()
+            print(f"💸 Реферальное вознаграждение начислено пользователю {ref_user.telegram_id}.")
 
+    # Сообщение пользователю
     try:
         bot.send_message(chat_id=int(telegram_id), text="🎉 Подписка активирована! Спасибо за оплату.")
+        print("📩 Сообщение пользователю отправлено.")
     except Exception as e:
-        print("Ошибка при отправке сообщения:", e)
+        print("⚠️ Ошибка при отправке сообщения:", e)
 
     return PlainTextResponse("OK")
