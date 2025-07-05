@@ -159,9 +159,9 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
         return
 
     if text == "🤝 Партнёрская программа":
-    message_text, reply_markup = generate_withdraw_info(user, telegram_id, db, bot)
-    bot.send_message(chat_id, message_text, reply_markup=reply_markup)
-    return
+        message_text, reply_markup = generate_withdraw_info(user, telegram_id, db, bot)
+        bot.send_message(chat_id, message_text, reply_markup=reply_markup)
+        return
 
 
     if not user.is_unlimited and user.free_messages_used >= FREE_MESSAGES_LIMIT:
