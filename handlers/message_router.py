@@ -158,10 +158,16 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
         bot.send_message(chat_id, message_text, reply_markup=markup)
         return
 
-    if text == "🤝 Партнёрская программа":
-        message_text, reply_markup = generate_withdraw_info(user, telegram_id, db, bot)
-        bot.send_message(chat_id, message_text, reply_markup=reply_markup)
+    elif text == "🤝 Партнёрская программа":
+        try:
+            with open("partner.txt", "r", encoding="utf-8") as file:
+                partner_info = file.read()
+            bot.send_message(chat_id, partner_info, reply_markup=main_menu())
+        except Exception as e:
+            print("❌ Ошибка при чтении partner.txt:", e)
+            bot.send_message(chat_id, "⚠️ Не удалось загрузить информацию о партнёрской программе.", reply_markup=main_menu())
         return
+
 
 
     # Проверка лимита сообщений с учётом подписки
