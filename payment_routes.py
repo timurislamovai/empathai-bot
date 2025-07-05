@@ -1,24 +1,23 @@
-import os
-import hashlib
 from fastapi import APIRouter, Request
 from starlette.responses import PlainTextResponse
-from models import update_user_subscription, get_user_by_telegram_id, create_user
+from models import get_user_by_telegram_id
 from database import SessionLocal
 from telegram import Bot
+import os
+import hashlib
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
-REFERRAL_REWARD_PERCENT = 30  # % выплаты за реферала
-
+REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
-
 
 @router.post("/payment/robokassa/result")
 async def payment_result(request: Request):
     form = await request.form()
 
-    out_summ = form.get("OutSum")
+    out_summ = float(form.get("OutSum"))
     inv_id = form.get("InvId")
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
@@ -28,42 +27,32 @@ async def payment_result(request: Request):
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     if signature_value != expected_signature:
-        return PlainTextResponse("bad signature", status_code=400)
+        return PlainTextResponse("bad sign", status_code=400)
 
     db = SessionLocal()
-    telegram_id = int(form.get("shp_id"))
     user = get_user_by_telegram_id(db, telegram_id)
 
-    print(f"[💳] Оплата от Telegram ID: {telegram_id}")
-
     if not user:
-        user = create_user(db, telegram_id)
-        print(f"[➕] Новый пользователь создан: {telegram_id}")
+        return PlainTextResponse("user not found", status_code=404)
 
-    print(f"[🔍] Пользователь найден: {user.telegram_id}")
-    print(f"[🔍] План: {plan}")
-    print(f"[🔍] Старая дата: {user.subscription_expires_at}")
-
-    # ✅ Обновляем подписку для всех
-    update_user_subscription(db, user, plan)
-    print(f"[✅] Подписка обновлена: {user.has_paid}, до {user.subscription_expires_at}")
-
+    # Активируем подписку
+    user.has_paid = True
+    user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
     db.commit()
 
-    # ✅ Отправляем уведомление пользователю
-    message = (
-        f"🎉 Подписка активирована до {user.subscription_expires_at.strftime('%d.%m.%Y')}!\n"
-        f"Спасибо за поддержку. Теперь у тебя безлимитный доступ 🙌"
-    )
-    bot.send_message(chat_id=int(telegram_id), text=message)
-
-    # 💸 Начисляем партнёрское вознаграждение
-    if user.referrer_code:
-        referrer = get_user_by_telegram_id(db, int(user.referrer_code))
-        if referrer:
-            reward = int(float(out_summ) * REFERRAL_REWARD_PERCENT / 100)
-            referrer.ref_earned += reward
-            referrer.ref_count += 1
+    # Реферальное начисление
+    if user.referrer_code and user.referrer_code.isdigit():
+        ref_user = get_user_by_telegram_id(db, user.referrer_code)
+        if ref_user:
+            reward = int(out_summ * REFERRAL_REWARD_PERCENT / 100)
+            ref_user.ref_earned += reward
+            ref_user.ref_count += 1
             db.commit()
+
+    # Сообщение пользователю
+    try:
+        bot.send_message(chat_id=int(telegram_id), text="🎉 Подписка активирована! Спасибо за оплату.")
+    except Exception as e:
+        print("Ошибка при отправке сообщения:", e)
 
     return PlainTextResponse("OK")
