@@ -57,4 +57,5 @@ async def payment_result(request: Request):
     # Сообщение пользователю
     try:
         bot.send_message(chat_id=int(telegram_id), text="🎉 Подписка активирована! Спасибо за оплату.")
-
+    except Exception as e:
+        print("Ошибка при отправке сообщения:", e)
