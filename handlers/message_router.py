@@ -164,13 +164,27 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
         return
 
 
-    if not user.is_unlimited and user.free_messages_used >= FREE_MESSAGES_LIMIT:
-        bot.send_message(
-            chat_id,
-            "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
-            reply_markup=main_menu()
-        )
-        return
+    # Проверка лимита сообщений с учётом подписки
+if not user.is_unlimited:
+    if user.has_paid:
+        if user.subscription_expires_at and user.subscription_expires_at < datetime.utcnow():
+            user.has_paid = False
+            db.commit()
+            bot.send_message(
+                chat_id,
+                "📭 Срок вашей подписки истёк. Пожалуйста, оформите новую подписку.",
+                reply_markup=main_menu()
+            )
+            return
+    else:
+        if user.free_messages_used >= FREE_MESSAGES_LIMIT:
+            bot.send_message(
+                chat_id,
+                "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
+                reply_markup=main_menu()
+            )
+            return
+
 
     crisis_level = classify_crisis_level(text)
     if crisis_level in ["high", "medium", "low"]:
