@@ -20,7 +20,7 @@ def generate_cabinet_message(user, telegram_id, db):
 
     # 👥 Партнёрская информация
     message_text += "\n🤝 Партнёрская программа:\n"
-    message_text += f"🔗 Ваша ссылка: https://t.me/IlaAIPsychologistBot?start=ref{user.telegram_id}\n"
+    message_text += f"🔗 Ваша ссылка: https://t.me/EmpathAIChat_bot?start=ref{user.telegram_id}\n"
     message_text += "🤝 Приглашайте — и зарабатывайте!\n"
     message_text += "💸 Вы получаете 30% от каждой оплаченной подписки по вашей ссылке.\n\n"
     message_text += f"👥 Приглашено: {user.ref_count} чел.\n"
