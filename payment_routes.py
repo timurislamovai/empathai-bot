@@ -23,14 +23,14 @@ async def payment_result(request: Request):
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
-
+    
     signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:shp_id={telegram_id}:shp_plan={plan}"
-    eexpected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
-
-    # 🔍 Выводим для отладки
+    expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
+    
     print(f"[🧾] signature_raw = {signature_raw}")
     print(f"[✅] expected_signature = {expected_signature}")
     print(f"[📨] received_signature = {signature_value}")
+
 
     if signature_value != expected_signature:
         return PlainTextResponse("bad sign", status_code=400)
