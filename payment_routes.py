@@ -12,6 +12,7 @@ print("🔁 payment_routes.py загружен")
 router = APIRouter()
 
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
+ROBO_LOGIN = os.environ["ROBO_LOGIN"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
@@ -32,7 +33,7 @@ async def payment_result(request: Request):
     shp_sorted = ":".join(f"{k}={v}" for k, v in sorted(shp_items.items()))
     
     # Правильная формула с учётом параметров shp_
-    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
+    signature_raw = f"{ROBO_LOGIN}:{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
     
     print(f"[🧾] signature_raw = {signature_raw}")
