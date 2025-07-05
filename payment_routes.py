@@ -21,8 +21,7 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 async def payment_result(request: Request):
     form = await request.form()
 
-    out_summ = float(form.get("OutSum"))
-    out_summ_str = "{:.0f}".format(out_summ)
+    out_summ_str = form.get("OutSum")  # ✅ оставляем точное значение как есть: "1.000000"
     inv_id = form.get("InvId")
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
