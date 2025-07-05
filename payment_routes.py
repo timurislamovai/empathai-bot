@@ -17,6 +17,7 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 async def payment_result(request: Request):
     form = await request.form()
 
+    out_summ = float(form.get("OutSum"))
     out_summ_str = "{:.0f}".format(out_summ)
     inv_id = form.get("InvId")
     signature_value = form.get("SignatureValue", "").upper()
