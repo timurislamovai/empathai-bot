@@ -1,3 +1,5 @@
+print("🔁 payment_routes.py загружен")
+
 from fastapi import APIRouter, Request
 from starlette.responses import PlainTextResponse
 from models import get_user_by_telegram_id
