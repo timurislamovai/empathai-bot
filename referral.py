@@ -30,7 +30,7 @@ def generate_cabinet_message(user, telegram_id, db):
 
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
-def generate_withdraw_info(user):
+def generate_withdraw_info(user, telegram_id, db, bot):
     message = f"💸 Ваш заработок: {user.ref_earned}₸\n"
     message += "🔔 Минимальная сумма для вывода: 500₸\n"
 
