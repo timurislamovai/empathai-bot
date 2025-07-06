@@ -11,7 +11,6 @@ print("🔁 payment_routes.py загружен")
 
 router = APIRouter()
 
-ROBO_LOGIN = os.environ["ROBO_LOGIN"]
 ROBO_PASSWORD2 = os.environ["ROBO_PASSWORD2"]
 REFERRAL_REWARD_PERCENT = 30
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
@@ -21,7 +20,7 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 async def payment_result(request: Request):
     form = await request.form()
 
-    out_summ_str = form.get("OutSum")  # ✅ оставляем точное значение как есть: "1.000000"
+    out_summ_str = form.get("OutSum")  # строка: "1.000000"
     inv_id = form.get("InvId")
     signature_value = form.get("SignatureValue", "").upper()
     telegram_id = str(form.get("shp_id"))
@@ -31,8 +30,8 @@ async def payment_result(request: Request):
     shp_items = {"shp_id": telegram_id, "shp_plan": plan}
     shp_sorted = ":".join(f"{k}={v}" for k, v in sorted(shp_items.items()))
 
-    # Формируем правильную строку подписи с учётом ROBO_LOGIN
-    signature_raw = f"{ROBO_LOGIN}:{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
+    # ❗ Формула по документации: без ROBO_LOGIN
+    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     print(f"[🧾] signature_raw = {signature_raw}")
@@ -45,31 +44,29 @@ async def payment_result(request: Request):
 
     db = SessionLocal()
     user = get_user_by_telegram_id(db, telegram_id)
-    print(f"📥 Получен telegram_id из Robokassa: {telegram_id} (тип: {type(telegram_id)})")
+    print(f"📥 Получен telegram_id: {telegram_id}")
 
     if not user:
         print(f"❌ Пользователь не найден в БД по telegram_id = {telegram_id}")
         return PlainTextResponse("user not found", status_code=404)
-    else:
-        print(f"✅ Пользователь найден: {user.telegram_id}")
 
-    # Активируем подписку
+    # ✅ Активация подписки
     user.has_paid = True
     user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
     db.commit()
     print("✅ Подписка активирована и сохранена в БД.")
 
-    # Реферальное начисление
+    # 💸 Реферальное начисление
     if user.referrer_code and user.referrer_code.isdigit():
         ref_user = get_user_by_telegram_id(db, user.referrer_code)
         if ref_user:
-            reward = int(out_summ * REFERRAL_REWARD_PERCENT / 100)
+            reward = int(float(out_summ_str) * REFERRAL_REWARD_PERCENT / 100)
             ref_user.ref_earned += reward
             ref_user.ref_count += 1
             db.commit()
             print(f"💸 Реферальное вознаграждение начислено пользователю {ref_user.telegram_id}.")
 
-    # Сообщение пользователю
+    # 📩 Отправка сообщения пользователю
     try:
         bot.send_message(chat_id=int(telegram_id), text="🎉 Подписка активирована! Спасибо за оплату.")
         print("📩 Сообщение пользователю отправлено.")
