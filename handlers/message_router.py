@@ -118,7 +118,6 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
     if text in ["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
         plan = "monthly" if text == "🗓 Купить на 1 месяц" else "yearly"
         invoice_id = int(time.time())
-        payment_url = generate_payment_url(telegram_id, invoice_id, plan)
         bot.send_message(
             chat_id,
             "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
