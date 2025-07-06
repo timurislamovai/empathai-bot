@@ -26,12 +26,8 @@ async def payment_result(request: Request):
     telegram_id = str(form.get("shp_id"))
     plan = form.get("shp_plan")
 
-    # Собираем параметры shp_... в строку по алфавиту
-    shp_items = {"shp_id": telegram_id, "shp_plan": plan}
-    shp_sorted = ":".join(f"{k}={v}" for k, v in sorted(shp_items.items()))
-
-    # ❗ Формула по документации: без ROBO_LOGIN
-    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}:{shp_sorted}"
+    # ❗ ВНИМАНИЕ: убираем shp_ из расчёта подписи
+    signature_raw = f"{out_summ_str}:{inv_id}:{ROBO_PASSWORD2}"
     expected_signature = hashlib.md5(signature_raw.encode()).hexdigest().upper()
 
     print(f"[🧾] signature_raw = {signature_raw}")
