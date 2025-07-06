@@ -9,7 +9,7 @@ from database import SessionLocal
 from referral import generate_cabinet_message
 
 from admin_commands import handle_admin_stats, handle_admin_referrals, give_unlimited_access
-from robokassa import generate_payment_url
+
 from openai_api import reset_user_thread, send_message_to_assistant
 from ui import main_menu, subscription_plan_keyboard
 from utils import clean_markdown
