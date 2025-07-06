@@ -6,9 +6,6 @@ import traceback
 
 app = FastAPI()
 
-# Платёжные маршруты
-from payment_routes import router as payment_router
-app.include_router(payment_router, prefix="/payment/robokassa")
 
 @app.get("/")
 async def root():
