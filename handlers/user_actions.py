@@ -26,7 +26,7 @@ def handle_terms(chat_id: int, bot: Bot):
     bot.send_message(chat_id, "Полные условия можно посмотреть на сайте: [ссылка]", reply_markup=main_menu())
 
 def handle_guide(chat_id: int, bot: Bot):
-    bot.send_message(chat_id, "🧠 EmpathAI — это бот, который поможет разобраться в себе. Просто напишите, что чувствуете.", reply_markup=main_menu())
+    bot.send_message(chat_id, "🧠 Ила AI Бот — это бот, который поможет разобраться в себе. Просто напишите, что чувствуете.", reply_markup=main_menu())
 
 def handle_referral_info(user: User, chat_id: int, bot: Bot, db: Session):
     from referral import generate_withdraw_info
