@@ -1,5 +1,4 @@
-from aiogram import types
-from bot_instance import dp
+from aiogram import types, F, Router
 from database import SessionLocal
 from datetime import datetime
 import os
@@ -14,9 +13,23 @@ from utils import clean_markdown
 from filters import classify_crisis_level, log_crisis_message
 from ui import main_menu
 
+# Инициализация router
+router = Router()
+
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
-@dp.message()
+# Обрабатываем только произвольные сообщения, исключая кнопки
+@router.message(F.text & ~F.text.in_([
+    "💳 Купить подписку",
+    "🗓 Купить на 1 месяц",
+    "📅 Купить на 1 год",
+    "👤 Личный кабинет",
+    "❓ Гид по боту",
+    "📜 Условия пользования",
+    "🔄 Сбросить диалог",
+    "🤝 Партнёрская программа",
+    "🔙 Назад в главное меню"
+]))
 async def handle_gpt_message(message: types.Message):
     db = SessionLocal()
     telegram_id = str(message.from_user.id)
