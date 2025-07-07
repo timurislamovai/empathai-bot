@@ -8,9 +8,11 @@ from openai_api import reset_user_thread
 from referral import generate_cabinet_message
 import time
 import os
+from aiogram import Router
+router = Router()
 
 # 🚀 Старт и создание пользователя с ref-кодом
-@dp.message(Command("start"))
+@router.message(Command("start"))
 async def handle_start(message: types.Message):
     chat_id = message.chat.id
     telegram_id = str(message.from_user.id)
@@ -48,7 +50,7 @@ async def handle_start(message: types.Message):
     )
 
 # 📂 Личный кабинет
-@dp.message(F.text == "👤 Личный кабинет")
+@router.message(F.text == "👤 Личный кабинет")
 async def show_cabinet(message: types.Message):
     db = SessionLocal()
     telegram_id = str(message.from_user.id)
@@ -58,7 +60,7 @@ async def show_cabinet(message: types.Message):
     await message.answer(text, reply_markup=markup)
 
 # 💳 Купить подписку
-@dp.message(F.text == "💳 Купить подписку")
+@router.message(F.text == "💳 Купить подписку")
 async def show_subscription_options(message: types.Message):
     await message.answer(
         "💡 _С Ила AI Бот ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
@@ -70,7 +72,7 @@ async def show_subscription_options(message: types.Message):
     )
 
 # 🔗 Оплата: 1 месяц / 1 год
-@dp.message(F.text.in_(["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]))
+@router.message(F.text.in_(["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]))
 async def show_payment_link(message: types.Message):
     plan = "monthly" if message.text == "🗓 Купить на 1 месяц" else "yearly"
     user_id = str(message.from_user.id)
@@ -87,7 +89,7 @@ async def show_payment_link(message: types.Message):
     )
 
 # 📜 Условия + ❓ Гид
-@dp.message(F.text.in_(["📜 Условия пользования", "❓ Гид по боту"]))
+@router.message(F.text.in_(["📜 Условия пользования", "❓ Гид по боту"]))
 async def send_static_text(message: types.Message):
     filename = {
         "❓ Гид по боту": "texts/guide.txt",
@@ -103,7 +105,7 @@ async def send_static_text(message: types.Message):
     await message.answer(content, reply_markup=main_menu())
 
 # 🔄 Сбросить диалог
-@dp.message(F.text == "🔄 Сбросить диалог")
+@router.message(F.text == "🔄 Сбросить диалог")
 async def reset_dialog(message: types.Message):
     db = SessionLocal()
     user_id = str(message.from_user.id)
@@ -113,7 +115,7 @@ async def reset_dialog(message: types.Message):
     await message.answer("🔁 Диалог сброшен. Можешь начать новый разговор.", reply_markup=main_menu())
 
 # 🤝 Партнёрская программа
-@dp.message(F.text == "🤝 Партнёрская программа")
+@router.message(F.text == "🤝 Партнёрская программа")
 async def send_partner_info(message: types.Message):
     try:
         with open("texts/partner.txt", "r", encoding="utf-8") as f:
@@ -124,6 +126,6 @@ async def send_partner_info(message: types.Message):
     await message.answer(content, reply_markup=main_menu())
 
 # 🔙 Назад в главное меню
-@dp.message(F.text == "🔙 Назад в главное меню")
+@router.message(F.text == "🔙 Назад в главное меню")
 async def back_to_main(message: types.Message):
     await message.answer("📋 Главное меню:", reply_markup=main_menu())
