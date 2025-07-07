@@ -22,33 +22,12 @@ dp.include_routers(
 )
 
 app = FastAPI()
-print("\U0001F4A1 AIOGRAM VERSION:", aiogram.__version__)
+print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 
 @app.get("/")
 async def root():
     return {"status": "ok"}
-
-
-@app.post("/webhook")
-async def telegram_webhook(request: Request):
-    try:
-        data = await request.json()
-        print("✅ /webhook вызван")
-        print("📨 Raw data:", data)
-
-        update = Update(**data)
-        try:
-            await dp.feed_update(bot, update)
-        except Exception as inner_error:
-            print("❌ Ошибка в dp.feed_update:", inner_error)
-            traceback.print_exc()
-
-        return {"ok": True}
-    except Exception as e:
-        print("❌ Ошибка в telegram_webhook:", e)
-        traceback.print_exc()
-        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.post("/payment/cloudpayments/result")
@@ -60,9 +39,13 @@ async def cloudpayments_result(request: Request):
         if not verify_signature(raw_body, signature):
             return JSONResponse(content={"code": 1, "message": "Invalid signature"}, status_code=400)
 
-        data = await request.json()
-        print("✅ Успешная подпись CloudPayments:\n")
-        print(data)
+        try:
+            data = await request.json()
+            print("✅ Успешная подпись CloudPayments:\n")
+            print(data)
+        except Exception as json_error:
+            print("❌ Пустое или некорректное тело JSON.")
+            return JSONResponse(content={"code": 2, "message": "Empty or invalid JSON"}, status_code=200)
 
         status = data.get("Status")
         if status != "Completed":
@@ -84,7 +67,6 @@ async def cloudpayments_result(request: Request):
             except Exception as json_error:
                 print("⚠️ Ошибка при парсинге строки Data:", json_error)
 
-        # 🔄 Резерв — извлекаем из InvoiceId
         if not telegram_id or not plan:
             invoice_id = data.get("InvoiceId")
             if invoice_id and invoice_id.startswith("sub_"):
@@ -126,4 +108,5 @@ async def cloudpayments_result(request: Request):
 
     except Exception as e:
         print("❌ Ошибка при обработке данных CloudPayments:", e)
+        traceback.print_exc()
         return JSONResponse(content={"code": 2, "message": "Internal error"}, status_code=500)
