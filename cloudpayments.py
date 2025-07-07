@@ -1,10 +1,12 @@
+import os
 import hmac
 import hashlib
 import base64
-import os
+import requests
+import json
+from config import CLOUDPAYMENTS_SECRET  # секрет берём из Railway переменной
 
-CLOUDPAYMENTS_SECRET = os.environ.get("CLOUDPAYMENTS_SECRET")  # Зададим позже в .env
-
+# ✅ Проверка подписи от CloudPayments
 def verify_signature(body: bytes, received_signature: str) -> bool:
     """
     Проверка подписи Content-HMAC
@@ -13,6 +15,7 @@ def verify_signature(body: bytes, received_signature: str) -> bool:
     :return: True, если подпись корректна
     """
     if not CLOUDPAYMENTS_SECRET:
+        print("❌ Переменная CLOUDPAYMENTS_SECRET не установлена.")
         return False
 
     secret = CLOUDPAYMENTS_SECRET.encode("utf-8")
@@ -20,16 +23,21 @@ def verify_signature(body: bytes, received_signature: str) -> bool:
         hmac.new(secret, body, digestmod=hashlib.sha256).digest()
     ).decode()
 
-    return computed_signature == received_signature
+    if computed_signature == received_signature:
+        print("✅ Подпись CloudPayments подтверждена.")
+        return True
+    else:
+        print("❌ Подпись не совпадает.")
+        print(f"🔎 Ожидалась: {computed_signature}")
+        print(f"📥 Получена: {received_signature}")
+        return False
 
-import requests
-import json
-
+# ✅ Тестовая отправка запроса (для ручной проверки webhook)
 def send_test_payment():
     url = "https://empathai-bot-production.up.railway.app/payment/cloudpayments/result"
     headers = {
         "Content-Type": "application/json",
-        "Content-HMAC": ""  # пока оставим пустым
+        "Content-HMAC": ""  # будет добавлена ниже
     }
 
     data = {
@@ -38,25 +46,26 @@ def send_test_payment():
         "Amount": 1000,
         "Currency": "RUB",
         "Data": {
-            "telegram_id": "944583273",  # 👈 замени на свой ID
+            "telegram_id": "944583273",  # 👈 заменишь на нужный ID при тесте
             "plan": "monthly"
         }
     }
 
-    # Создаём подпись (HMAC-SHA256 от тела, как в CloudPayments)
-    import hmac
-    import hashlib
-    from config import CLOUDPAYMENTS_SECRET  # 👈 ключ из .env
-
     body = json.dumps(data, separators=(',', ':')).encode('utf-8')
-    signature = hmac.new(
-        CLOUDPAYMENTS_SECRET.encode(),
-        body,
-        hashlib.sha256
-    ).hexdigest()
+
+    # Генерация подписи (в формате base64 — как требует CloudPayments)
+    signature = base64.b64encode(
+        hmac.new(
+            CLOUDPAYMENTS_SECRET.encode(),
+            body,
+            hashlib.sha256
+        ).digest()
+    ).decode()
 
     headers["Content-HMAC"] = signature
 
+    # Отправка POST-запроса на твой webhook
     response = requests.post(url, headers=headers, data=body)
-    print("✅ Ответ от сервера:", response.status_code)
-    print(response.text)
+    print("📤 Тестовая отправка завершена:")
+    print("🧾 Статус:", response.status_code)
+    print("📨 Ответ сервера:", response.text)
