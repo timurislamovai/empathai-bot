@@ -36,28 +36,6 @@ async def handle_update(update, db):
     if text.startswith("/"):
         await handle_command(text, user, chat_id, bot, db)
         return
-    
-    menu_buttons = [
-        "💳 Купить подписку",
-        "📜 Условия пользования",
-        "❓ Гид по боту",
-        "🔄 Сбросить диалог",
-        "👤 Личный кабинет",
-        "🤝 Партнёрская программа",
-        "🗓 Купить на 1 месяц",
-        "📅 Купить на 1 год",
-        "🔙 Назад в главное меню"
-    ]
-    
-    if text in menu_buttons:
-        handle_menu_button(text, user, chat_id, bot, db)
-        return
-    
-    assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
-    user.thread_id = thread_id
-    db.commit()
-    bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
 
-
-
-
+    await handle_menu_button(text, user, chat_id, bot, db)
+    return
