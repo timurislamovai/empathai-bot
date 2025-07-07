@@ -8,6 +8,7 @@ from models import get_user_by_telegram_id, update_user_thread_id, increment_mes
 from database import SessionLocal
 from filters import classify_crisis_level, log_crisis_message
 from datetime import datetime
+from cloudpayments import generate_payment_link 
 import time
 from aiogram import Router
 router = Router()
@@ -28,11 +29,15 @@ async def handle_buy(message: types.Message):
 
 @router.message(F.text.in_(["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]))
 async def handle_payment_options(message: types.Message):
+    telegram_id = str(message.from_user.id)
+    plan = "monthly" if "месяц" in message.text else "yearly"
+    amount = 10000 if plan == "monthly" else 99000
+
+    link = generate_payment_link(telegram_id, plan=plan, amount=amount)
+
     await message.answer(
-        "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="💳 Перейти к оплате", url="https://example.com")]
-        ])
+        f"💳 Вот ссылка на оплату подписки:\n\n{link}",
+        reply_markup=main_menu()
     )
 
 @router.message(F.text.in_(["📜 Условия пользования", "❓ Гид по боту"]))
