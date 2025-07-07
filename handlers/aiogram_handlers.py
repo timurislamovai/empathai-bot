@@ -6,9 +6,10 @@ from ui import main_menu, subscription_plan_keyboard
 from database import SessionLocal
 from openai_api import reset_user_thread
 from referral import generate_cabinet_message
-import time
+from cloudpayments import generate_payment_link  # ← добавили
 import os
 from aiogram import Router
+
 router = Router()
 
 # 🚀 Старт и создание пользователя с ref-кодом
@@ -75,9 +76,10 @@ async def show_subscription_options(message: types.Message):
 @router.message(F.text.in_(["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]))
 async def show_payment_link(message: types.Message):
     plan = "monthly" if message.text == "🗓 Купить на 1 месяц" else "yearly"
-    user_id = str(message.from_user.id)
-    invoice_id = int(time.time())
-    payment_url = f"https://your-payment.com/pay?user={user_id}&plan={plan}&inv={invoice_id}"
+    telegram_id = str(message.from_user.id)
+    amount = 119900 if plan == "yearly" else 119900 // 12  # сумма в копейках
+
+    payment_url = generate_payment_link(telegram_id, plan, amount=amount)
 
     await message.answer(
         "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
