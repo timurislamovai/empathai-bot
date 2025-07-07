@@ -112,3 +112,18 @@ async def cloudpayments_result(request: Request):
         print("❌ Ошибка при обработке данных CloudPayments:", e)
         traceback.print_exc()
         return JSONResponse(content={"code": 2, "message": "Internal error"}, status_code=500)
+
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    try:
+        data = await request.json()
+        print("✅ /webhook вызван\n📨 Raw data:", data)
+
+        update = Update(**data)
+        await dp.feed_update(bot, update)
+        return {"ok": True}
+    except Exception as e:
+        print("❌ Ошибка в webhook:", e)
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
