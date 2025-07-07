@@ -40,13 +40,13 @@ async def cloudpayments_result(request: Request):
         if not verify_signature(raw_body, signature):
             return JSONResponse(content={"code": 1, "message": "Invalid signature"}, status_code=400)
 
-        try:
-            data = json.loads(raw_body.decode())
-            print("✅ Успешная подпись CloudPayments")
-            print("📨 Распознанные данные:", data)
-        except Exception as json_error:
-            print("❌ Не удалось распарсить тело JSON:", json_error)
-            return JSONResponse(content={"code": 2, "message": "Invalid JSON"}, status_code=200)
+        # ✅ Парсинг x-www-form-urlencoded
+        from urllib.parse import parse_qs
+        parsed = parse_qs(raw_body.decode())
+        data = {k: v[0] for k, v in parsed.items()}
+
+        print("✅ Подпись CloudPayments подтверждена.")
+        print("📨 Распознанные данные:", data)
 
         if data.get("Status") != "Completed":
             print("⚠️ Платёж не завершён:", data.get("Status"))
@@ -55,18 +55,15 @@ async def cloudpayments_result(request: Request):
         # Получение telegram_id и плана
         telegram_id = None
         plan = None
-        data_field = data.get("Data")
+        raw_data = data.get("Data")
 
-        if isinstance(data_field, dict):
-            telegram_id = data_field.get("telegram_id")
-            plan = data_field.get("plan")
-        elif isinstance(data_field, str):
+        if raw_data:
             try:
-                parsed_data = json.loads(data_field)
+                parsed_data = json.loads(raw_data)
                 telegram_id = parsed_data.get("telegram_id")
                 plan = parsed_data.get("plan")
             except Exception as e:
-                print("⚠️ Ошибка при парсинге строки Data:", e)
+                print("⚠️ Ошибка при парсинге поля Data:", e)
 
         if not telegram_id or not plan:
             invoice_id = data.get("InvoiceId")
@@ -113,6 +110,7 @@ async def cloudpayments_result(request: Request):
         traceback.print_exc()
         return JSONResponse(content={"code": 2, "message": "Internal error"}, status_code=500)
 
+
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     try:
@@ -126,4 +124,3 @@ async def telegram_webhook(request: Request):
         print("❌ Ошибка в webhook:", e)
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
-
