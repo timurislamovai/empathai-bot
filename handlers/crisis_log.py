@@ -17,5 +17,5 @@ async def log_crisis_message(user: User, text: str):
         f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}] "
         f"User ID: {user.telegram_id} — Message: {text}\n"
     )
-    with open("crisis_log.txt", "a", encoding="utf-8") as file:
+    with open("logs/crisis_log.txt", "a", encoding="utf-8") as file:
         file.write(log_entry)
