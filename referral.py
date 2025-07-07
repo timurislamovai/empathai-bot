@@ -1,7 +1,6 @@
 from models import User
-from telegram import KeyboardButton, ReplyKeyboardMarkup
 from datetime import datetime
-from ui import main_menu  # Подключаем основное меню
+from ui import main_menu  # Подключаем клавиатуру из aiogram
 
 def generate_cabinet_message(user, telegram_id, db):
     message_text = f"👤 Ваш Telegram ID: {telegram_id}\n"
