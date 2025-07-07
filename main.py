@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import traceback
+import json
 from aiogram.types import Update
 import aiogram
 
@@ -58,14 +59,24 @@ async def cloudpayments_result(request: Request):
 
     try:
         form_data = await request.form()
-        data = dict(form_data)  # ✅ Преобразуем форму в dict
+        data = dict(form_data)
 
         print("✅ Успешная подпись CloudPayments:")
         print(data)
 
         status = data.get("Status")
-        telegram_id = data.get("Data[telegram_id]")
-        plan = data.get("Data[plan]")
+
+        # 👇 Парсим поле Data как JSON-строку
+        data_json_str = data.get("Data")
+        telegram_id = None
+        plan = None
+        if data_json_str:
+            try:
+                parsed_data = json.loads(data_json_str)
+                telegram_id = parsed_data.get("telegram_id")
+                plan = parsed_data.get("plan")
+            except Exception as json_error:
+                print("❌ Ошибка при парсинге поля Data:", json_error)
 
         print(f"🧾 Статус: {status}")
         print(f"👤 Telegram ID: {telegram_id}")
