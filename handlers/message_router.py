@@ -99,6 +99,13 @@ async def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Sess
     if text.startswith("/give_unlimited") and str(user.telegram_id) in ADMIN_IDS:
         give_unlimited_access(db, bot, chat_id, text)
         return
+        
+    # ⬇ Ответ по умолчанию на любое сообщение
+    await bot.send_message(
+        chat_id,
+        "💬 Я тебя слышу. Расскажи подробнее — я рядом.",
+        reply_markup=main_menu()
+    )
 
 
 async def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
