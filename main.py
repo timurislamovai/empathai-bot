@@ -48,5 +48,24 @@ async def cloudpayments_result(request: Request):
     if not signature or not verify_signature(body, signature):
         return JSONResponse(content={"code": 13, "message": "Invalid signature"}, status_code=400)
 
-    # Пока просто подтверждаем получение
-    return JSONResponse(content={"code": 0})
+        try:
+            data = await request.json()
+            print("✅ Успешная подпись CloudPayments:")
+            print(data)
+    
+            status = data.get("Status")
+            telegram_id = data.get("Data", {}).get("telegram_id")
+            plan = data.get("Data", {}).get("plan")
+    
+            print(f"🧾 Статус: {status}")
+            print(f"👤 Telegram ID: {telegram_id}")
+            print(f"📦 План: {plan}")
+    
+            # Пока просто подтверждаем получение
+            return JSONResponse(content={"code": 0})
+    
+        except Exception as e:
+            print("❌ Ошибка при обработке данных CloudPayments:", e)
+            traceback.print_exc()
+            return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
+
