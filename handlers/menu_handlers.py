@@ -1,1 +1,79 @@
 
+from aiogram import types
+from aiogram.filters import Text
+from bot_instance import dp, bot
+from utils import clean_markdown
+from ui import main_menu, subscription_plan_keyboard
+from referral import generate_cabinet_message
+from openai_api import send_message_to_assistant, reset_user_thread
+from models import get_user_by_telegram_id, update_user_thread_id, increment_message_count
+from database import SessionLocal
+from filters import classify_crisis_level, log_crisis_message
+from datetime import datetime
+import time
+
+FREE_MESSAGES_LIMIT = 50
+
+@dp.message(Text(["💳 Купить подписку"]))
+async def handle_buy(message: types.Message):
+    await message.answer(
+        "💡 _С Ила AI Бот ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
+        "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
+        "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
+        "Выбери вариант подписки ниже:",
+        reply_markup=subscription_plan_keyboard(),
+        parse_mode="Markdown"
+    )
+
+@dp.message(Text(["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]))
+async def handle_payment_options(message: types.Message):
+    # Здесь будет ссылка на CloudPayments или другой сервис
+    await message.answer(
+        "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="💳 Перейти к оплате", url="https://example.com")]
+        ])
+    )
+
+@dp.message(Text(["📜 Условия пользования", "❓ Гид по боту"]))
+async def handle_info_files(message: types.Message):
+    filename = {
+        "❓ Гид по боту": "guide.txt",
+        "📜 Условия пользования": "rules.txt"
+    }.get(message.text)
+    try:
+        with open(f"texts/{filename}", "r", encoding="utf-8") as f:
+            response = f.read()
+    except FileNotFoundError:
+        response = "Файл с информацией пока не загружен."
+    await message.answer(response, reply_markup=main_menu())
+
+@dp.message(Text("🔄 Сбросить диалог"))
+async def handle_reset(message: types.Message):
+    db = SessionLocal()
+    telegram_id = str(message.from_user.id)
+    user = get_user_by_telegram_id(db, telegram_id)
+    reset_user_thread(db, user)
+    await message.answer("🔁 Диалог сброшен. Ты можешь начать новый разговор.", reply_markup=main_menu())
+
+@dp.message(Text(["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]))
+async def handle_cabinet(message: types.Message):
+    db = SessionLocal()
+    telegram_id = str(message.from_user.id)
+    user = get_user_by_telegram_id(db, telegram_id)
+    message_text, markup = generate_cabinet_message(user, telegram_id, db)
+    await message.answer(message_text, reply_markup=markup)
+
+@dp.message(Text("🤝 Партнёрская программа"))
+async def handle_partner(message: types.Message):
+    try:
+        with open("texts/partner.txt", "r", encoding="utf-8") as file:
+            partner_info = file.read()
+        await message.answer(partner_info, reply_markup=main_menu())
+    except Exception as e:
+        print("❌ Ошибка при чтении partner.txt:", e)
+        await message.answer("⚠️ Не удалось загрузить информацию о партнёрской программе.", reply_markup=main_menu())
+
+@dp.message(Text("🔙 Назад в главное меню"))
+async def handle_back(message: types.Message):
+    await message.answer("Вы вернулись в главное меню.", reply_markup=main_menu())
