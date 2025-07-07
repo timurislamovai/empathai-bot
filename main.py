@@ -35,27 +35,28 @@ async def cloudpayments_result(request: Request):
     try:
         raw_body = await request.body()
         signature = request.headers.get("Content-HMAC", "")
+        print("📦 RAW BODY:", raw_body.decode())
 
         if not verify_signature(raw_body, signature):
             return JSONResponse(content={"code": 1, "message": "Invalid signature"}, status_code=400)
 
         try:
-            data = await request.json()
-            print("✅ Успешная подпись CloudPayments:\n")
-            print(data)
+            data = json.loads(raw_body.decode())
+            print("✅ Успешная подпись CloudPayments")
+            print("📨 Распознанные данные:", data)
         except Exception as json_error:
-            print("❌ Пустое или некорректное тело JSON.")
-            return JSONResponse(content={"code": 2, "message": "Empty or invalid JSON"}, status_code=200)
+            print("❌ Не удалось распарсить тело JSON:", json_error)
+            return JSONResponse(content={"code": 2, "message": "Invalid JSON"}, status_code=200)
 
-        status = data.get("Status")
-        if status != "Completed":
-            print("⚠️ Платёж не завершён:", status)
+        if data.get("Status") != "Completed":
+            print("⚠️ Платёж не завершён:", data.get("Status"))
             return {"code": 0}
 
+        # Получение telegram_id и плана
         telegram_id = None
         plan = None
-
         data_field = data.get("Data")
+
         if isinstance(data_field, dict):
             telegram_id = data_field.get("telegram_id")
             plan = data_field.get("plan")
@@ -64,8 +65,8 @@ async def cloudpayments_result(request: Request):
                 parsed_data = json.loads(data_field)
                 telegram_id = parsed_data.get("telegram_id")
                 plan = parsed_data.get("plan")
-            except Exception as json_error:
-                print("⚠️ Ошибка при парсинге строки Data:", json_error)
+            except Exception as e:
+                print("⚠️ Ошибка при парсинге строки Data:", e)
 
         if not telegram_id or not plan:
             invoice_id = data.get("InvoiceId")
@@ -78,12 +79,13 @@ async def cloudpayments_result(request: Request):
                     print("⚠️ Не удалось извлечь данные из InvoiceId:", e)
 
         print(f"👤 Telegram ID: {telegram_id}")
-        print(f"📦 План: {plan}")
+        print(f"📦 План подписки: {plan}")
 
         if not telegram_id or not plan:
             print("❌ Недостаточно данных для активации подписки.")
             return {"code": 0}
 
+        # Обновление пользователя
         db = SessionLocal()
         user = get_user_by_telegram_id(db, str(telegram_id))
         if user:
@@ -92,7 +94,7 @@ async def cloudpayments_result(request: Request):
             user.has_paid = True
             user.subscription_expires_at = now + timedelta(days=days)
             db.commit()
-            print("✅ Подписка активирована.")
+            print("✅ Подписка активирована в БД.")
             try:
                 await bot.send_message(
                     chat_id=int(telegram_id),
