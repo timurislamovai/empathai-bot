@@ -7,6 +7,9 @@ import aiogram
 from bot_instance import bot, dp
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
 from cloudpayments import verify_signature  # 🔹 добавлено
+from database import SessionLocal
+from models import get_user_by_telegram_id
+from datetime import datetime, timedelta
 
 # Подключаем все роутеры
 dp.include_routers(
@@ -48,24 +51,36 @@ async def cloudpayments_result(request: Request):
     if not signature or not verify_signature(body, signature):
         return JSONResponse(content={"code": 13, "message": "Invalid signature"}, status_code=400)
 
-        try:
-            data = await request.json()
-            print("✅ Успешная подпись CloudPayments:")
-            print(data)
-    
-            status = data.get("Status")
-            telegram_id = data.get("Data", {}).get("telegram_id")
-            plan = data.get("Data", {}).get("plan")
-    
-            print(f"🧾 Статус: {status}")
-            print(f"👤 Telegram ID: {telegram_id}")
-            print(f"📦 План: {plan}")
-    
-            # Пока просто подтверждаем получение
-            return JSONResponse(content={"code": 0})
-    
-        except Exception as e:
-            print("❌ Ошибка при обработке данных CloudPayments:", e)
-            traceback.print_exc()
-            return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
+    try:
+        data = await request.json()
+        print("✅ Успешная подпись CloudPayments:")
+        print(data)
 
+        status = data.get("Status")
+        telegram_id = data.get("Data", {}).get("telegram_id")
+        plan = data.get("Data", {}).get("plan")
+
+        print(f"🧾 Статус: {status}")
+        print(f"👤 Telegram ID: {telegram_id}")
+        print(f"📦 План: {plan}")
+
+        if status == "Completed" and telegram_id and plan:
+            db = SessionLocal()
+            user = get_user_by_telegram_id(db, telegram_id)
+
+            if user:
+                user.has_paid = True
+                if plan == "monthly":
+                    user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
+                elif plan == "yearly":
+                    user.subscription_expires_at = datetime.utcnow() + timedelta(days=365)
+
+                db.commit()
+                print("✅ Подписка активирована.")
+
+        return JSONResponse(content={"code": 0})
+
+    except Exception as e:
+        print("❌ Ошибка при обработке данных CloudPayments:", e)
+        traceback.print_exc()
+        return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
