@@ -11,6 +11,7 @@ from cloudpayments import verify_signature
 from database import SessionLocal
 from models import get_user_by_telegram_id
 from datetime import datetime, timedelta
+from ui import main_menu  # если не подключен — нужно для reply_markup
 
 # Подключаем роутеры
 dp.include_routers(
@@ -51,65 +52,79 @@ async def telegram_webhook(request: Request):
 
 @app.post("/payment/cloudpayments/result")
 async def cloudpayments_result(request: Request):
-    body = await request.body()
-    signature = request.headers.get("Content-HMAC")
-
-    if not signature or not verify_signature(body, signature):
-        return JSONResponse(content={"code": 13, "message": "Invalid signature"}, status_code=400)
-
     try:
-        form_data = await request.form()
-        data = dict(form_data)
+        raw_body = await request.body()
+        signature = request.headers.get("Content-HMAC", "")
 
-        print("✅ Успешная подпись CloudPayments:")
+        if not verify_signature(raw_body, signature):
+            return JSONResponse(content={"code": 1, "message": "Invalid signature"}, status_code=400)
+
+        data = await request.json()
+        print("✅ Успешная подпись CloudPayments:\n")
         print(data)
 
         status = data.get("Status")
+        if status != "Completed":
+            print("⚠️ Платёж не завершён:", status)
+            return {"code": 0}
 
-        # 👇 Парсим поле Data как JSON-строку
-        data_json_str = data.get("Data")
+        # 🔎 Попытка достать данные
         telegram_id = None
         plan = None
+
+        data_json_str = data.get("Data")
         if data_json_str:
             try:
                 parsed_data = json.loads(data_json_str)
                 telegram_id = parsed_data.get("telegram_id")
                 plan = parsed_data.get("plan")
             except Exception as json_error:
-                print("❌ Ошибка при парсинге поля Data:", json_error)
+                print("⚠️ Ошибка при парсинге поля Data:", json_error)
 
-        print(f"🧾 Статус: {status}")
+        # 🔄 Резерв — извлекаем из InvoiceId
+        if not telegram_id or not plan:
+            invoice_id = data.get("InvoiceId")
+            if invoice_id and invoice_id.startswith("sub_"):
+                try:
+                    _, tid, pl = invoice_id.split("_")
+                    telegram_id = tid
+                    plan = pl
+                except Exception as e:
+                    print("⚠️ Не удалось извлечь данные из InvoiceId:", e)
+
         print(f"👤 Telegram ID: {telegram_id}")
         print(f"📦 План: {plan}")
 
-        if status == "Completed" and telegram_id and plan:
-            db = SessionLocal()
-            user = get_user_by_telegram_id(db, telegram_id)
+        if not telegram_id or not plan:
+            print("❌ Недостаточно данных для активации подписки.")
+            return {"code": 0}
 
-            if user:
-                user.has_paid = True
-                if plan == "monthly":
-                    user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
-                elif plan == "yearly":
-                    user.subscription_expires_at = datetime.utcnow() + timedelta(days=365)
+        # ✅ Активация подписки
+        db = SessionLocal()
+        user = get_user_by_telegram_id(db, str(telegram_id))
+        if user:
+            now = datetime.utcnow()
+            days = 30 if plan == "monthly" else 365
+            user.has_paid = True
+            user.subscription_expires_at = now + timedelta(days=days)
+            db.commit()
+            print("✅ Подписка активирована.")
+            try:
+                await bot.send_message(
+                    chat_id=int(telegram_id),
+                    text="✅ Ваша подписка активирована!\nСпасибо за доверие 💙",
+                    reply_markup=main_menu()
+                )
+            except Exception as send_err:
+                print("⚠️ Не удалось отправить сообщение пользователю:", send_err)
+        else:
+            print("⚠️ Пользователь не найден в базе.")
 
-                db.commit()
-                print("✅ Подписка активирована.")
-
-                try:
-                    await bot.send_message(
-                        chat_id=telegram_id,
-                        text="✅ Ваша подписка активирована!\nСпасибо за оплату 💙"
-                    )
-                except Exception as e:
-                    print(f"⚠️ Не удалось отправить сообщение пользователю {telegram_id}: {e}")
-
-            return JSONResponse(content={"code": 0})
+        return {"code": 0}
 
     except Exception as e:
         print("❌ Ошибка при обработке данных CloudPayments:", e)
-        traceback.print_exc()
-        return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
+        return JSONResponse(content={"code": 2, "message": "Internal error"}, status_code=500)
 
 
 from cloudpayments import send_test_payment
