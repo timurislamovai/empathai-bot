@@ -24,9 +24,9 @@ bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
 async def handle_update(update, db):
     message = update.get("message")
-    print("⚙ handle_update работает, сообщение получено:", message.get("text", ""))
     if not message:
         return
+    print("⚙ handle_update работает, сообщение получено:", text)
 
     text = message.get("text", "")
     chat_id = message["chat"]["id"]
