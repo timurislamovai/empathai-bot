@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 import traceback
 from aiogram.types import Update
 from handlers import gptchat  # просто импортировать, запускаться он будет автоматически
+from handlers import admin_handlers_aiogram
 
 from bot_instance import bot, dp
 
