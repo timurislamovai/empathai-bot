@@ -32,11 +32,17 @@ async def root():
 async def telegram_webhook(request: Request):
     try:
         data = await request.json()
-        print("📥 Получено сообщение из Telegram:")
-        print(data)
+        print("✅ /webhook вызван")  # ✅ ДОБАВЛЕНО
+        print("📨 Raw data:", data)  # ✅ ДОБАВЛЕНО
 
         update = Update(**data)
-        await dp.feed_update(bot, update)
+
+        try:
+            await dp.feed_update(bot, update)
+        except Exception as inner_error:
+            print("❌ Ошибка в dp.feed_update:", inner_error)  # ✅ ДОБАВЛЕНО
+            traceback.print_exc()
+
         return {"ok": True}
     except Exception as e:
         print("❌ Ошибка в telegram_webhook:", e)
@@ -44,7 +50,6 @@ async def telegram_webhook(request: Request):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-# 🔹 Новый маршрут для обработки CloudPayments уведомлений
 @app.post("/payment/cloudpayments/result")
 async def cloudpayments_result(request: Request):
     body = await request.body()
