@@ -6,4 +6,4 @@ sqlalchemy
 psycopg2-binary
 requests
 python-multipart
-urllib3[secure]
+urllib3==1.26.15
