@@ -49,4 +49,28 @@ async def handle_gpt_message(message: types.Message):
         if crisis_level == "high":
             await message.answer(
                 "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
-                "Если тебе тяжело и возникают мысли навредить
+                "Если тебе тяжело и возникают мысли навредить себе — пожалуйста, обратись к специалисту или в кризисную службу. 💙\n\n"
+                "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
+            )
+            return
+
+    # 🤖 Отправка в OpenAI
+    try:
+        assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+    except Exception as e:
+        print("❌ Ошибка в GPT:", e)
+        if "run is active" in str(e):
+            user.thread_id = None
+            db.commit()
+            assistant_response, thread_id = send_message_to_assistant(None, text)
+        else:
+            await message.answer("⚠️ Произошла ошибка. Попробуй ещё раз позже.")
+            return
+
+    if not user.thread_id:
+        update_user_thread_id(db, user, thread_id)
+
+    increment_message_count(db, user)
+
+    assistant_response = clean_markdown(assistant_response)
+    await message.answer(assistant_response, reply_markup=main_menu())
