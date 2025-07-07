@@ -7,3 +7,4 @@ psycopg2-binary
 requests
 python-multipart
 urllib3==1.26.15
+magic-filter>=1.0.9
