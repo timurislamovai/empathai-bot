@@ -33,7 +33,9 @@ async def handle_update(update, db):
         user = create_user(db, telegram_id)
 
     if text.startswith("/"):
-        handle_command(text, user, chat_id, bot, db)
+        await handle_command(text, user, chat_id, bot, db)
     else:
-        handle_menu_button(text, user, chat_id, bot, db)
+        await handle_menu_button(text, user, chat_id, bot, db)
+
+
 
