@@ -15,16 +15,17 @@ async def root():
 async def telegram_webhook(request: Request):
     try:
         data = await request.json()
-        print("📥 Получено сообщение от Telegram:")
-        print(data)  # 👈 Показываем, что именно пришло
+        print("📥 Получено сообщение из Telegram:")
+        print(data)
 
-        db = SessionLocal()  # ✅ создаём сессию базы данных
-        handle_update(data, db)  # ✅ передаём и update, и db
+        db = SessionLocal()
+        await handle_update(data, db)  # ← ДОБАВЛЕН await
         return {"ok": True}
     except Exception as e:
         print("❌ Ошибка в telegram_webhook:", e)
-        traceback.print_exc()  # 👈 Распечатываем стек ошибки
+        traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
     finally:
         db.close()
+
 
