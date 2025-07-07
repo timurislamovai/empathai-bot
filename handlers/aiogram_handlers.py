@@ -1,10 +1,15 @@
 from aiogram import types
-from aiogram.filters import Command
+from aiogram.filters import Command, Text
 from bot_instance import dp, bot
 from models import get_user_by_telegram_id, create_user
-from ui import main_menu
+from ui import main_menu, subscription_plan_keyboard
 from database import SessionLocal
+from openai_api import reset_user_thread
+from referral import generate_cabinet_message
+import time
+import os
 
+# 🚀 Старт и создание пользователя с ref-кодом
 @dp.message(Command("start"))
 async def handle_start(message: types.Message):
     chat_id = message.chat.id
@@ -41,3 +46,91 @@ async def handle_start(message: types.Message):
         "📋 Выберите пункт меню или напишите свой вопрос.",
         reply_markup=main_menu()
     )
+
+
+# 📂 Личный кабинет
+@dp.message(Text("👤 Личный кабинет"))
+async def show_cabinet(message: types.Message):
+    db = SessionLocal()
+    telegram_id = str(message.from_user.id)
+    user = get_user_by_telegram_id(db, telegram_id)
+
+    text, markup = generate_cabinet_message(user, telegram_id, db)
+    await message.answer(text, reply_markup=markup)
+
+
+# 💳 Купить подписку
+@dp.message(Text("💳 Купить подписку"))
+async def show_subscription_options(message: types.Message):
+    await message.answer(
+        "💡 _С Ила AI Бот ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
+        "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
+        "🔹 *1 год*: 11 999 ₽ — выгодно, если хочешь постоянную опору\n\n"
+        "Выбери вариант подписки ниже:",
+        reply_markup=subscription_plan_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+# 🔗 Оплата: 1 месяц / 1 год
+@dp.message(Text(["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]))
+async def show_payment_link(message: types.Message):
+    plan = "monthly" if message.text == "🗓 Купить на 1 месяц" else "yearly"
+    user_id = str(message.from_user.id)
+    invoice_id = int(time.time())
+    payment_url = f"https://your-payment.com/pay?user={user_id}&plan={plan}&inv={invoice_id}"
+
+    await message.answer(
+        "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="💳 Перейти к оплате", url=payment_url)]
+            ]
+        )
+    )
+
+
+# 📜 Условия + ❓ Гид
+@dp.message(Text(["📜 Условия пользования", "❓ Гид по боту"]))
+async def send_static_text(message: types.Message):
+    filename = {
+        "❓ Гид по боту": "texts/guide.txt",
+        "📜 Условия пользования": "texts/rules.txt"
+    }.get(message.text)
+
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = "⚠️ Файл пока не загружен."
+
+    await message.answer(content, reply_markup=main_menu())
+
+
+# 🔄 Сбросить диалог
+@dp.message(Text("🔄 Сбросить диалог"))
+async def reset_dialog(message: types.Message):
+    db = SessionLocal()
+    user_id = str(message.from_user.id)
+    user = get_user_by_telegram_id(db, user_id)
+    reset_user_thread(db, user)
+
+    await message.answer("🔁 Диалог сброшен. Можешь начать новый разговор.", reply_markup=main_menu())
+
+
+# 🤝 Партнёрская программа
+@dp.message(Text("🤝 Партнёрская программа"))
+async def send_partner_info(message: types.Message):
+    try:
+        with open("texts/partner.txt", "r", encoding="utf-8") as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = "⚠️ Информация пока не загружена."
+
+    await message.answer(content, reply_markup=main_menu())
+
+
+# 🔙 Назад в главное меню
+@dp.message(Text("🔙 Назад в главное меню"))
+async def back_to_main(message: types.Message):
+    await message.answer("📋 Главное меню:", reply_markup=main_menu())
