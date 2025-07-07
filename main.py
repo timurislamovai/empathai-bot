@@ -6,9 +6,16 @@ import traceback
 from aiogram.types import Update
 from handlers import gptchat  # просто импортировать, запускаться он будет автоматически
 from handlers import admin_handlers_aiogram
-from handlers import menu_handlers
+from handlers import menu_handlers, aiogram_handlers
 
 from bot_instance import bot, dp
+
+dp.include_routers(
+    menu_handlers.router,
+    aiogram_handlers.router
+)
+
+
 
 app = FastAPI()
 import aiogram
