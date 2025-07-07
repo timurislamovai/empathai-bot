@@ -1,6 +1,6 @@
 
 from aiogram import types
-from aiogram.filters import Text
+from aiogram.filters.text import Text
 from bot_instance import dp, bot
 from utils import clean_markdown
 from ui import main_menu, subscription_plan_keyboard
