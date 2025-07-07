@@ -14,9 +14,9 @@ def check_and_update_daily_limit(db: Session, user: User):
         user.last_message_date = today
         db.commit()
 
-def can_send_free_message(user: User) -> bool:
+async def can_send_free_message(user: User) -> bool:
     return user.free_messages_used < FREE_MESSAGES_LIMIT
 
-def increment_message_count(db: Session, user: User):
+async def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
     db.commit()
