@@ -88,6 +88,9 @@ async def cloudpayments_result(request: Request):
         
             return JSONResponse(content={"code": 0})
 
-from cloudpayments import send_test_payment
-send_test_payment()
 
+    
+    # 🔹 Временный вызов тестового платежа при запуске
+    if __name__ == "__main__":
+        from cloudpayments import send_test_payment
+        send_test_payment()
