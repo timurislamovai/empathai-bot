@@ -70,10 +70,4 @@ def send_test_payment():
     print("🧾 Статус:", response.status_code)
     print("📨 Ответ сервера:", response.text)
 
-from cloudpayments import send_test_payment  # убедись, что импорт есть
-
-@app.get("/test-payment")
-async def test_payment():
-    send_test_payment()
-    return {"status": "✅ Тестовое уведомление отправлено"}
 
