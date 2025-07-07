@@ -6,6 +6,7 @@ import aiogram
 
 from bot_instance import bot, dp
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
+from cloudpayments import verify_signature  # 🔹 добавлено
 
 # Подключаем все роутеры
 dp.include_routers(
@@ -37,3 +38,15 @@ async def telegram_webhook(request: Request):
         print("❌ Ошибка в telegram_webhook:", e)
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+# 🔹 Новый маршрут для обработки CloudPayments уведомлений
+@app.post("/payment/cloudpayments/result")
+async def cloudpayments_result(request: Request):
+    body = await request.body()
+    signature = request.headers.get("Content-HMAC")
+
+    if not signature or not verify_signature(body, signature):
+        return JSONResponse(content={"code": 13, "message": "Invalid signature"}, status_code=400)
+
+    # Пока просто подтверждаем получение
+    return JSONResponse(content={"code": 0})
