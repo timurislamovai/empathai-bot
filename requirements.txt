@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-aiogram==3.4.1
+aiogram>=3.4.1,<4.0.0
 openai
 sqlalchemy
 psycopg2-binary
