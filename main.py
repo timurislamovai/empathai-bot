@@ -6,12 +6,12 @@ import aiogram
 
 from bot_instance import bot, dp
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
-from cloudpayments import verify_signature  # 🔹 добавлено
+from cloudpayments import verify_signature
 from database import SessionLocal
 from models import get_user_by_telegram_id
 from datetime import datetime, timedelta
 
-# Подключаем все роутеры
+# Подключаем роутеры
 dp.include_routers(
     gptchat.router,
     menu_handlers.router,
@@ -19,7 +19,6 @@ dp.include_routers(
 )
 
 app = FastAPI()
-
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 
@@ -32,15 +31,14 @@ async def root():
 async def telegram_webhook(request: Request):
     try:
         data = await request.json()
-        print("✅ /webhook вызван")  # ✅ ДОБАВЛЕНО
-        print("📨 Raw data:", data)  # ✅ ДОБАВЛЕНО
+        print("✅ /webhook вызван")
+        print("📨 Raw data:", data)
 
         update = Update(**data)
-
         try:
             await dp.feed_update(bot, update)
         except Exception as inner_error:
-            print("❌ Ошибка в dp.feed_update:", inner_error)  # ✅ ДОБАВЛЕНО
+            print("❌ Ошибка в dp.feed_update:", inner_error)
             traceback.print_exc()
 
         return {"ok": True}
@@ -59,13 +57,15 @@ async def cloudpayments_result(request: Request):
         return JSONResponse(content={"code": 13, "message": "Invalid signature"}, status_code=400)
 
     try:
-        data = await request.json()
+        form_data = await request.form()
+        data = dict(form_data)  # ✅ Преобразуем форму в dict
+
         print("✅ Успешная подпись CloudPayments:")
         print(data)
 
         status = data.get("Status")
-        telegram_id = data.get("Data", {}).get("telegram_id")
-        plan = data.get("Data", {}).get("plan")
+        telegram_id = data.get("Data[telegram_id]")
+        plan = data.get("Data[plan]")
 
         print(f"🧾 Статус: {status}")
         print(f"👤 Telegram ID: {telegram_id}")
@@ -101,7 +101,6 @@ async def cloudpayments_result(request: Request):
         return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
 
 
-# 👉 Вставь строго за пределами try/except и функций
 from cloudpayments import send_test_payment
 
 
