@@ -49,12 +49,14 @@ async def handle_update(update, db):
     ]
     
     if text in menu_buttons:
-        await handle_menu_button(text, user, chat_id, bot, db)
+        handle_menu_button(text, user, chat_id, bot, db)
         return
     
-    # если не команда и не кнопка — обычное сообщение
-    await bot.send_message(chat_id, "💬 Я тебя слышу. Расскажи подробнее — я рядом.", reply_markup=main_menu())
-    
+    assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+    user.thread_id = thread_id
+    db.commit()
+    bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
+
 
 
 
