@@ -1,4 +1,6 @@
 # main.py
+import aiogram
+print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
