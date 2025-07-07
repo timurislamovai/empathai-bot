@@ -1,5 +1,6 @@
 import os
 import time
+from openai_api import send_message_to_assistant
 from handlers.message_router import handle_command, handle_menu_button
 from ui import main_menu
 from datetime import datetime
