@@ -1,14 +1,15 @@
-from aiogram import types
+from aiogram import types, Router
 from aiogram.filters import Command
 from sqlalchemy import func
-from bot_instance import dp
 from database import SessionLocal
 from models import get_user_by_telegram_id, create_user, User
+
+router = Router()
 
 ADMIN_IDS = ["944583273", "396497806"]
 
 # 📊 /admin_stats — статистика
-@dp.message(Command("admin_stats"))
+@router.message(Command("admin_stats"))
 async def admin_stats(message: types.Message):
     telegram_id = str(message.from_user.id)
     if telegram_id not in ADMIN_IDS:
@@ -28,7 +29,7 @@ async def admin_stats(message: types.Message):
     )
 
 # 🤝 /admin_referrals — топ-рефералы
-@dp.message(Command("admin_referrals"))
+@router.message(Command("admin_referrals"))
 async def admin_referrals(message: types.Message):
     telegram_id = str(message.from_user.id)
     if telegram_id not in ADMIN_IDS:
@@ -58,7 +59,7 @@ async def admin_referrals(message: types.Message):
     await message.answer(message_text)
 
 # ♾ /give_unlimited <id> — выдать безлимит
-@dp.message(Command("give_unlimited"))
+@router.message(Command("give_unlimited"))
 async def give_unlimited(message: types.Message):
     telegram_id = str(message.from_user.id)
     if telegram_id not in ADMIN_IDS:
