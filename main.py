@@ -86,11 +86,17 @@ async def cloudpayments_result(request: Request):
                 except Exception as e:
                     print(f"⚠️ Не удалось отправить сообщение пользователю {telegram_id}: {e}")
         
-            return JSONResponse(content={"code": 0})
+                        return JSONResponse(content={"code": 0})
 
+    except Exception as e:
+        print("❌ Ошибка при обработке данных CloudPayments:", e)
+        traceback.print_exc()
+        return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
 
-    
-    # 🔹 Временный вызов тестового платежа при запуске
-    if __name__ == "__main__":
-        from cloudpayments import send_test_payment
-        send_test_payment()
+# 👉 Вставь строго за пределами try/except и функций
+from cloudpayments import send_test_payment
+
+@app.get("/test-payment")
+async def test_payment():
+    send_test_payment()
+    return {"status": "✅ Тестовое уведомление отправлено"}
