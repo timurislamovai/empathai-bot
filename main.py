@@ -4,18 +4,17 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import traceback
 from aiogram.types import Update
-from handlers import gptchat  # просто импортировать, запускаться он будет автоматически
-from handlers import admin_handlers_aiogram
-from handlers import menu_handlers, aiogram_handlers
+import aiogram
 
 from bot_instance import bot, dp
+from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
 
+# Подключаем все роутеры
 dp.include_routers(
+    gptchat.router,
     menu_handlers.router,
     aiogram_handlers.router
 )
-
-
 
 app = FastAPI()
 import aiogram
