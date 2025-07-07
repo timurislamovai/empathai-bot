@@ -22,7 +22,7 @@ FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 bot = Bot(token=os.environ["TELEGRAM_TOKEN"])
 
 
-def handle_update(update, db):
+async def handle_update(update, db):
     message = update.get("message")
     if not message:
         return
@@ -58,7 +58,7 @@ def handle_update(update, db):
             traceback.print_exc()
 
 
-def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
+async def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
     if text.startswith("/start"):
         parts = text.strip().split(" ", 1)
         ref_code = parts[1].strip() if len(parts) > 1 else None
@@ -76,7 +76,7 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
             db.commit()
             print(f"[🔁] Реф. код добавлен к существующему пользователю: {ref_code}")
 
-        bot.send_message(
+        await bot.send_message(
             chat_id,
             "👋 Добро пожаловать!\n\n"
             "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
@@ -100,11 +100,11 @@ def handle_command(text: str, user: User, chat_id: int, bot: Bot, db: Session):
         return
 
 
-def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
+async def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Session):
     telegram_id = user.telegram_id
 
     if text == "💳 Купить подписку":
-        bot.send_message(
+        await bot.send_message(
             chat_id,
             "💡 _С Ила AI Бот ты получаешь поддержку каждый день — как от внимательного собеседника._\n\n"
             "🔹 *1 месяц*: 1 199 ₽ — начни без лишних обязательств\n"
@@ -118,7 +118,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
     if text in ["🗓 Купить на 1 месяц", "📅 Купить на 1 год"]:
         plan = "monthly" if text == "🗓 Купить на 1 месяц" else "yearly"
         invoice_id = int(time.time())
-        bot.send_message(
+        await bot.send_message(
             chat_id,
             "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
             reply_markup=InlineKeyboardMarkup([
@@ -137,12 +137,12 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
                 response = f.read()
         except FileNotFoundError:
             response = "Файл с информацией пока не загружен."
-        bot.send_message(chat_id, response, reply_markup=main_menu())
+        await bot.send_message(chat_id, response, reply_markup=main_menu())
         return
 
     if text == "🔄 Сбросить диалог":
         reset_user_thread(db, user)
-        bot.send_message(
+        await bot.send_message(
             chat_id,
             "🔁 Диалог сброшен. Ты можешь начать новый разговор, и я буду воспринимать всё с чистого листа.",
             reply_markup=main_menu()
@@ -150,22 +150,22 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
         return
 
     if text == "🔙 Назад в главное меню":
-        bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
+        await bot.send_message(chat_id, "Вы вернулись в главное меню.", reply_markup=main_menu())
         return
 
     if text in ["👤 Личный кабинет", "👥 Кабинет", "Личный кабинет"]:
         message_text, markup = generate_cabinet_message(user, telegram_id, db)
-        bot.send_message(chat_id, message_text, reply_markup=markup)
+        await bot.send_message(chat_id, message_text, reply_markup=markup)
         return
 
     elif text == "🤝 Партнёрская программа":
         try:
             with open("texts/partner.txt", "r", encoding="utf-8") as file:
                 partner_info = file.read()
-            bot.send_message(chat_id, partner_info, reply_markup=main_menu())
+            await bot.send_message(chat_id, partner_info, reply_markup=main_menu())
         except Exception as e:
             print("❌ Ошибка при чтении partner.txt:", e)
-            bot.send_message(chat_id, "⚠️ Не удалось загрузить информацию о партнёрской программе.", reply_markup=main_menu())
+            await bot.send_message(chat_id, "⚠️ Не удалось загрузить информацию о партнёрской программе.", reply_markup=main_menu())
         return
 
 
@@ -176,7 +176,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
             if user.subscription_expires_at and user.subscription_expires_at < datetime.utcnow():
                 user.has_paid = False
                 db.commit()
-                bot.send_message(
+                await bot.send_message(
                     chat_id,
                     "📭 Срок вашей подписки истёк. Пожалуйста, оформите новую подписку.",
                     reply_markup=main_menu()
@@ -184,7 +184,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
                 return
         else:
             if user.free_messages_used >= FREE_MESSAGES_LIMIT:
-                bot.send_message(
+                await bot.send_message(
                     chat_id,
                     "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
                     reply_markup=main_menu()
@@ -196,7 +196,7 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
     if crisis_level in ["high", "medium", "low"]:
         log_crisis_message(telegram_id, text, level=crisis_level)
         if crisis_level == "high":
-            bot.send_message(chat_id, (
+            await bot.send_message(chat_id, (
                 "Мне очень жаль, что ты сейчас испытываешь такие тяжёлые чувства.\n\n"
                 "Если тебе тяжело и возникают мысли навредить себе — важно не оставаться с этим наедине. "
                 "Обратись к специалисту или кризисной службе. 💙\n\n"
@@ -220,4 +220,4 @@ def handle_menu_button(text: str, user: User, chat_id: int, bot: Bot, db: Sessio
 
     increment_message_count(db, user)
     assistant_response = clean_markdown(assistant_response)
-    bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
+    await bot.send_message(chat_id, assistant_response, reply_markup=main_menu())
