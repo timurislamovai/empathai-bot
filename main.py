@@ -1,5 +1,3 @@
-# main.py
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import traceback
@@ -17,7 +15,7 @@ dp.include_routers(
 )
 
 app = FastAPI()
-import aiogram
+
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 
