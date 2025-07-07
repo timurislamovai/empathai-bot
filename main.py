@@ -88,3 +88,6 @@ async def cloudpayments_result(request: Request):
         
             return JSONResponse(content={"code": 0})
 
+from cloudpayments import send_test_payment
+send_test_payment()
+
