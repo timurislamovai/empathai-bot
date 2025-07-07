@@ -27,6 +27,7 @@ print("💡 AIOGRAM VERSION:", aiogram.__version__)
 async def root():
     return {"status": "ok"}
 
+
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     try:
@@ -41,6 +42,7 @@ async def telegram_webhook(request: Request):
         print("❌ Ошибка в telegram_webhook:", e)
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 # 🔹 Новый маршрут для обработки CloudPayments уведомлений
 @app.post("/payment/cloudpayments/result")
@@ -67,17 +69,17 @@ async def cloudpayments_result(request: Request):
         if status == "Completed" and telegram_id and plan:
             db = SessionLocal()
             user = get_user_by_telegram_id(db, telegram_id)
-        
+
             if user:
                 user.has_paid = True
                 if plan == "monthly":
                     user.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
                 elif plan == "yearly":
                     user.subscription_expires_at = datetime.utcnow() + timedelta(days=365)
-        
+
                 db.commit()
                 print("✅ Подписка активирована.")
-        
+
                 try:
                     await bot.send_message(
                         chat_id=telegram_id,
@@ -85,16 +87,18 @@ async def cloudpayments_result(request: Request):
                     )
                 except Exception as e:
                     print(f"⚠️ Не удалось отправить сообщение пользователю {telegram_id}: {e}")
-        
-                        return JSONResponse(content={"code": 0})
+
+            return JSONResponse(content={"code": 0})
 
     except Exception as e:
         print("❌ Ошибка при обработке данных CloudPayments:", e)
         traceback.print_exc()
         return JSONResponse(content={"code": 99, "message": "Ошибка обработки"}, status_code=500)
 
+
 # 👉 Вставь строго за пределами try/except и функций
 from cloudpayments import send_test_payment
+
 
 @app.get("/test-payment")
 async def test_payment():
