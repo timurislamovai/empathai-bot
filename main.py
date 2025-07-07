@@ -1,6 +1,4 @@
 # main.py
-import aiogram
-print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -13,6 +11,9 @@ from handlers import menu_handlers
 from bot_instance import bot, dp
 
 app = FastAPI()
+import aiogram
+print("💡 AIOGRAM VERSION:", aiogram.__version__)
+
 
 @app.get("/")
 async def root():
