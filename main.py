@@ -89,7 +89,17 @@ async def cloudpayments_result(request: Request):
             now = datetime.utcnow()
             days = 30 if plan == "monthly" else 365
             user.has_paid = True
-            user.subscription_expires_at = now + timedelta(days=days)
+        
+            # 🔄 Правильное продление подписки
+            current_expiry = user.subscription_expires_at or now
+            base_date = max(current_expiry, now)
+            user.subscription_expires_at = base_date + timedelta(days=days)
+        
+            db.commit()  # 💾 Сохраняем изменения!
+        
+            print(f"📆 Подписка продлена до: {user.subscription_expires_at}")
+
+
 
             # ✅ Реферальная логика
             if user.referrer_code:
