@@ -103,10 +103,10 @@ async def cloudpayments_result(request: Request):
                         referrer.ref_earned += int(reward * 100)  # сохраняем в копейках
 
                         print(f"💸 Начислено {reward}₽ рефералу {referrer.telegram_id}")
+                        db.commit()
                 except Exception as e:
                     print("⚠️ Ошибка начисления реферального бонуса:", e)
 
-            db.commit()
             print("✅ Подписка активирована в БД.")
             try:
                 await bot.send_message(
