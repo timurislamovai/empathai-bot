@@ -15,10 +15,10 @@ from ui import main_menu
 
 # Подключаем роутеры
 dp.include_routers(
+    admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
     gptchat.router,
     menu_handlers.router,
-    aiogram_handlers.router,
-    admin_handlers_aiogram.router
+    aiogram_handlers.router
 )
 
 app = FastAPI()
