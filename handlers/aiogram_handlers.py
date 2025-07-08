@@ -131,3 +131,35 @@ async def send_partner_info(message: types.Message):
 @router.message(F.text == "🔙 Назад в главное меню")
 async def back_to_main(message: types.Message):
     await message.answer("📋 Главное меню:", reply_markup=main_menu())
+
+
+from aiogram.filters import CommandStart
+from database import SessionLocal
+from models import get_user_by_telegram_id, create_user
+from ui import main_menu
+
+@router.message(CommandStart())
+async def handle_start(message: types.Message):
+    db = SessionLocal()
+    telegram_id = str(message.from_user.id)
+
+    user = get_user_by_telegram_id(db, telegram_id)
+    if not user:
+        # Если есть реф. код в команде
+        ref_code = None
+        parts = message.text.strip().split(" ", 1)
+        if len(parts) > 1 and parts[1].startswith("ref"):
+            ref_code = parts[1].replace("ref", "")
+            if not ref_code.isdigit():
+                ref_code = None
+
+        user = create_user(db, int(telegram_id), referrer_code=ref_code)
+        print(f"[👤] Новый пользователь по ссылке ref: {ref_code}")
+    else:
+        print(f"[ℹ️] Пользователь уже есть: {telegram_id}")
+
+    await message.answer(
+        "👋 Добро пожаловать! Я — Ила, твой ИИ-помощник.\n\nЧем могу поддержать тебя сегодня?",
+        reply_markup=main_menu()
+    )
+
