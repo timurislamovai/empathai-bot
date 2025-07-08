@@ -90,6 +90,22 @@ async def cloudpayments_result(request: Request):
             days = 30 if plan == "monthly" else 365
             user.has_paid = True
             user.subscription_expires_at = now + timedelta(days=days)
+
+            # ✅ Реферальная логика
+            if user.referrer_code:
+                try:
+                    referrer = get_user_by_telegram_id(db, int(user.referrer_code))
+                    if referrer:
+                        amount = float(data.get("Amount", "0").replace(",", "."))  # сумма оплаты
+                        reward = round(amount * 0.3, 2)  # 30% бонус
+
+                        referrer.ref_count += 1
+                        referrer.ref_earned += int(reward * 100)  # сохраняем в копейках
+
+                        print(f"💸 Начислено {reward}₽ рефералу {referrer.telegram_id}")
+                except Exception as e:
+                    print("⚠️ Ошибка начисления реферального бонуса:", e)
+
             db.commit()
             print("✅ Подписка активирована в БД.")
             try:
