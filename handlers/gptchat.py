@@ -6,7 +6,8 @@ import os
 from models import (
     get_user_by_telegram_id,
     increment_message_count,
-    update_user_thread_id
+    update_user_thread_id,
+    create_user  # ← добавь, если не импортировал
 )
 from openai_api import send_message_to_assistant, reset_user_thread
 from utils import clean_markdown
@@ -34,6 +35,11 @@ async def handle_gpt_message(message: types.Message):
     db = SessionLocal()
     telegram_id = str(message.from_user.id)
     user = get_user_by_telegram_id(db, telegram_id)
+
+    if not user:
+        user = create_user(db, int(telegram_id))
+        print(f"[👤] Автоматически создан пользователь в GPT: {telegram_id}")
+
     text = message.text
 
     # 🔐 Проверка лимитов
