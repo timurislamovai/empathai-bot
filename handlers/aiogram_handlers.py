@@ -1,54 +1,16 @@
-from aiogram import types, F
-from aiogram.filters import Command
+
+from aiogram import types, F, Router
+from aiogram.filters import Command, CommandStart
 from bot_instance import dp, bot
 from models import get_user_by_telegram_id, create_user
 from ui import main_menu, subscription_plan_keyboard
 from database import SessionLocal
 from openai_api import reset_user_thread
 from referral import generate_cabinet_message
-from cloudpayments import generate_payment_link  # ← добавили
+from cloudpayments import generate_payment_link
 import os
-from aiogram import Router
 
 router = Router()
-
-# 🚀 Старт и создание пользователя с ref-кодом
-@router.message(Command("start"))
-async def handle_start(message: types.Message):
-    chat_id = message.chat.id
-    telegram_id = str(message.from_user.id)
-    text = message.text
-
-    db = SessionLocal()
-    user = get_user_by_telegram_id(db, telegram_id)
-
-    # Извлекаем реф-код
-    ref_code = None
-    parts = text.strip().split(" ", 1)
-    if len(parts) > 1:
-        ref_code = parts[1].strip()
-        if ref_code.startswith("ref"):
-            ref_code = ref_code.replace("ref", "", 1)
-        if not ref_code.isdigit():
-            ref_code = None
-
-    # Создаём пользователя или обновляем
-    if not user:
-        user = create_user(db, telegram_id, referrer_code=ref_code)
-        print(f"[👤] Новый пользователь создан по реф. коду: {ref_code}")
-    elif not user.referrer_code and ref_code:
-        user.referrer_code = ref_code
-        db.commit()
-        print(f"[🔁] Реф. код добавлен к существующему пользователю: {ref_code}")
-
-    await message.answer(
-        "👋 Добро пожаловать!\n\n"
-        "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
-        "🆓 Вам доступно 50 бесплатных сообщений.\n"
-        "💳 После окончания лимита можно оформить подписку.\n\n"
-        "📋 Выберите пункт меню или напишите свой вопрос.",
-        reply_markup=main_menu()
-    )
 
 # 📂 Личный кабинет
 @router.message(F.text == "👤 Личный кабинет")
@@ -132,12 +94,7 @@ async def send_partner_info(message: types.Message):
 async def back_to_main(message: types.Message):
     await message.answer("📋 Главное меню:", reply_markup=main_menu())
 
-
-from aiogram.filters import CommandStart
-from database import SessionLocal
-from models import get_user_by_telegram_id, create_user
-from ui import main_menu
-
+# 🚀 Хендлер /start с реф-кодом
 @router.message(CommandStart())
 async def handle_start(message: types.Message):
     db = SessionLocal()
@@ -145,7 +102,7 @@ async def handle_start(message: types.Message):
 
     user = get_user_by_telegram_id(db, telegram_id)
     if not user:
-        # Если есть реф. код в команде
+        # Извлекаем реф. код из /start ref123
         ref_code = None
         parts = message.text.strip().split(" ", 1)
         if len(parts) > 1 and parts[1].startswith("ref"):
@@ -154,12 +111,15 @@ async def handle_start(message: types.Message):
                 ref_code = None
 
         user = create_user(db, int(telegram_id), referrer_code=ref_code)
-        print(f"[👤] Новый пользователь по ссылке ref: {ref_code}")
+        print(f"[👤] Новый пользователь создан по ссылке ref: {ref_code}")
     else:
         print(f"[ℹ️] Пользователь уже есть: {telegram_id}")
 
     await message.answer(
-        "👋 Добро пожаловать! Я — Ила, твой ИИ-помощник.\n\nЧем могу поддержать тебя сегодня?",
+        "👋 Добро пожаловать!\n\n"
+        "Привет, я Ила — твой личный виртуальный психолог и наставник по саморазвитию.\n\n"
+        "🆓 Вам доступно 50 бесплатных сообщений.\n"
+        "💳 После окончания лимита можно оформить подписку.\n\n"
+        "📋 Выберите пункт меню или напишите свой вопрос.",
         reply_markup=main_menu()
     )
-
