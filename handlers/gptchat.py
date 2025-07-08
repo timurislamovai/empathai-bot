@@ -20,17 +20,22 @@ router = Router()
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
 
 # Обрабатываем только произвольные сообщения, исключая кнопки
-@router.message(F.text & ~F.text.in_([
-    "💳 Купить подписку",
-    "🗓 Купить на 1 месяц",
-    "📅 Купить на 1 год",
-    "👤 Личный кабинет",
-    "❓ Гид по боту",
-    "📜 Условия пользования",
-    "🔄 Сбросить диалог",
-    "🤝 Партнёрская программа",
-    "🔙 Назад в главное меню"
-]))
+@router.message(
+    F.text 
+    & ~F.text.in_([
+        "💳 Купить подписку",
+        "🗓 Купить на 1 месяц",
+        "📅 Купить на 1 год",
+        "👤 Личный кабинет",
+        "❓ Гид по боту",
+        "📜 Условия пользования",
+        "🔄 Сбросить диалог",
+        "🤝 Партнёрская программа",
+        "🔙 Назад в главное меню"
+    ])
+    & ~F.text.startswith("/start")
+)
+
 async def handle_gpt_message(message: types.Message):
     db = SessionLocal()
     telegram_id = str(message.from_user.id)
