@@ -33,7 +33,7 @@ async def handle_payment_options(message: types.Message):
     plan = "monthly" if "месяц" in message.text else "yearly"
     amount = 10000 if plan == "monthly" else 99000
 
-    link = generate_payment_link(telegram_id, plan=plan, amount=amount)
+    link = generate_payment_link(telegram_id, plan=plan)
 
     await message.answer(
         f"💳 Вот ссылка на оплату подписки:\n\n{link}",
