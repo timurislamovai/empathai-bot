@@ -1,4 +1,4 @@
-fastapi==1.6.0
+fastapi==0.109.2
 uvicorn[standard]
 aiogram>=3.4.1,<4.0.0
 openai
