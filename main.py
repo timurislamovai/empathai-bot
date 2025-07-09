@@ -4,6 +4,7 @@ import traceback
 import json
 from aiogram.types import Update
 import aiogram
+from handlers import admin_panel_api
 
 from bot_instance import bot, dp
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
@@ -21,8 +22,12 @@ dp.include_routers(
     aiogram_handlers.router
 )
 
+# Подключаем API для админ-панели
+app.include_router(admin_panel_api.router)
+
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
+
 
 
 @app.get("/")
