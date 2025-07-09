@@ -4,7 +4,6 @@ import traceback
 import json
 from aiogram.types import Update
 import aiogram
-from handlers import admin_panel_api
 
 from bot_instance import bot, dp
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
@@ -14,20 +13,16 @@ from models import get_user_by_telegram_id
 from datetime import datetime, timedelta
 from ui import main_menu
 
-# Сначала создаём FastAPI-приложение
-app = FastAPI()
-print("💡 AIOGRAM VERSION:", aiogram.__version__)
-
-# Подключаем API для админ-панели
-app.include_router(admin_panel_api.router)
-
-# Подключаем Telegram-обработчики
+# Подключаем роутеры
 dp.include_routers(
-    admin_handlers_aiogram.router,
+    admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
     gptchat.router,
     menu_handlers.router,
     aiogram_handlers.router
 )
+
+app = FastAPI()
+print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 
 @app.get("/")
