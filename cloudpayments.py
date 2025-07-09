@@ -63,14 +63,21 @@ def send_test_payment():
     print("📨 Ответ сервера:", response.text)
 
 
-# ✅ Генерация платёжной ссылки (добавлено)
-def generate_payment_link(telegram_id: str, plan: str, amount: int = 10000) -> str:
+def generate_payment_link(telegram_id: str, plan: str) -> str:
     """
     Генерирует платёжную ссылку CloudPayments с параметрами:
     - telegram_id: Telegram ID пользователя
     - plan: 'monthly' или 'yearly'
-    - amount: сумма в копейках (10000 = 100.00 руб.)
     """
+
+    # 🔢 Устанавливаем цену в копейках
+    if plan == "monthly":
+        amount = 119900  # 1199.00 руб
+    elif plan == "yearly":
+        amount = 1199900  # 11999.00 руб
+    else:
+        amount = 119900  # значение по умолчанию
+
     url = "https://api.cloudpayments.ru/orders/create"
 
     payload = {
@@ -86,7 +93,11 @@ def generate_payment_link(telegram_id: str, plan: str, amount: int = 10000) -> s
     }
 
     try:
-        response = requests.post(url, json=payload, auth=requests.auth.HTTPBasicAuth(CLOUDPAYMENTS_PUBLIC_ID, CLOUDPAYMENTS_SECRET))
+        response = requests.post(
+            url,
+            json=payload,
+            auth=requests.auth.HTTPBasicAuth(CLOUDPAYMENTS_PUBLIC_ID, CLOUDPAYMENTS_SECRET)
+        )
         result = response.json()
 
         if result.get("Success") and "Model" in result:
@@ -96,5 +107,5 @@ def generate_payment_link(telegram_id: str, plan: str, amount: int = 10000) -> s
             print("❌ Ошибка при создании ссылки:", result)
             return "Ошибка генерации ссылки"
     except Exception as e:
-        print("❌ Исключение при запросе:", e)
+        print("❌ Ошибка при запросе:", str(e))
         return "Ошибка подключения"
