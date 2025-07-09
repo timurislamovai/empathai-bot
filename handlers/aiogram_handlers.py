@@ -41,7 +41,7 @@ async def show_payment_link(message: types.Message):
     telegram_id = str(message.from_user.id)
     amount = 119900 if plan == "yearly" else 119900 // 12  # сумма в копейках
 
-    payment_url = generate_payment_link(telegram_id, plan, amount=amount)
+    payment_url = generate_payment_link(telegram_id, plan)
 
     await message.answer(
         "🔗 Нажмите кнопку ниже, чтобы перейти к оплате:",
