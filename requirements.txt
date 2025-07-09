@@ -8,4 +8,5 @@ requests
 python-multipart
 urllib3==1.26.15
 magic-filter>=1.0.9
+pydantic==1.10.12
 fastapi-jwt-auth
