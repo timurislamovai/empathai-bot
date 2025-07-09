@@ -1,4 +1,10 @@
 from fastapi import APIRouter, Depends
+from fastapi_jwt_auth import AuthJWT
+from fastapi_jwt_auth.exceptions import AuthJWTException
+from fastapi import HTTPException
+from pydantic import BaseModel
+import os
+
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import User
@@ -13,6 +19,24 @@ def get_db():
         yield db
     finally:
         db.close()
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
+class Settings(BaseModel):
+    authjwt_secret_key: str = os.getenv("ADMIN_JWT_SECRET", "supersecret")
+
+@AuthJWT.load_config
+def get_config():
+    return Settings()
+
+@router.post("/login")
+def login(data: AdminLogin, Authorize: AuthJWT = Depends()):
+    if data.username != "admin" or data.password != os.getenv("ADMIN_PASSWORD", "admin123"):
+        raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+
+    access_token = Authorize.create_access_token(subject=data.username)
+    return {"access_token": access_token}
 
 
 @router.get("/stats")
