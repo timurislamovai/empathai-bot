@@ -1,6 +1,6 @@
-fastapi==0.95.2
+fastapi
 uvicorn[standard]
-aiogram==3.0.0b7
+aiogram>=3.4.1,<4.0.0
 openai
 sqlalchemy
 psycopg2-binary
@@ -8,5 +8,3 @@ requests
 python-multipart
 urllib3==1.26.15
 magic-filter>=1.0.9
-pydantic==1.10.12
-fastapi-jwt-auth
