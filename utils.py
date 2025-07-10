@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from models import User  # Импорт модели пользователя из базы данных
 
+
 # 📊 Сводка статистики по пользователям и сообщениям
 # Принимает сессию SQLAlchemy, возвращает готовый текст с данными:
 # - всего пользователей
@@ -30,36 +31,70 @@ from models import User  # Импорт модели пользователя и
 # - неактивные более 7 дней
 # - общее число сообщений
 # - сообщения за последние 24 часа
+
 def get_stats_summary(session):
     now = datetime.utcnow()
     day_ago = now - timedelta(days=1)
     week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
 
-    # Общее количество зарегистрированных пользователей
+    # 📦 Основная статистика
     total_users = session.query(func.count(User.id)).scalar()
-
-    # Количество пользователей, писавших за последние 24 часа
-    active_24h = session.query(func.count(User.id)).filter(User.last_message_at >= day_ago).scalar()
-
-    # Количество новых пользователей, пришедших сегодня
     new_today = session.query(func.count(User.id)).filter(func.date(User.first_seen_at) == now.date()).scalar()
+    new_7d = session.query(func.count(User.id)).filter(User.first_seen_at >= week_ago).scalar()
+    new_30d = session.query(func.count(User.id)).filter(User.first_seen_at >= month_ago).scalar()
 
-    # Пользователи, неактивные более 7 дней
-    inactive_7d = session.query(func.count(User.id)).filter(User.last_message_at < week_ago).scalar()
+    active_24h = session.query(func.count(User.id)).filter(User.last_message_at >= day_ago).scalar()
+    active_7d = session.query(func.count(User.id)).filter(User.last_message_at >= week_ago).scalar()
 
-    # Общее количество отправленных сообщений всеми пользователями
+    inactive = session.query(func.count(User.id)).filter(
+        (User.last_message_at == None) | (User.last_message_at < week_ago)
+    ).scalar()
+
+    # 💳 Подписки
+    paid_total = session.query(func.count(User.id)).filter(User.has_paid == True).scalar()
+    paid_7d = session.query(func.count(User.id)).filter(User.has_paid == True, User.first_seen_at >= week_ago).scalar()
+    paid_30d = session.query(func.count(User.id)).filter(User.has_paid == True, User.first_seen_at >= month_ago).scalar()
+    free_total = session.query(func.count(User.id)).filter(User.has_paid == False).scalar()
+
+    # 📬 Сообщения
     total_messages = session.query(func.sum(User.total_messages)).scalar() or 0
-
-    # Количество сообщений за последние сутки
     messages_24h = session.query(func.sum(User.total_messages)).filter(User.last_message_at >= day_ago).scalar() or 0
 
-    # Возврат текстовой статистики, готовой к отправке в Telegram
-    return (
-        f"📊 Статистика EmpathAI:\n"
+    # 🔗 Реферальная активность
+    referred_total = session.query(func.count(User.id)).filter(User.referrer_code != None).scalar()
+
+    top_referrals = session.query(
+        User.referrer_code,
+        func.count(User.id).label("invited"),
+        func.sum(User.referral_earned).label("earned")
+    ).filter(User.referrer_code != None)\
+     .group_by(User.referrer_code)\
+     .order_by(func.count(User.id).desc())\
+     .limit(15)\
+     .all()
+
+    # 📊 Формируем текст
+    stats = (
+        f"📊 Статистика EmpathAI:\n\n"
         f"👥 Всего пользователей: {total_users}\n"
-        f"🟢 Активны за 24 ч: {active_24h}\n"
-        f"🆕 Новые сегодня: {new_today}\n"
-        f"💤 Неактивны (7+ дней): {inactive_7d}\n"
+        f"🆕 Новых сегодня: {new_today}\n"
+        f"🆕 За 7 дней: {new_7d}\n"
+        f"🆕 За 30 дней: {new_30d}\n\n"
+        f"💳 Платных всего: {paid_total}\n"
+        f"💳 За 7 дней: {paid_7d}\n"
+        f"💳 За 30 дней: {paid_30d}\n\n"
+        f"🎁 Бесплатных всего: {free_total}\n"
+        f"💤 Неактивных (7+ дней): {inactive}\n"
+        f"✅ Активных (за 7 дней): {active_7d}\n\n"
         f"💬 Всего сообщений: {total_messages}\n"
-        f"💬 За 24 ч: {messages_24h}"
+        f"💬 За 24 ч: {messages_24h}\n\n"
+        f"🔗 Пришли по реф. ссылке: {referred_total}\n\n"
     )
+
+    if top_referrals:
+        stats += "🏆 ТОП-15 рефералов:\n"
+        for ref_code, invited, earned in top_referrals:
+            stats += f"{ref_code} — {invited} чел., {earned or 0:.2f} ₽\n"
+
+    return stats.strip()
