@@ -1,8 +1,9 @@
-from aiogram import types, Router
+from aiogram import types, Router, F
 from aiogram.filters import Command
 from sqlalchemy import func
 from database import SessionLocal
 from models import get_user_by_telegram_id, create_user, User
+
 
 router = Router()
 
@@ -130,7 +131,7 @@ async def give_unlimited(message: types.Message):
     await message.answer(f"✅ Пользователю {target_id} выдан безлимитный доступ.")
 
 
-@router.callback_query(types.CallbackQuery.data.startswith("confirm_payout:"))
+@router.callback_query(F.data.startswith("confirm_payout:"))
 async def confirm_referral_payout(callback: types.CallbackQuery):
     parts = callback.data.split(":")
     if len(parts) != 3:
