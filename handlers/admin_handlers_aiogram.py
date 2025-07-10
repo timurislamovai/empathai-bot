@@ -4,6 +4,9 @@ from sqlalchemy import func
 from database import SessionLocal
 from models import get_user_by_telegram_id, create_user, User
 from datetime import datetime
+from utils import get_stats_summary
+
+
 
 router = Router()
 
@@ -56,6 +59,8 @@ async def handle_admin_user(message: types.Message):
 
 
 
+
+
 # 📊 /admin_stats — статистика
 @router.message(Command("admin_stats"))
 async def admin_stats(message: types.Message):
@@ -65,16 +70,12 @@ async def admin_stats(message: types.Message):
         return
 
     db = SessionLocal()
-    total_users = db.query(User).count()
-    paid_users = db.query(User).filter(User.has_paid == True).count()
-    unlimited_users = db.query(User).filter(User.is_unlimited == True).count()
+    try:
+        stats = get_stats_summary(db)
+        await message.answer(stats)
+    finally:
+        db.close()
 
-    await message.answer(
-        f"📊 Общая статистика:\n"
-        f"👥 Всего пользователей: {total_users}\n"
-        f"💳 С подпиской: {paid_users}\n"
-        f"♾ Безлимит: {unlimited_users}"
-    )
 
 # 🤝 /admin_referrals — топ-рефералы
 @router.message(Command("admin_referrals"))
