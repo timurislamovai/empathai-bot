@@ -10,6 +10,50 @@ MIN_PAYOUT_AMOUNT = 5000  # Минимальная сумма, необходи�
 
 ADMIN_IDS = ["944583273", "396497806"]
 
+@router.message(Command("admin_user"))
+async def handle_admin_user(message: types.Message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return await message.answer("🚫 У вас нет доступа к этой команде.")
+
+    parts = message.text.strip().split()
+    if len(parts) < 2:
+        return await message.answer("❗ Используйте: /admin_user <telegram_id>")
+
+    telegram_id = parts[1].strip()
+
+    db = SessionLocal()
+    user = get_user_by_telegram_id(db, telegram_id)
+    if not user:
+        return await message.answer("❌ Пользователь не найден.")
+
+    earned = round(user.referral_earned or 0.0, 2)
+    paid = round(user.referral_paid or 0.0, 2)
+    to_pay = round(earned - paid, 2)
+
+    text = (
+        f"👤 Пользователь: @{user.username or 'неизвестен'}\n"
+        f"Telegram ID: {telegram_id}\n\n"
+        f"👥 Приглашено: {user.referrals_count or 0} чел.\n"
+        f"💸 Заработано: {earned} ₽\n"
+        f"💳 Выплачено: {paid} ₽\n"
+        f"💰 Остаток к выплате: {to_pay} ₽\n"
+    )
+
+    # Добавим кнопку, если можно выплачивать
+    if to_pay >= MIN_PAYOUT_AMOUNT:
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(
+                text=f"✅ Отметить как выплачено {to_pay} ₽",
+                callback_data=f"confirm_payout:{telegram_id}:{to_pay}"
+            )]
+        ])
+        await message.answer(text, reply_markup=keyboard)
+    else:
+        text += f"\n❌ Недостаточно для выплаты (минимум {MIN_PAYOUT_AMOUNT} ₽)"
+        await message.answer(text)
+
+
+
 # 📊 /admin_stats — статистика
 @router.message(Command("admin_stats"))
 async def admin_stats(message: types.Message):
