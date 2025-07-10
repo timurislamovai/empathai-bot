@@ -26,9 +26,12 @@ def generate_cabinet_message(user, telegram_id, db):
     message_text += "🤝 Приглашайте — и зарабатывайте!\n"
     message_text += "💸 Вы получаете 30% от каждой оплаченной подписки по вашей ссылке.\n\n"
 
-    message_text += f"👥 Приглашено: {user.ref_count or 0} чел.\n"
-    earned_rub = round((user.ref_earned or 0) / 100, 2)
-    paid_rub = round((user.referral_paid or 0), 2)
+    # Считаем количество приглашённых пользователей
+    invited_count = db.query(User).filter(User.referrer_code == str(user.telegram_id)).count()
+
+    message_text += f"👥 Приглашено: {invited_count} чел.\n"
+    earned_rub = round((user.referral_earned or 0.0), 2)
+    paid_rub = round((user.referral_paid or 0.0), 2)
     message_text += f"💸 Заработано: {earned_rub} ₽\n"
     message_text += f"💳 Выплачено: {paid_rub} ₽\n"
     message_text += f"💰 Остаток к выплате: {round(earned_rub - paid_rub, 2)} ₽\n\n"
@@ -38,4 +41,3 @@ def generate_cabinet_message(user, telegram_id, db):
     message_text += "🔔 Минимальная сумма для вывода: 5000 рублей"
 
     return message_text, main_menu()
-
