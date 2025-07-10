@@ -1,6 +1,6 @@
 from models import User
 from datetime import datetime
-from ui import main_menu
+from ui import main_menu  # Подключаем клавиатуру из aiogram
 
 def generate_cabinet_message(user, telegram_id, db):
     message_text = f"👤 Ваш Telegram ID: {telegram_id}\n"
@@ -24,7 +24,7 @@ def generate_cabinet_message(user, telegram_id, db):
     message_text += "💸 Вы получаете 30% от каждой оплаченной подписки по вашей ссылке.\n\n"
 
     # Финансовые показатели
-    referral_count = getattr(user, "ref_count", 0)
+    referral_count = getattr(user, "ref_count", 0)  # или user.referrals_count, если используется
     earned = round(user.referral_earned or 0.0, 2)
     paid = round(user.referral_paid or 0.0, 2)
     to_pay = round(earned - paid, 2)
