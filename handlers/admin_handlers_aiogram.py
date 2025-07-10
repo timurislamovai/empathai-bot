@@ -27,20 +27,21 @@ async def handle_admin_user(message: types.Message):
     if not user:
         return await message.answer("❌ Пользователь не найден.")
 
+    # 👥 Подсчёт приглашённых
+    invited_count = db.query(User).filter(User.referrer_code == str(telegram_id)).count()
+
     earned = round(user.referral_earned or 0.0, 2)
     paid = round(user.referral_paid or 0.0, 2)
     to_pay = round(earned - paid, 2)
 
     text = (
         f"👤 Пользователь (Telegram ID): {telegram_id}\n\n"
-        f"👥 Приглашено: {user.ref_count or 0} чел.\n"
+        f"👥 Приглашено: {invited_count} чел.\n"
         f"💸 Заработано: {earned} ₽\n"
         f"💳 Выплачено: {paid} ₽\n"
         f"💰 Остаток к выплате: {to_pay} ₽\n"
     )
 
-
-    # Добавим кнопку, если можно выплачивать
     if to_pay >= MIN_PAYOUT_AMOUNT:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
             [types.InlineKeyboardButton(
