@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from sqlalchemy import func
 from database import SessionLocal
 from models import get_user_by_telegram_id, create_user, User
-
+from datetime import datetime
 
 router = Router()
 
@@ -164,3 +164,33 @@ async def confirm_referral_payout(callback: types.CallbackQuery):
 
     await callback.answer()
 
+
+
+@router.message(Command("delete_user"))
+async def delete_user_handler(message: types.Message):
+    db = SessionLocal()
+
+    # Проверка доступа
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return await message.answer("❌ У вас нет доступа к этой команде.")
+
+    args = message.text.strip().split()
+    if len(args) != 2 or not args[1].isdigit():
+        return await message.answer("⚠ Укажите Telegram ID: /delete_user 123456789")
+
+    telegram_id = args[1]
+    user = get_user_by_telegram_id(db, telegram_id)
+
+    if not user:
+        return await message.answer("❌ Пользователь не найден.")
+
+    # Удаление из базы
+    db.delete(user)
+    db.commit()
+
+    # Запись в лог
+    log_entry = f"[{datetime.utcnow()}] 🗑 Удалён пользователь {telegram_id} админом {message.from_user.id}\n"
+    with open("deleted_users.log", "a", encoding="utf-8") as f:
+        f.write(log_entry)
+
+    await message.answer(f"✅ Пользователь с ID {telegram_id} удалён из базы.")
