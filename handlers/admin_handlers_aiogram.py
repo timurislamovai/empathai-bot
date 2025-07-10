@@ -155,10 +155,11 @@ async def confirm_referral_payout(callback: types.CallbackQuery):
     user.referral_paid = paid + payout_amount
     db.commit()
 
-    new_balance = round(user.referral_earned - user.referral_paid, 2)
+    username_display = getattr(user, "username", "неизвестен")
     await callback.message.answer(
-        f"✅ Выплата {payout_amount} ₽ пользователю @{user.username or 'неизвестен'} отмечена.\n"
+        f"✅ Выплата {payout_amount} ₽ пользователю @{username_display} отмечена.\n"
         f"Новый остаток: {new_balance} ₽"
     )
+
     await callback.answer()
 
