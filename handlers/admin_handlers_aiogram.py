@@ -128,3 +128,36 @@ async def give_unlimited(message: types.Message):
     db.commit()
 
     await message.answer(f"✅ Пользователю {target_id} выдан безлимитный доступ.")
+
+
+@router.callback_query(types.CallbackQuery.data.startswith("confirm_payout:"))
+async def confirm_referral_payout(callback: types.CallbackQuery):
+    parts = callback.data.split(":")
+    if len(parts) != 3:
+        return await callback.message.answer("❌ Ошибка: некорректные данные кнопки.")
+
+    telegram_id = parts[1]
+    payout_amount = float(parts[2])
+
+    db = SessionLocal()
+    user = get_user_by_telegram_id(db, telegram_id)
+    if not user:
+        return await callback.message.answer("❌ Пользователь не найден.")
+
+    earned = round(user.referral_earned or 0.0, 2)
+    paid = round(user.referral_paid or 0.0, 2)
+    to_pay = round(earned - paid, 2)
+
+    if payout_amount > to_pay:
+        return await callback.message.answer("⚠️ Сумма выплаты превышает доступный остаток.")
+
+    user.referral_paid = paid + payout_amount
+    db.commit()
+
+    new_balance = round(user.referral_earned - user.referral_paid, 2)
+    await callback.message.answer(
+        f"✅ Выплата {payout_amount} ₽ пользователю @{user.username or 'неизвестен'} отмечена.\n"
+        f"Новый остаток: {new_balance} ₽"
+    )
+    await callback.answer()
+
