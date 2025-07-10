@@ -6,6 +6,8 @@ from models import get_user_by_telegram_id, create_user, User
 
 router = Router()
 
+MIN_PAYOUT_AMOUNT = 5000  # Минимальная сумма, необходимая для выплаты
+
 ADMIN_IDS = ["944583273", "396497806"]
 
 # 📊 /admin_stats — статистика
