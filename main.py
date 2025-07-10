@@ -89,39 +89,34 @@ async def cloudpayments_result(request: Request):
             now = datetime.utcnow()
             days = 30 if plan == "monthly" else 365
             user.has_paid = True
-        
-            # 🔄 Правильное продление подписки
+
             current_expiry = user.subscription_expires_at or now
             base_date = max(current_expiry, now)
             user.subscription_expires_at = base_date + timedelta(days=days)
-        
-            db.commit()  # 💾 Сохраняем изменения!
-        
-            print(f"📆 Подписка продлена до: {user.subscription_expires_at}")
-
-
 
             # ✅ Реферальная логика
             if user.referrer_code:
                 try:
-                    referrer = get_user_by_telegram_id(db, int(user.referrer_code))
+                    referrer = get_user_by_telegram_id(db, str(user.referrer_code))
                     if referrer:
-                        amount = float(data.get("Amount", "0").replace(",", "."))  # сумма оплаты
-                        reward = round(amount * 0.3, 2)  # 30% бонус
+                        amount = float(data.get("Amount", "0").replace(",", "."))
+                        reward = round(amount * 0.3, 2)
 
-                        referrer.ref_count += 1
-                        referrer.ref_earned += int(reward * 100)  # сохраняем в копейках
+                        referrer.invited_count = (referrer.invited_count or 0) + 1
+                        referrer.referral_earned = (referrer.referral_earned or 0.0) + reward
 
-                        print(f"💸 Начислено {reward}₽ рефералу {referrer.telegram_id}")
-                        db.commit()
+                        print(f"🎉 Начислено {reward}₽ рефералу {referrer.telegram_id}")
                 except Exception as e:
-                    print("⚠️ Ошибка начисления реферального бонуса:", e)
+                    print("⚠️ Ошибка при начислении бонуса:", e)
 
-            print("✅ Подписка активирована в БД.")
+            db.commit()
+            print(f"📆 Подписка продлена до: {user.subscription_expires_at}")
+
             try:
                 await bot.send_message(
                     chat_id=int(telegram_id),
-                    text="✅ Ваша подписка активирована!\nСпасибо за доверие 💙",
+                    text="✅ Ваша подписка активирована!
+Спасибо за доверие 💙",
                     reply_markup=main_menu()
                 )
             except Exception as send_err:
@@ -135,7 +130,6 @@ async def cloudpayments_result(request: Request):
         print("❌ Ошибка при обработке данных CloudPayments:", e)
         traceback.print_exc()
         return JSONResponse(content={"code": 2, "message": "Internal error"}, status_code=500)
-
 
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
