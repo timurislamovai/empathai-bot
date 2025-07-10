@@ -1,14 +1,10 @@
 from models import Base
 from database import engine
 
-def reset_db():
-    print("⚠️ Удаляем все таблицы...")
-    Base.metadata.drop_all(bind=engine)
-
-    print("✅ Создаём заново таблицы...")
+def init_db():
+    print("✅ Creating tables...")
     Base.metadata.create_all(bind=engine)
-
-    print("✅ Таблицы успешно пересозданы.")
+    print("✅ Tables created.")
 
 if __name__ == "__main__":
-    reset_db()
+    init_db()
