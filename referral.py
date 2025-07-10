@@ -3,6 +3,9 @@ from datetime import datetime
 from ui import main_menu  # Подключаем клавиатуру из aiogram
 
 def generate_cabinet_message(user, telegram_id, db):
+    if user is None:
+        return "❌ Пользователь не найден. Отправьте любое сообщение боту, чтобы зарегистрироваться.", main_menu()
+
     message_text = f"👤 Ваш Telegram ID: {telegram_id}\n"
 
     if user.is_unlimited:
@@ -17,25 +20,22 @@ def generate_cabinet_message(user, telegram_id, db):
         message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
         message_text += "⏳ Пробный период: активен\n"
 
-    # 👥 Партнёрская информация
+    # 🤝 Партнёрская информация
     message_text += "\n🤝 Партнёрская программа:\n"
     message_text += f"🔗 Ваша ссылка: https://t.me/EmpathAIChat_bot?start=ref{user.telegram_id}\n"
     message_text += "🤝 Приглашайте — и зарабатывайте!\n"
     message_text += "💸 Вы получаете 30% от каждой оплаченной подписки по вашей ссылке.\n\n"
 
-    # Финансовые показатели
-    referral_count = user.referrals_count or 0
-    earned = round(user.referral_earned or 0.0, 2)
-    paid = round(user.referral_paid or 0.0, 2)
-    to_pay = round(earned - paid, 2)
-
-    message_text += f"👥 Приглашено: {referral_count} чел.\n"
-    message_text += f"💸 Заработано: {earned} ₽\n"
-    message_text += f"💳 Выплачено: {paid} ₽\n"
-    message_text += f"💰 Остаток к выплате: {to_pay} ₽\n\n"
+    message_text += f"👥 Приглашено: {user.ref_count or 0} чел.\n"
+    earned_rub = round((user.ref_earned or 0) / 100, 2)
+    paid_rub = round((user.referral_paid or 0), 2)
+    message_text += f"💸 Заработано: {earned_rub} ₽\n"
+    message_text += f"💳 Выплачено: {paid_rub} ₽\n"
+    message_text += f"💰 Остаток к выплате: {round(earned_rub - paid_rub, 2)} ₽\n\n"
 
     message_text += "📤 Как получить выплату?\n"
     message_text += "Напишите администратору: empathpay@bk.ru\n"
     message_text += "🔔 Минимальная сумма для вывода: 5000 рублей"
 
     return message_text, main_menu()
+
