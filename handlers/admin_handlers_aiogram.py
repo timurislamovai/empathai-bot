@@ -32,13 +32,13 @@ async def handle_admin_user(message: types.Message):
     to_pay = round(earned - paid, 2)
 
     text = (
-        f"👤 Пользователь: @{user.username or 'неизвестен'}\n"
-        f"Telegram ID: {telegram_id}\n\n"
+        f"👤 Пользователь (Telegram ID): {telegram_id}\n\n"
         f"👥 Приглашено: {user.referrals_count or 0} чел.\n"
         f"💸 Заработано: {earned} ₽\n"
         f"💳 Выплачено: {paid} ₽\n"
         f"💰 Остаток к выплате: {to_pay} ₽\n"
     )
+
 
     # Добавим кнопку, если можно выплачивать
     if to_pay >= MIN_PAYOUT_AMOUNT:
