@@ -10,7 +10,7 @@ from utils import get_stats_summary
 
 router = Router()
 
-MIN_PAYOUT_AMOUNT = 100  # Минимальная сумма, необходимая для выплаты
+MIN_PAYOUT_AMOUNT = 5000  # Минимальная сумма, необходимая для выплаты
 
 ADMIN_IDS = ["944583273", "396497806"]
 
