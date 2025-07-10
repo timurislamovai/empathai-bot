@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import Date
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -12,6 +13,9 @@ class User(Base):
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
     last_message_date = Column(Date, default=None)
+    referral_earned = Column(Float, default=0.0)
+    referral_paid = Column(Float, default=0.0)
+
 
     # 👇 Дополнительные поля для аналитики:
     first_seen_at = Column(DateTime, default=datetime.utcnow)
