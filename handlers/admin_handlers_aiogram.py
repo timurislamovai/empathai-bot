@@ -10,7 +10,7 @@ from utils import get_stats_summary
 
 router = Router()
 
-MIN_PAYOUT_AMOUNT = 5000  # Минимальная сумма, необходимая для выплаты
+MIN_PAYOUT_AMOUNT = 100  # Минимальная сумма, необходимая для выплаты
 
 ADMIN_IDS = ["944583273", "396497806"]
 
@@ -157,7 +157,9 @@ async def confirm_referral_payout(callback: types.CallbackQuery):
     user.referral_paid = paid + payout_amount
     db.commit()
 
+    new_balance = round(earned - user.referral_paid, 2)
     username_display = getattr(user, "username", "неизвестен")
+
     await callback.message.answer(
         f"✅ Выплата {payout_amount} ₽ пользователю @{username_display} отмечена.\n"
         f"Новый остаток: {new_balance} ₽"
