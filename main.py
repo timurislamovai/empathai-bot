@@ -102,7 +102,7 @@ async def cloudpayments_result(request: Request):
                         amount = float(data.get("Amount", "0").replace(",", "."))
                         reward = round(amount * 0.3, 2)
 
-                        referrer.invited_count = (referrer.invited_count or 0) + 1
+                        
                         referrer.referral_earned = (referrer.referral_earned or 0.0) + reward
 
                         print(f"🎉 Начислено {reward}₽ рефералу {referrer.telegram_id}")
