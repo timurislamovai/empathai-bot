@@ -33,7 +33,7 @@ async def handle_admin_user(message: types.Message):
 
     text = (
         f"👤 Пользователь (Telegram ID): {telegram_id}\n\n"
-        f"👥 Приглашено: {user.referrals_count or 0} чел.\n"
+        f"👥 Приглашено: {user.ref_count or 0} чел.\n"
         f"💸 Заработано: {earned} ₽\n"
         f"💳 Выплачено: {paid} ₽\n"
         f"💰 Остаток к выплате: {to_pay} ₽\n"
