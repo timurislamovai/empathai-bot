@@ -115,8 +115,7 @@ async def cloudpayments_result(request: Request):
             try:
                 await bot.send_message(
                     chat_id=int(telegram_id),
-                    text="✅ Ваша подписка активирована!
-Спасибо за доверие 💙",
+                    text="✅ Ваша подписка активирована!\nСпасибо за доверие 💙",
                     reply_markup=main_menu()
                 )
             except Exception as send_err:
