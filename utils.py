@@ -58,13 +58,12 @@ def get_stats_summary(session):
     # Получаем топ-15 рефереров с количеством приглашённых и общей прибылью
     top_referrals = (
         session.query(
-            User.referrer_code.label("ref_code"),
-            func.count(User.id).label("invited"),
-            func.coalesce(func.sum(User.referral_earned), 0).label("earned")
+            User.telegram_id,
+            User.ref_count,
+            User.referral_earned
         )
-        .filter(User.referrer_code.isnot(None))
-        .group_by(User.referrer_code)
-        .order_by(func.count(User.id).desc())
+        .filter(User.ref_count > 0)
+        .order_by(User.ref_count.desc())
         .limit(15)
         .all()
     )
@@ -89,8 +88,8 @@ def get_stats_summary(session):
 
     if top_referrals:
         stats += "🏆 ТОП-15 рефералов:\n"
-        for ref_code, invited, earned in top_referrals:
+        for ref_id, invited, earned in top_referrals:
             earned_rub = round((earned or 0) / 100, 2)
-            stats += f"{ref_code} — {invited} чел., {earned_rub:.2f} ₽\n"
+            stats += f"{ref_id} — {invited} чел., {earned_rub:.2f} ₽\n"
 
     return stats.strip()
