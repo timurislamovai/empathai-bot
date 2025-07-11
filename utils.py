@@ -100,6 +100,7 @@ def get_stats_summary(session):
     if top_referrals:
         stats += "🏆 ТОП-15 рефералов:\n"
         for ref_code, invited, earned in top_referrals:
-            stats += f"{ref_code} — {invited} чел., {earned or 0:.2f} ₽\n"
+            earned_rub = round((earned or 0) / 100, 2)
+            stats += f"{ref_code} — {invited} чел., {earned_rub:.2f} ₽\n"
 
     return stats.strip()
