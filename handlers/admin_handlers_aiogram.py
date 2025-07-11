@@ -70,18 +70,17 @@ async def handle_admin_stats(message: types.Message):
         db = SessionLocal()
         stats = get_stats_summary(db)
 
-        # 🔄 Разбиваем, если слишком длинное
-        max_len = 4000
-        if len(stats) <= max_len:
-            await message.answer(stats)
-        else:
-            parts = [stats[i:i+max_len] for i in range(0, len(stats), max_len)]
-            for part in parts:
-                await message.answer(part)
+        print("📊 Ответ статистики:")
+        print(stats)
+        print(f"📏 Длина: {len(stats)}")
+
+        # Временно обрежем, чтобы Telegram точно принял
+        await message.answer(stats[:3000])
 
     except Exception as e:
         print("❌ Ошибка в /admin_stats:", e)
         await message.answer("⚠️ Ошибка при выводе статистики.")
+
 
 
 # 🤝 /admin_referrals — топ-рефералы
