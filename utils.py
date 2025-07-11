@@ -53,31 +53,21 @@ def get_stats_summary(session):
     messages_24h = session.query(func.sum(User.total_messages)).filter(User.last_message_at >= day_ago).scalar() or 0
 
     # 🔗 Реферальная активность
-    referred_total = session.query(func.count(User.id)).filter(User.referrer_code != None).scalar()
+    referred_total = session.query(func.count(User.id)).filter(User.referrer_code.isnot(None)).scalar()
 
-    # Получаем список Telegram ID рефереров и количество приглашённых
-    top_referrals_raw = (
-        session.query(User.referrer_code, func.count(User.id).label("invited"))
-        .filter(User.referrer_code != None)
+    # Получаем топ-15 рефереров с количеством приглашённых и общей прибылью
+    top_referrals = (
+        session.query(
+            User.referrer_code.label("ref_code"),
+            func.count(User.id).label("invited"),
+            func.coalesce(func.sum(User.referral_earned), 0).label("earned")
+        )
+        .filter(User.referrer_code.isnot(None))
         .group_by(User.referrer_code)
         .order_by(func.count(User.id).desc())
         .limit(15)
         .all()
     )
-
-    # Получаем суммы заработка по реферерам
-    ref_codes = [row[0] for row in top_referrals_raw]
-    ref_earned_map = dict(
-        session.query(User.telegram_id, func.coalesce(User.referral_earned, 0))
-        .filter(User.telegram_id.in_(ref_codes))
-        .all()
-    )
-
-    # Сбор финального списка
-    top_referrals = []
-    for ref_code, invited in top_referrals_raw:
-        earned = ref_earned_map.get(ref_code, 0)
-        top_referrals.append((ref_code, invited, earned))
 
     # 📊 Формируем текст
     stats = (
