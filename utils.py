@@ -22,16 +22,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from models import User  # Импорт модели пользователя из базы данных
 
-
 # 📊 Сводка статистики по пользователям и сообщениям
-# Принимает сессию SQLAlchemy, возвращает готовый текст с данными:
-# - всего пользователей
-# - активные за 24 часа
-# - новые за сегодня
-# - неактивные более 7 дней
-# - общее число сообщений
-# - сообщения за последние 24 часа
-
 def get_stats_summary(session):
     now = datetime.utcnow()
     day_ago = now - timedelta(days=1)
@@ -67,7 +58,7 @@ def get_stats_summary(session):
     top_referrals = session.query(
         User.referrer_code,
         func.count(User.id).label("invited"),
-        func.sum(User.referral_earned).label("earned")
+        func.coalesce(func.sum(User.referral_earned), 0).label("earned")
     ).filter(User.referrer_code != None)\
      .group_by(User.referrer_code)\
      .order_by(func.count(User.id).desc())\
