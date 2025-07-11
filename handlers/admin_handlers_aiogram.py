@@ -61,20 +61,27 @@ async def handle_admin_user(message: types.Message):
 
 
 
-# 📊 /admin_stats — статистика
 @router.message(Command("admin_stats"))
-async def admin_stats(message: types.Message):
-    telegram_id = str(message.from_user.id)
-    if telegram_id not in ADMIN_IDS:
-        await message.answer("⛔ У вас нет доступа к этой команде.")
-        return
+async def handle_admin_stats(message: types.Message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return await message.answer("🚫 У вас нет доступа к этой команде.")
 
-    db = SessionLocal()
     try:
+        db = SessionLocal()
         stats = get_stats_summary(db)
-        await message.answer(stats)
-    finally:
-        db.close()
+
+        # 🔄 Разбиваем, если слишком длинное
+        max_len = 4000
+        if len(stats) <= max_len:
+            await message.answer(stats)
+        else:
+            parts = [stats[i:i+max_len] for i in range(0, len(stats), max_len)]
+            for part in parts:
+                await message.answer(part)
+
+    except Exception as e:
+        print("❌ Ошибка в /admin_stats:", e)
+        await message.answer("⚠️ Ошибка при выводе статистики.")
 
 
 # 🤝 /admin_referrals — топ-рефералы
