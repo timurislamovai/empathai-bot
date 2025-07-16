@@ -59,7 +59,9 @@ async def handle_gpt_message(message: types.Message):
                 )
                 return
         else:
-            if user.free_messages_used >= FREE_MESSAGES_LIMIT:
+            user_limit = user.free_message_limit or FREE_MESSAGES_LIMIT
+            if user.free_messages_used >= user_limit:
+
                 await message.answer(
                     "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
                     reply_markup=main_menu()
