@@ -12,6 +12,7 @@ class User(Base):
     telegram_id = Column(BigInteger, unique=True)
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
+    free_message_limit = Column(Integer, default=50)
     last_message_date = Column(Date, default=None)
     referral_earned = Column(Float, default=0.0)
     referral_paid = Column(Float, default=0.0)
