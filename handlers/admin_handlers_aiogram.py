@@ -203,31 +203,3 @@ async def delete_user_handler(message: types.Message):
         f.write(log_entry)
 
     await message.answer(f"✅ Пользователь с ID {telegram_id} удалён из базы.")
-
-@router.message(Command("admin_add_free"))
-async def admin_add_free_messages(message: types.Message):
-    if str(message.from_user.id) not in ADMIN_IDS:
-        return await message.answer("🚫 У вас нет доступа к этой команде.")
-
-    parts = message.text.strip().split()
-    if len(parts) != 2:
-        return await message.answer("❗ Используйте: /admin_add_free <telegram_id>")
-
-    try:
-        telegram_id = int(parts[1])
-    except ValueError:
-        return await message.answer("❗ Неверный формат ID. Используйте число.")
-
-    db = SessionLocal()
-    user = get_user_by_telegram_id(db, telegram_id)
-    if not user:
-        return await message.answer("❌ Пользователь не найден.")
-
-    # Добавлять только если всё потратил
-    if user.free_messages_used < (user.free_message_limit or 50):
-        return await message.answer("🔸 У пользователя ещё остались бесплатные сообщения — добавление не требуется.")
-
-    user.free_message_limit += 50
-    db.commit()
-
-    await message.answer(f"✅ Пользователю {telegram_id} добавлено 50 бесплатных сообщений.")
