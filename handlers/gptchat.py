@@ -45,6 +45,10 @@ async def handle_gpt_message(message: types.Message):
         user = create_user(db, int(telegram_id))
         print(f"[👤] Автоматически создан пользователь в GPT: {telegram_id}")
 
+    # ⏰ Обновим дату последней активности
+    user.last_message_at = datetime.utcnow()
+    db.commit()
+
     text = message.text
 
     # 🔐 Проверка лимитов
