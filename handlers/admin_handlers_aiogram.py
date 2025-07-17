@@ -5,7 +5,8 @@ from database import SessionLocal
 from models import get_user_by_telegram_id, create_user, User
 from datetime import datetime
 from utils import get_stats_summary
-
+from asyncio import sleep
+from datetime import timedelta
 
 
 router = Router()
@@ -203,3 +204,35 @@ async def delete_user_handler(message: types.Message):
         f.write(log_entry)
 
     await message.answer(f"✅ Пользователь с ID {telegram_id} удалён из базы.")
+
+
+
+@router.message(Command("admin_ping_inactive"))
+async def handle_admin_ping_inactive(message: types.Message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return await message.answer("🚫 У вас нет доступа к этой команде.")
+
+    parts = message.text.strip().split(maxsplit=1)
+    if len(parts) < 2:
+        return await message.answer("❗ Используйте: /admin_ping_inactive <текст сообщения>")
+
+    text_to_send = parts[1].strip()
+
+    db = SessionLocal()
+    two_days_ago = datetime.utcnow() - timedelta(days=2)
+    users = db.query(User).filter(User.last_message_at < two_days_ago).all()
+
+    if not users:
+        return await message.answer("👥 Нет пользователей, не писавших более 2 дней.")
+
+    count_sent = 0
+    for user in users:
+        try:
+            await message.bot.send_message(chat_id=int(user.telegram_id), text=text_to_send)
+            count_sent += 1
+            await sleep(0.5)  # пауза между отправками
+        except Exception as e:
+            print(f"❌ Не удалось отправить {user.telegram_id}: {e}")
+            continue
+
+    await message.answer(f"✅ Сообщение отправлено {count_sent} пользователям.")
