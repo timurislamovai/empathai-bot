@@ -26,18 +26,6 @@ dp.include_routers(
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
-from sqlalchemy import text
-
-@app.on_event("startup")
-async def startup():
-    db = SessionLocal()
-    try:
-        db.execute(text("ALTER TABLE users ADD COLUMN last_message_at TIMESTAMP;"))
-        db.commit()
-        print("✅ last_message_at добавлено в таблицу users")
-    except Exception as e:
-        print("ℹ️ Миграция last_message_at: возможно, колонка уже существует:", e)
-
 
 @app.get("/")
 async def root():
