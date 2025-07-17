@@ -229,10 +229,11 @@ async def handle_admin_ping_inactive(message: types.Message):
     for user in users:
         try:
             await message.bot.send_message(chat_id=int(user.telegram_id), text=text_to_send)
+            print(f"📤 Sent to {user.telegram_id}")
             count_sent += 1
-            await sleep(0.5)  # пауза между отправками
+            await sleep(0.5)
         except Exception as e:
-            print(f"❌ Не удалось отправить {user.telegram_id}: {e}")
+            print(f"⚠️ Failed to send to {user.telegram_id}: {e}")
             continue
 
     await message.answer(f"✅ Сообщение отправлено {count_sent} пользователям.")
