@@ -48,9 +48,7 @@ def get_stats_summary(session):
     paid_30d = session.query(func.count(User.id)).filter(User.has_paid == True, User.first_seen_at >= month_ago).scalar()
     free_total = session.query(func.count(User.id)).filter(User.has_paid == False).scalar()
 
-    # 📬 Сообщения
-    total_messages = session.query(func.sum(User.total_messages)).scalar() or 0
-    messages_24h = session.query(func.sum(User.total_messages)).filter(User.last_message_at >= day_ago).scalar() or 0
+    
 
     # 🔗 Реферальная активность
     referred_total = session.query(func.count(User.id)).filter(User.referrer_code.isnot(None)).scalar()
@@ -81,8 +79,6 @@ def get_stats_summary(session):
         f"🎁 Бесплатных всего: {free_total}\n"
         f"💤 Неактивных (7+ дней): {inactive}\n"
         f"✅ Активных (за 7 дней): {active_7d}\n\n"
-        f"💬 Всего сообщений: {total_messages}\n"
-        f"💬 За 24 ч: {messages_24h}\n\n"
         f"🔗 Пришли по реф. ссылке: {referred_total}\n\n"
     )
 
