@@ -41,6 +41,12 @@ def get_stats_summary(session):
     inactive = session.query(func.count(User.id)).filter(
         (User.last_message_at == None) | (User.last_message_at < week_ago)
     ).scalar()
+    expired_trial = session.query(User).filter(
+        User.free_messages_used >= 50,
+        User.has_paid == False,
+        User.is_unlimited == False
+    ).count()
+
 
     # 💳 Подписки
     paid_total = session.query(func.count(User.id)).filter(User.has_paid == True).scalar()
@@ -79,6 +85,7 @@ def get_stats_summary(session):
         f"🎁 Бесплатных всего: {free_total}\n"
         f"💤 Неактивных (7+ дней): {inactive}\n"
         f"✅ Активных (за 7 дней): {active_7d}\n\n"
+        f"❗ Закончился лимит (50 сообщений): {expired_trial}\n"
         f"🔗 Пришли по реф. ссылке: {referred_total}\n\n"
     )
 
