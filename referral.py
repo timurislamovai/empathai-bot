@@ -17,7 +17,7 @@ def generate_cabinet_message(user, telegram_id, db):
             f"({days_left} дней осталось)\n"
         )
     else:
-        message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 50\n"
+        message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 20\n"
         message_text += "⏳ Пробный период: активен\n"
 
     # 🤝 Партнёрская информация
