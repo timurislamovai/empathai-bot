@@ -2,6 +2,8 @@ from models import User
 from datetime import datetime
 from ui import main_menu  # Подключаем клавиатуру из aiogram
 
+FREE_MESSAGES_LIMIT = 20  # Новый лимит бесплатных сообщений
+
 def generate_cabinet_message(user, telegram_id, db):
     if user is None:
         return "❌ Пользователь не найден. Отправьте любое сообщение боту, чтобы зарегистрироваться.", main_menu()
@@ -17,8 +19,13 @@ def generate_cabinet_message(user, telegram_id, db):
             f"({days_left} дней осталось)\n"
         )
     else:
-        message_text += f"💬 Сообщений использовано: {user.free_messages_used} из 20\n"
-        message_text += "⏳ Пробный период: активен\n"
+        used = user.free_messages_used
+        if used < FREE_MESSAGES_LIMIT:
+            message_text += f"💬 Сообщений использовано: {used} из {FREE_MESSAGES_LIMIT}\n"
+            message_text += "⏳ Пробный период: активен\n"
+        else:
+            message_text += f"💬 Бесплатные сообщения из {FREE_MESSAGES_LIMIT} исчерпаны\n"
+            message_text += "🔒 Чтобы продолжить, оформи подписку\n"
 
     # 🤝 Партнёрская информация
     message_text += "\n🤝 Партнёрская программа:\n"
