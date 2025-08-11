@@ -17,7 +17,7 @@ from ui import main_menu
 # Инициализация router
 router = Router()
 
-FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 50))
+FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 20))
 
 # Обрабатываем только произвольные сообщения, исключая кнопки
 @router.message(
