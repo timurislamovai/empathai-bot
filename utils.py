@@ -51,19 +51,7 @@ def get_stats_summary(session):
     # 🔗 Реферальная активность
     referred_total = session.query(func.count(User.id)).filter(User.referrer_code.isnot(None)).scalar()
 
-    # ТОП-15 рефереров
-    top_referrals = (
-        session.query(
-            User.telegram_id,
-            User.ref_count,
-            User.referral_earned
-        )
-        .filter(User.ref_count > 0)
-        .order_by(User.ref_count.desc())
-        .limit(15)
-        .all()
-    )
-
+    
     # 📊 Формируем текст
     stats = (
         f"📊 Статистика EmpathAI:\n\n"
@@ -85,11 +73,4 @@ def get_stats_summary(session):
 
         f"🔗 Пришли по реф. ссылке: {referred_users}\n"
     )
-
-    if top_referrals:
-        stats += "🏆 ТОП-15 рефералов:\n"
-        for ref_id, invited, earned in top_referrals:
-            earned_rub = round((earned or 0) / 100, 2)
-            stats += f"{ref_id} — {invited} чел., {earned_rub:.2f} ₽\n"
-
     return stats.strip()
