@@ -35,7 +35,7 @@ def get_stats_summary(session):
     ).scalar()
 
     expired_trial = session.query(User).filter(
-        User.free_messages_used >= 50,
+        User.free_messages_used >= 20,
         User.has_paid == False,
         User.is_unlimited == False
     ).count()
