@@ -38,7 +38,7 @@ FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 20))
 
 async def handle_gpt_message(message: types.Message):
     db = SessionLocal()
-    telegram_id = str(message.from_user.id)
+    telegram_id = int(message.from_user.id)
     user = get_user_by_telegram_id(db, telegram_id)
 
     if not user:
