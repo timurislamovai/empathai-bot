@@ -14,24 +14,26 @@ def send_message_to_assistant(
     is_paid: bool = False,
     is_unlimited: bool = False
 ) -> tuple[str, str]:
+    # если у пользователя есть старый thread_id — берём его, иначе создаём новый
     if thread_id:
         thread = client.beta.threads.retrieve(thread_id)
     else:
         thread = client.beta.threads.create()
 
+    # добавляем сообщение пользователя в поток
     client.beta.threads.messages.create(
         thread_id=thread.id,
         role="user",
         content=user_message
     )
 
-    # 🔹 если бесплатный пользователь — включаем ограничение
-    run_params = {"thread_id": thread.id, "assistant_id": ASSISTANT_ID}
-    if not is_paid and not is_unlimited:
-        run_params["max_output_tokens"] = 60  # ~200 символов
+    # запускаем ассистента (⚠️ без max_output_tokens — в Assistants API этого параметра нет)
+    run = client.beta.threads.runs.create(
+        thread_id=thread.id,
+        assistant_id=ASSISTANT_ID
+    )
 
-    run = client.beta.threads.runs.create(**run_params)
-
+    # ждём завершения работы
     while True:
         run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
         if run.status == "completed":
@@ -39,18 +41,12 @@ def send_message_to_assistant(
         elif run.status in ["failed", "cancelled", "expired"]:
             return "Что-то пошло не так. Попробуйте позже.", thread.id
 
+    # получаем последний ответ ассистента
     messages = client.beta.threads.messages.list(thread_id=thread.id)
     response = messages.data[0].content[0].text.value.strip()
 
-    # ✂️ если бесплатный и ответ длинный — обрезаем
+    # ✂️ если пользователь бесплатный — обрезаем ответ до 200 символов
     if not is_paid and not is_unlimited and len(response) > 200:
         response = response[:200].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
 
     return response, thread.id
-
-
-
-def reset_user_thread(db: Session, user: User):
-    user.thread_id = None
-    db.commit()
-
