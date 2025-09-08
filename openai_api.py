@@ -52,9 +52,9 @@ def send_message_to_assistant(
             ).strip()
             break  # берём только первый найденный ответ (самый свежий)
 
-    # ✂️ если пользователь бесплатный — обрезаем ответ до 500 символов
-    if not is_paid and not is_unlimited and len(response) > 500:
-        response = response[:500].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
+    # ✂️ если пользователь бесплатный — обрезаем ответ до 700 символов
+    if not is_paid and not is_unlimited and len(response) > 700:
+        response = response[:700].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
 
     return response, thread.id
 
