@@ -49,9 +49,9 @@ async def handle_gpt_message(message: types.Message):
     user.last_message_at = datetime.utcnow()
     db.commit()
 
-    text = message.text
+    text = message.text or ""
 
-    # 🔐 Проверка лимитов
+    # 🔐 Проверка лимитов (срок подписки / количество бесплатных сообщений)
     if not user.is_unlimited:
         if user.has_paid:
             if user.subscription_expires_at and user.subscription_expires_at < datetime.utcnow():
@@ -70,7 +70,7 @@ async def handle_gpt_message(message: types.Message):
                 )
                 return
 
-    # ⚠️ Кризисные слова
+    # ⚠️ Кризисные слова — оставляем обработку в любом случае
     crisis_level = classify_crisis_level(text)
     if crisis_level in ["high", "medium", "low"]:
         log_crisis_message(telegram_id, text, level=crisis_level)
@@ -81,6 +81,16 @@ async def handle_gpt_message(message: types.Message):
                 "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
             )
             return
+
+    # === НОВАЯ ПРОВЕРКА: длина сообщения для бесплатного тарифа ===
+    # Проверяем после кризисного анализа, чтобы важные сигналы не терялись
+    if not user.is_unlimited and not user.has_paid and len(text) > 200:
+        await message.answer(
+            "В бесплатном тарифе можно отправлять до 200 символов. Оформите подписку, чтобы писать более длинные сообщения.",
+            reply_markup=main_menu()
+        )
+        return
+    # =============================================================
 
     # 🤖 Отправка в OpenAI
     try:
@@ -102,3 +112,4 @@ async def handle_gpt_message(message: types.Message):
 
     assistant_response = clean_markdown(assistant_response)
     await message.answer(assistant_response, reply_markup=main_menu())
+
