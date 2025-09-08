@@ -14,7 +14,7 @@ from aiogram import Router
 router = Router()
 
 
-FREE_MESSAGES_LIMIT = 20
+FREE_MESSAGES_LIMIT = 7
 
 @router.message(F.text == "💳 Купить подписку")
 async def handle_buy(message: types.Message):
