@@ -41,17 +41,16 @@ def send_message_to_assistant(
         elif run.status in ["failed", "cancelled", "expired"]:
             return "Что-то пошло не так. Попробуйте позже.", thread.id
 
-    # получаем ВСЕ части ответа ассистента
+    # получаем только последний ответ ассистента
     messages = client.beta.threads.messages.list(thread_id=thread.id)
 
-    parts = []
+    response = ""
     for m in messages.data:
         if m.role == "assistant":
-            for c in m.content:
-                if c.type == "text":
-                    parts.append(c.text.value)
-
-    response = "\n".join(parts).strip()
+            response = "".join(
+                c.text.value for c in m.content if c.type == "text"
+            ).strip()
+            break  # берём только первый найденный ответ (самый свежий)
 
     # ✂️ если пользователь бесплатный — обрезаем ответ до 500 символов
     if not is_paid and not is_unlimited and len(response) > 500:
