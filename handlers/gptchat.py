@@ -1,18 +1,13 @@
-# Файл: gptchat.py
-
 from aiogram import types, F, Router
 from database import SessionLocal
 from datetime import datetime
 import os
 
-# Правильные импорты из subscription_utils
-from subscription_utils import is_subscription_active, FREE_MESSAGES_LIMIT
-
 from models import (
     get_user_by_telegram_id,
     increment_message_count,
     update_user_thread_id,
-    create_user
+    create_user  # ← добавь, если не импортировал
 )
 from openai_api import send_message_to_assistant, reset_user_thread
 from utils import clean_markdown
@@ -22,12 +17,11 @@ from ui import main_menu
 # Инициализация router
 router = Router()
 
-# Устанавливаем лимит символов для бесплатных пользователей
-FREE_MESSAGE_CHAR_LIMIT = 200 
+FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 7))
 
 # Обрабатываем только произвольные сообщения, исключая кнопки
 @router.message(
-    F.text
+    F.text 
     & ~F.text.in_([
         "💳 Купить подписку",
         "🗓 Купить на 1 месяц",
@@ -41,6 +35,7 @@ FREE_MESSAGE_CHAR_LIMIT = 200
     ])
     & ~F.text.startswith("/start")
 )
+
 async def handle_gpt_message(message: types.Message):
     db = SessionLocal()
     telegram_id = int(message.from_user.id)
@@ -56,18 +51,9 @@ async def handle_gpt_message(message: types.Message):
 
     text = message.text
 
-    # 1. Проверка длины сообщения для бесплатного тарифа
-    is_paid = is_subscription_active(user) or user.is_unlimited
-    if not is_paid and len(text) > FREE_MESSAGE_CHAR_LIMIT:
-        await message.answer(
-            f"❌ Ваше сообщение слишком длинное. На бесплатном тарифе разрешено до {FREE_MESSAGE_CHAR_LIMIT} символов. Пожалуйста, сократите свой вопрос.",
-            reply_markup=main_menu()
-        )
-        return
-
-    # 2. Проверка лимита бесплатных сообщений
-    if not is_paid:
-        if user.has_paid: # Проверяем, не истёк ли срок платной подписки
+    # 🔐 Проверка лимитов
+    if not user.is_unlimited:
+        if user.has_paid:
             if user.subscription_expires_at and user.subscription_expires_at < datetime.utcnow():
                 user.has_paid = False
                 db.commit()
@@ -76,7 +62,7 @@ async def handle_gpt_message(message: types.Message):
                     reply_markup=main_menu()
                 )
                 return
-        else: # Если пользователь не имеет платной подписки (т.е. на бесплатном тарифе)
+        else:
             if user.free_messages_used >= FREE_MESSAGES_LIMIT:
                 await message.answer(
                     "⚠️ Превышен лимит бесплатных сообщений.\nОформите подписку для продолжения.",
@@ -98,24 +84,13 @@ async def handle_gpt_message(message: types.Message):
 
     # 🤖 Отправка в OpenAI
     try:
-        assistant_response, thread_id = None, None # Инициализация переменных
-
-        # Добавляем инструкцию для модели, если пользователь на бесплатном тарифе
-        prompt_modifier = ""
-        is_paid = is_subscription_active(user) or user.is_unlimited
-        if not is_paid:
-            prompt_modifier = " Ответь кратко, в пределах 200 символов."
-
-        full_message = text + prompt_modifier
-
-        assistant_response, thread_id = send_message_to_assistant(user.thread_id, full_message)
-
+        assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
     except Exception as e:
         print("❌ Ошибка в GPT:", e)
         if "run is active" in str(e):
             user.thread_id = None
             db.commit()
-            assistant_response, thread_id = send_message_to_assistant(None, full_message)
+            assistant_response, thread_id = send_message_to_assistant(None, text)
         else:
             await message.answer("⚠️ Произошла ошибка. Попробуй ещё раз позже.")
             return
