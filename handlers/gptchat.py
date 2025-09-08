@@ -2,6 +2,7 @@ from aiogram import types, F, Router
 from database import SessionLocal
 from datetime import datetime
 import os
+from subscription_utils import is_subscription_active, FREE_MESSAGES_LIMIT
 
 from models import (
     get_user_by_telegram_id,
