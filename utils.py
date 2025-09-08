@@ -35,7 +35,7 @@ def get_stats_summary(session):
     ).scalar()
 
     expired_trial = session.query(User).filter(
-        User.free_messages_used >= 20,
+        User.free_messages_used >= 7,
         User.has_paid == False,
         User.is_unlimited == False
     ).count()
@@ -69,7 +69,7 @@ def get_stats_summary(session):
         f"💤 Неактивных (7+ дней): {inactive}\n"
         f"✅ Активных (за 7 дней): {active_7d}\n\n"
 
-        f"❗ Закончился лимит (20 сообщений): {expired_trial}\n\n"
+        f"❗ Закончился лимит (7 сообщений): {expired_trial}\n\n"
 
         f"🔗 Пришли по реф. ссылке: {referred_users}\n"
     )
