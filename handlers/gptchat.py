@@ -84,9 +84,9 @@ async def handle_gpt_message(message: types.Message):
 
     # === НОВАЯ ПРОВЕРКА: длина сообщения для бесплатного тарифа ===
     # Проверяем после кризисного анализа, чтобы важные сигналы не терялись
-    if not user.is_unlimited and not user.has_paid and len(text) > 200:
+    if not user.is_unlimited and not user.has_paid and len(text) > 400:
         await message.answer(
-            "В бесплатном тарифе можно отправлять до 200 символов. Оформите подписку, чтобы писать более длинные сообщения.",
+            "В бесплатном тарифе можно отправлять до 400 символов. Оформите подписку, чтобы писать более длинные сообщения.",
             reply_markup=main_menu()
         )
         return
