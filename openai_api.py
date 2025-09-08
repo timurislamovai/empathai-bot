@@ -50,3 +50,7 @@ def send_message_to_assistant(
         response = response[:200].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
 
     return response, thread.id
+
+def reset_user_thread(db: Session, user: User):
+    user.thread_id = None
+    db.commit()
