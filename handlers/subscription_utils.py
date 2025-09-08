@@ -2,7 +2,7 @@ from datetime import date, datetime
 from sqlalchemy.orm import Session
 from models import User
 
-FREE_MESSAGES_LIMIT = 20  # или подгружай из env
+FREE_MESSAGES_LIMIT = 7  # или подгружай из env
 
 def is_subscription_active(user: User) -> bool:
     return user.has_paid and user.subscription_expires_at and user.subscription_expires_at > datetime.utcnow()
