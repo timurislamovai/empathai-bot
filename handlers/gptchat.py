@@ -18,6 +18,7 @@ from ui import main_menu
 router = Router()
 
 FREE_MESSAGES_LIMIT = int(os.environ.get("FREE_MESSAGES_LIMIT", 7))
+FREE_MESSAGE_CHAR_LIMIT = 200 # Лимит на количество символов в сообщении для бесплатных пользователей
 
 # Обрабатываем только произвольные сообщения, исключая кнопки
 @router.message(
@@ -69,6 +70,15 @@ async def handle_gpt_message(message: types.Message):
                     reply_markup=main_menu()
                 )
                 return
+                
+    # 2. Проверка длины сообщения для бесплатного тарифа
+    is_paid = is_subscription_active(user) or user.is_unlimited
+    if not is_paid and len(text) > FREE_MESSAGE_CHAR_LIMIT:
+        await message.answer(
+            f"❌ Ваше сообщение слишком длинное. На бесплатном тарифе разрешено до {FREE_MESSAGE_CHAR_LIMIT} символов. Пожалуйста, сократите свой вопрос.",
+            reply_markup=main_menu() # <-- Добавлено
+        )
+        return
 
     # ⚠️ Кризисные слова
     crisis_level = classify_crisis_level(text)
@@ -81,16 +91,27 @@ async def handle_gpt_message(message: types.Message):
                 "Я рядом, чтобы поддержать тебя информационно. Ты не один(одна)."
             )
             return
-
+            
     # 🤖 Отправка в OpenAI
     try:
-        assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+        # Добавляем инструкцию для модели, если пользователь на бесплатном тарифе
+        prompt_modifier = ""
+        # Проверяем, что это не платный пользователь
+        is_paid = is_subscription_active(user) or user.is_unlimited
+        if not is_paid:
+            prompt_modifier = " Ответь кратко, в пределах 200 символов."
+
+        # Объединяем сообщение пользователя с инструкцией
+        full_message = text + prompt_modifier
+
+        assistant_response, thread_id = send_message_to_assistant(user.thread_id, full_message)
+
     except Exception as e:
         print("❌ Ошибка в GPT:", e)
         if "run is active" in str(e):
             user.thread_id = None
             db.commit()
-            assistant_response, thread_id = send_message_to_assistant(None, text)
+            assistant_response, thread_id = send_message_to_assistant(None, full_message) # <-- И здесь тоже
         else:
             await message.answer("⚠️ Произошла ошибка. Попробуй ещё раз позже.")
             return
