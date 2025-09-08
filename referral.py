@@ -2,7 +2,7 @@ from models import User
 from datetime import datetime
 from ui import main_menu  # Подключаем клавиатуру из aiogram
 
-FREE_MESSAGES_LIMIT = 20  # Новый лимит бесплатных сообщений
+FREE_MESSAGES_LIMIT = 7  # Новый лимит бесплатных сообщений
 
 def generate_cabinet_message(user, telegram_id, db):
     if user is None:
