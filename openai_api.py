@@ -27,7 +27,7 @@ def send_message_to_assistant(
         content=user_message
     )
 
-    # запускаем ассистента (⚠️ без max_output_tokens — в Assistants API этого параметра нет)
+    # запускаем ассистента
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
         assistant_id=ASSISTANT_ID
@@ -41,15 +41,24 @@ def send_message_to_assistant(
         elif run.status in ["failed", "cancelled", "expired"]:
             return "Что-то пошло не так. Попробуйте позже.", thread.id
 
-    # получаем последний ответ ассистента
+    # получаем ВСЕ части ответа ассистента
     messages = client.beta.threads.messages.list(thread_id=thread.id)
-    response = messages.data[0].content[0].text.value.strip()
 
-    # ✂️ если пользователь бесплатный — обрезаем ответ до 200 символов
+    parts = []
+    for m in messages.data:
+        if m.role == "assistant":
+            for c in m.content:
+                if c.type == "text":
+                    parts.append(c.text.value)
+
+    response = "\n".join(parts).strip()
+
+    # ✂️ если пользователь бесплатный — обрезаем ответ до 500 символов
     if not is_paid and not is_unlimited and len(response) > 500:
         response = response[:500].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
 
     return response, thread.id
+
 
 def reset_user_thread(db: Session, user: User):
     user.thread_id = None
