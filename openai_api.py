@@ -46,8 +46,8 @@ def send_message_to_assistant(
     response = messages.data[0].content[0].text.value.strip()
 
     # ✂️ если пользователь бесплатный — обрезаем ответ до 200 символов
-    if not is_paid and not is_unlimited and len(response) > 200:
-        response = response[:200].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
+    if not is_paid and not is_unlimited and len(response) > 500:
+        response = response[:500].rstrip() + "… (ответ сокращён из-за лимита бесплатного тарифа)"
 
     return response, thread.id
 
