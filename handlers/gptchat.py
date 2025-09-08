@@ -94,16 +94,28 @@ async def handle_gpt_message(message: types.Message):
 
     # 🤖 Отправка в OpenAI
     try:
-        assistant_response, thread_id = send_message_to_assistant(user.thread_id, text)
+        assistant_response, thread_id = send_message_to_assistant(
+            user.thread_id,
+            text,
+            is_paid=user.has_paid,
+            is_unlimited=user.is_unlimited
+        )
+
     except Exception as e:
         print("❌ Ошибка в GPT:", e)
         if "run is active" in str(e):
             user.thread_id = None
             db.commit()
-            assistant_response, thread_id = send_message_to_assistant(None, text)
+            assistant_response, thread_id = send_message_to_assistant(
+                None,
+                text,
+                is_paid=user.has_paid,
+                is_unlimited=user.is_unlimited
+            )
         else:
             await message.answer("⚠️ Произошла ошибка. Попробуй ещё раз позже.")
             return
+
 
     if not user.thread_id:
         update_user_thread_id(db, user, thread_id)
