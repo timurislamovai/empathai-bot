@@ -4,18 +4,20 @@ import traceback
 import json
 from aiogram.types import Update
 import aiogram
+import asyncio
+from datetime import datetime, timedelta
 
 from bot_instance import bot, dp
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
 from cloudpayments import verify_signature
 from database import SessionLocal
 from models import get_user_by_telegram_id
-from datetime import datetime, timedelta
 from ui import main_menu
 
 
-
+# ----------------------
 # Подключаем роутеры
+# ----------------------
 dp.include_routers(
     admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
     gptchat.router,
@@ -27,11 +29,28 @@ app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
 
 
+# ----------------------
+# Сбрасываем старые апдейты Telegram
+# ----------------------
+async def reset_updates():
+    updates = await bot.get_updates(offset=-1)
+    print(f"✅ Сброшено {len(updates)} старых апдейтов")
+
+# Запуск асинхронно
+asyncio.create_task(reset_updates())
+
+
+# ----------------------
+# Корневой эндпоинт
+# ----------------------
 @app.get("/")
 async def root():
     return {"status": "ok"}
 
 
+# ----------------------
+# CloudPayments webhook
+# ----------------------
 @app.post("/payment/cloudpayments/result")
 async def cloudpayments_result(request: Request):
     try:
@@ -42,7 +61,7 @@ async def cloudpayments_result(request: Request):
         if not verify_signature(raw_body, signature):
             return JSONResponse(content={"code": 1, "message": "Invalid signature"}, status_code=400)
 
-        # ✅ Парсинг x-www-form-urlencoded
+        # Парсинг x-www-form-urlencoded
         from urllib.parse import parse_qs
         parsed = parse_qs(raw_body.decode())
         data = {k: v[0] for k, v in parsed.items()}
@@ -96,17 +115,14 @@ async def cloudpayments_result(request: Request):
             base_date = max(current_expiry, now)
             user.subscription_expires_at = base_date + timedelta(days=days)
 
-            # ✅ Реферальная логика
+            # Реферальная логика
             if user.referrer_code:
                 try:
                     referrer = get_user_by_telegram_id(db, str(user.referrer_code))
                     if referrer:
                         amount = float(data.get("Amount", "0").replace(",", "."))
                         reward = round(amount * 0.3, 2)
-
-                        
                         referrer.referral_earned = (referrer.referral_earned or 0.0) + reward
-
                         print(f"🎉 Начислено {reward}₽ рефералу {referrer.telegram_id}")
                 except Exception as e:
                     print("⚠️ Ошибка при начислении бонуса:", e)
@@ -132,6 +148,10 @@ async def cloudpayments_result(request: Request):
         traceback.print_exc()
         return JSONResponse(content={"code": 2, "message": "Internal error"}, status_code=500)
 
+
+# ----------------------
+# Telegram webhook
+# ----------------------
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     try:
