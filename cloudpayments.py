@@ -72,11 +72,11 @@ def generate_payment_link(telegram_id: str, plan: str) -> str:
 
     # 🔢 Устанавливаем цену в копейках
     if plan == "monthly":
-        amount = 119900  # 1199.00 руб
+        amount = 29900  # 299.00 руб
     elif plan == "yearly":
-        amount = 1199900  # 11999.00 руб
+        amount = 299000  # 2990.00 руб
     else:
-        amount = 119900  # значение по умолчанию
+        amount = 29900  # значение по умолчанию
 
     url = "https://api.cloudpayments.ru/orders/create"
 
