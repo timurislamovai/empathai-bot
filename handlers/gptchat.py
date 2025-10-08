@@ -123,5 +123,15 @@ async def handle_gpt_message(message: types.Message):
     increment_message_count(db, user)
 
     assistant_response = clean_markdown(assistant_response)
-    await message.answer(assistant_response, reply_markup=main_menu())
+
+    try:
+        await message.answer(assistant_response, reply_markup=main_menu())
+    except aiogram.exceptions.TelegramForbiddenError:
+        print(f"⚠️ Пользователь {telegram_id} заблокировал бота — сообщение не доставлено.")
+    except aiogram.exceptions.TelegramBadRequest as e:
+        # Например, если текст слишком длинный или содержит недопустимые символы
+        print(f"⚠️ TelegramBadRequest при ответе пользователю {telegram_id}: {e}")
+    except Exception as e:
+        print(f"⚠️ Не удалось отправить сообщение пользователю {telegram_id}: {e}")
+
 
