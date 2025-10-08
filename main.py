@@ -4,7 +4,6 @@ import traceback
 import json
 from aiogram.types import Update
 import aiogram
-import asyncio
 from datetime import datetime, timedelta
 
 from bot_instance import bot, dp
@@ -27,17 +26,6 @@ dp.include_routers(
 
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
-
-
-# ----------------------
-# Сбрасываем старые апдейты Telegram
-# ----------------------
-async def reset_updates():
-    updates = await bot.get_updates(offset=-1)
-    print(f"✅ Сброшено {len(updates)} старых апдейтов")
-
-# Запуск асинхронно
-asyncio.create_task(reset_updates())
 
 
 # ----------------------
