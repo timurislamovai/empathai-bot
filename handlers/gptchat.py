@@ -2,6 +2,7 @@ from aiogram import types, F, Router
 from database import SessionLocal
 from datetime import datetime
 import os
+from aiogram.exceptions import TelegramForbiddenError
 
 from models import (
     get_user_by_telegram_id,
@@ -126,11 +127,8 @@ async def handle_gpt_message(message: types.Message):
 
     try:
         await message.answer(assistant_response, reply_markup=main_menu())
-    except aiogram.exceptions.TelegramForbiddenError:
+    except TelegramForbiddenError:
         print(f"⚠️ Пользователь {telegram_id} заблокировал бота — сообщение не доставлено.")
-    except aiogram.exceptions.TelegramBadRequest as e:
-        # Например, если текст слишком длинный или содержит недопустимые символы
-        print(f"⚠️ TelegramBadRequest при ответе пользователю {telegram_id}: {e}")
     except Exception as e:
         print(f"⚠️ Не удалось отправить сообщение пользователю {telegram_id}: {e}")
 
