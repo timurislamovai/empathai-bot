@@ -7,6 +7,7 @@ from datetime import datetime
 from utils import get_stats_summary
 from asyncio import sleep
 from datetime import timedelta
+from aiogram.exceptions import TelegramForbiddenError
 
 
 router = Router()
@@ -217,6 +218,7 @@ async def handle_admin_ping_inactive(message: types.Message):
         return await message.answer("❗ Используйте: /admin_ping_inactive <текст сообщения>")
 
     text_to_send = parts[1].strip()
+
     db = SessionLocal()
     two_days_ago = datetime.utcnow() - timedelta(days=2)
     users = db.query(User).filter(User.last_message_at < two_days_ago).all()
@@ -232,10 +234,10 @@ async def handle_admin_ping_inactive(message: types.Message):
             count_sent += 1
             await sleep(0.5)
         except TelegramForbiddenError:
-            print(f"🚫 Пользователь {user.telegram_id} заблокировал бота")
+            print(f"⚠️ Пользователь {user.telegram_id} заблокировал бота, пропускаем")
             continue
         except Exception as e:
-            print(f"⚠️ Failed to send to {user.telegram_id}: {e}")
+            print(f"⚠️ Ошибка при отправке {user.telegram_id}: {e}")
             continue
 
     await message.answer(f"✅ Сообщение отправлено {count_sent} пользователям.")
