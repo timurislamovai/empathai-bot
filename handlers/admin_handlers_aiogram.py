@@ -220,11 +220,12 @@ async def handle_admin_ping_inactive(message: types.Message):
     text_to_send = parts[1].strip()
 
     db = SessionLocal()
-    two_days_ago = datetime.utcnow() - timedelta(days=2)
-    users = db.query(User).filter(User.last_message_at < two_days_ago).all()
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    users = db.query(User).filter(User.last_message_at < seven_days_ago).all()
 
     if not users:
-        return await message.answer("👥 Нет пользователей, не писавших более 2 дней.")
+        return await message.answer("👥 Нет пользователей, не писавших более 7 дней.")
+
 
     count_sent = 0
     for user in users:
