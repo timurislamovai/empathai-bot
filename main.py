@@ -154,3 +154,12 @@ async def telegram_webhook(request: Request):
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# --- Запуск планировщика аффирмаций ---
+try:
+    from scheduler_affirmations import start_scheduler as start_affirmations
+    @app.on_event("startup")
+    async def startup_affirmations():
+        start_affirmations()
+        print("✅ Affirmations scheduler подключен (ежедневно 09:00 Asia/Almaty)")
+except Exception as e:
+    print("⚠️ Ошибка при запуске планировщика аффирмаций:", e)
