@@ -153,3 +153,21 @@ async def telegram_webhook(request: Request):
         print("❌ Ошибка в webhook:", e)
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+# --- ВРЕМЕННО: создание колонки last_reactivation_sent при первом старте ---
+from sqlalchemy import create_engine, text
+import os
+
+try:
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        engine = create_engine(db_url, connect_args={"sslmode": "require"})
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reactivation_sent TIMESTAMP NULL;"))
+            conn.commit()
+        print("✅ Колонка last_reactivation_sent проверена / добавлена.")
+    else:
+        print("⚠️ DATABASE_URL не найден — пропуск.")
+except Exception as e:
+    print("❌ Ошибка при добавлении колонки:", e)
+# --- Конец временного блока ---
