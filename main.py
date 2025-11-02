@@ -13,6 +13,17 @@ from database import SessionLocal
 from models import get_user_by_telegram_id
 from ui import main_menu
 
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
+
+from aiogram_handlers import router as affirmation_router  # импорт твоего router
+
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher(storage=MemoryStorage())
+
+dp.include_router(affirmation_router)
 
 # ----------------------
 # Подключаем роутеры
