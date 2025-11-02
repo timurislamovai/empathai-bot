@@ -7,7 +7,7 @@
 
 import asyncio
 import random
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import SessionLocal
 from bot_instance import bot
@@ -36,15 +36,20 @@ except Exception:
 
 REACTIVATION_MESSAGES = [
     (
-        "🌿 Привет, это Ила.\n\n"
-        "Я заметила, что тебя не было какое-то время.\n"
+        "🌿 Привет, {name}!\n\n"
+        "Это Ила. Я заметила, что тебя не было какое-то время.\n"
         "Иногда важно просто снова сделать паузу — вдох, выдох, чуть спокойствия.\n\n"
         "💬 Хочешь немного поддержки? Выбери, с чего начнём:"
-    )
+    ),
+    (
+        "🌸 Привет, {name}!\n\n"
+        "Давно не общались — надеюсь, у тебя всё спокойно.\n"
+        "Если чувствуешь, что немного устал(а), я рядом 🌿\n\n"
+        "Хочешь немного поддержки? Выбери, с чего начнём:"
+    ),
 ]
 
 SEND_SLEEP_SECONDS = 1.0  # 1 сообщение/сек — безопасный троттлинг
-
 
 
 # --- Получение списка неактивных пользователей ---
@@ -59,18 +64,21 @@ def _fetch_inactive_users(cutoff_dt):
             if not tg:
                 continue
 
-            # last_message_at / last_message_date
+            # Проверяем время последнего взаимодействия
             lmd = getattr(u, "last_message_at", None) or getattr(u, "last_message_date", None)
             lrs = getattr(u, "last_reactivation_sent", None)
 
-            inactive = False
-            if lmd is None or lmd < cutoff_dt:
-                inactive = True
-
+            inactive = lmd is None or lmd < cutoff_dt
             can_send = lrs is None or lrs < cutoff_dt
 
             if inactive and can_send:
-                selected.append({"id": u.id, "telegram_id": tg})
+                selected.append(
+                    {
+                        "id": u.id,
+                        "telegram_id": tg,
+                        "first_name": getattr(u, "first_name", None),
+                    }
+                )
         return selected
     finally:
         session.close()
@@ -113,12 +121,16 @@ async def send_reactivation_messages():
 
     for u in users:
         tg = u.get("telegram_id")
+        name = u.get("first_name") or "друг"  # если нет имени — обращаемся нейтрально
         try:
-            msg = random.choice(REACTIVATION_MESSAGES)
-            # лог для отладки выбора шаблона (можно убрать)
-            print(f"✉️ [Reactivation] Отправка пользователю {tg}: шаблон #{REACTIVATION_MESSAGES.index(msg)}")
-            # отправляем с клавиатурой тем (topics_keyboard)
+            msg_template = random.choice(REACTIVATION_MESSAGES)
+            msg = msg_template.format(name=name)
+            print(f"✉️ [Reactivation] Отправка пользователю {tg} ({name})")
+
+            # Отправляем сообщение с клавиатурой тем
             await bot.send_message(tg, msg, reply_markup=topics_keyboard())
+
+            # Помечаем как отправленное
             now_dt = datetime.utcnow()
             await loop.run_in_executor(None, _mark_reactivation_sent, tg, now_dt)
             sent += 1
