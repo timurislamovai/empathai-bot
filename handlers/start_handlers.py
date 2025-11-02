@@ -80,12 +80,18 @@ anxiety_breathing = InlineKeyboardMarkup(inline_keyboard=[
 # ---------- ТРЕВОГА И БЕСПОКОЙСТВО ----------
 @router.callback_query(F.data == "topic_anxiety")
 async def handle_anxiety(callback: CallbackQuery):
+    from models import increment_topic_stat
+    from database import SessionLocal
+    db = SessionLocal()
+    increment_topic_stat(db, "topic_anxiety")  # 👈 вот эта строка добавляет запись
+
     await callback.message.answer(
         "Иногда тревога просто хочет, чтобы её услышали 🌿\n"
         "Хочешь, я помогу тебе немного успокоиться?",
         reply_markup=anxiety_options
     )
     await callback.answer()
+
 
 
 # ---------- "ДА, ДАВАЙ" (дыхательная техника) ----------
@@ -158,13 +164,18 @@ relationships_options = InlineKeyboardMarkup(inline_keyboard=[
 # ---------- ПЕРВИЧНЫЙ ВХОД В ТЕМУ ----------
 @router.callback_query(F.data == "topic_relationships")
 async def handle_relationships(callback: CallbackQuery):
+    from models import increment_topic_stat
+    from database import SessionLocal
+    db = SessionLocal()
+    increment_topic_stat(db, "topic_relationships")
+
     await callback.message.answer(
         "Отношения — это важно 💛\n"
-        "Иногда в них бывает непросто — даже когда всё вроде спокойно.\n\n"
-        "Хочешь, я помогу тебе немного разобраться в своих чувствах?",
+        "Хочешь рассказать, что происходит, или просто обсудить, что чувствуешь?",
         reply_markup=relationships_options
     )
     await callback.answer()
+
 
 
 # ---------- 💔 Мне тяжело доверять ----------
@@ -235,13 +246,17 @@ selfesteem_options = InlineKeyboardMarkup(inline_keyboard=[
 # ---------- ПЕРВИЧНЫЙ ВХОД В ТЕМУ ----------
 @router.callback_query(F.data == "topic_selfesteem")
 async def handle_selfesteem(callback: CallbackQuery):
+    from models import increment_topic_stat
+    from database import SessionLocal
+    db = SessionLocal()
+    increment_topic_stat(db, "topic_selfesteem")
+
     await callback.message.answer(
-        "Уверенность не появляется мгновенно 🌿\n"
-        "Она растёт, когда мы начинаем относиться к себе с добротой, а не с критикой.\n\n"
-        "Что тебе ближе сейчас?",
-        reply_markup=selfesteem_options
+        "Бывает, уверенность теряется даже у самых сильных 🌱\n"
+        "Хочешь немного поддержки или упражнения для самооценки?"
     )
     await callback.answer()
+
 
 
 # ---------- 💭 Мне сложно себя принять ----------
@@ -303,6 +318,11 @@ burnout_options = InlineKeyboardMarkup(inline_keyboard=[
 # ---------- ПЕРВИЧНЫЙ ВХОД В ТЕМУ ----------
 @router.callback_query(F.data == "topic_burnout")
 async def handle_burnout(callback: CallbackQuery):
+    from models import increment_topic_stat
+    from database import SessionLocal
+    db = SessionLocal()
+    increment_topic_stat(db, "topic_burnout")
+
     await callback.message.answer(
         "Ты, похоже, очень устал(а) 😞\n"
         "Иногда даже простые дела кажутся тяжёлыми.\n\n"
@@ -310,6 +330,7 @@ async def handle_burnout(callback: CallbackQuery):
         reply_markup=burnout_options
     )
     await callback.answer()
+
 
 
 # ---------- 🌫 ХОЧУ НЕМНОГО ПОДДЕРЖКИ ----------
@@ -423,6 +444,11 @@ chat_options = InlineKeyboardMarkup(inline_keyboard=[
 # ---------- ПЕРВИЧНЫЙ ВХОД В ТЕМУ ----------
 @router.callback_query(F.data == "topic_chat")
 async def handle_chat(callback: CallbackQuery):
+    from models import increment_topic_stat
+    from database import SessionLocal
+    db = SessionLocal()
+    increment_topic_stat(db, "topic_chat")
+
     await callback.message.answer(
         "🌿 Иногда не нужно выбирать тему.\n"
         "Просто хочется поговорить — без цели, без правил.\n\n"
@@ -432,6 +458,7 @@ async def handle_chat(callback: CallbackQuery):
         reply_markup=chat_options
     )
     await callback.answer()
+
 
 
 # ---------- 💭 НЕ ЗНАЮ, С ЧЕГО НАЧАТЬ ----------
