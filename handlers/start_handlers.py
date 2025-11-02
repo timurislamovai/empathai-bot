@@ -17,8 +17,9 @@ def topics_keyboard():
 
 
 # ---------- ОБРАБОТЧИК ВЫБОРА ТЕМ ----------
-@router.callback_query(F.data.startswith("topic_"))
+@router.callback_query(F.data.startswith("topic_") & (F.data != "topic_anxiety"))
 async def handle_topic_selection(callback: CallbackQuery):
+
     topic = callback.data
 
     # остальные темы (тревога обрабатывается отдельно)
