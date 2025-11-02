@@ -17,7 +17,12 @@ def topics_keyboard():
 
 
 # ---------- ОБРАБОТЧИК ВЫБОРА ТЕМ ----------
-@router.callback_query(F.data.startswith("topic_") & (F.data != "topic_anxiety") & (F.data != "topic_relationships"))
+@router.callback_query(
+    F.data.startswith("topic_")
+    & (F.data != "topic_anxiety")
+    & (F.data != "topic_relationships")
+    & (F.data != "topic_selfesteem")
+)
 async def handle_topic_selection(callback: CallbackQuery):
 
     topic = callback.data
@@ -204,5 +209,73 @@ async def handle_rel_talk(callback: CallbackQuery):
         "Конечно 🌿\n"
         "Иногда не нужно искать смысл — просто быть в разговоре уже достаточно.\n\n"
         "Я рядом. Пиши так, как чувствуешь."
+    )
+    await callback.answer()
+
+# ---------- САМООЦЕНКА И УВЕРЕННОСТЬ ----------
+
+# Кнопки подкатегорий
+selfesteem_options = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="💭 Мне сложно себя принять", callback_data="esteem_accept")],
+    [InlineKeyboardButton(text="💫 Хочу чувствовать уверенность", callback_data="esteem_confident")],
+    [InlineKeyboardButton(text="🌸 Я часто сравниваю себя с другими", callback_data="esteem_compare")],
+    [InlineKeyboardButton(text="💬 Просто хочу поговорить", callback_data="esteem_talk")]
+])
+
+
+# ---------- ПЕРВИЧНЫЙ ВХОД В ТЕМУ ----------
+@router.callback_query(F.data == "topic_selfesteem")
+async def handle_selfesteem(callback: CallbackQuery):
+    await callback.message.answer(
+        "Уверенность не появляется мгновенно 🌿\n"
+        "Она растёт, когда мы начинаем относиться к себе с добротой, а не с критикой.\n\n"
+        "Что тебе ближе сейчас?",
+        reply_markup=selfesteem_options
+    )
+    await callback.answer()
+
+
+# ---------- 💭 Мне сложно себя принять ----------
+@router.callback_query(F.data == "esteem_accept")
+async def handle_esteem_accept(callback: CallbackQuery):
+    await callback.message.answer(
+        "Это чувство знакомо многим 💛\n"
+        "Иногда мы видим в себе только недостатки,\n"
+        "забывая, что даже в уязвимости есть сила.\n\n"
+        "Хочешь рассказать, в чём тебе сейчас сложнее всего быть добрым к себе?"
+    )
+    await callback.answer()
+
+
+# ---------- 💫 Хочу чувствовать уверенность ----------
+@router.callback_query(F.data == "esteem_confident")
+async def handle_esteem_confident(callback: CallbackQuery):
+    await callback.message.answer(
+        "Это хорошее и очень честное желание 🌿\n"
+        "Уверенность не всегда громкая —\n"
+        "иногда это просто внутреннее *«я справлюсь»*, даже если немного страшно.\n\n"
+        "Что помогает тебе чувствовать себя сильнее, хоть немного?"
+    )
+    await callback.answer()
+
+
+# ---------- 🌸 Я часто сравниваю себя с другими ----------
+@router.callback_query(F.data == "esteem_compare")
+async def handle_esteem_compare(callback: CallbackQuery):
+    await callback.message.answer(
+        "Сравнение — ловушка, в которую мы все попадаем 🌸\n\n"
+        "Попробуй не бороться с этим, а просто заметить: у тебя свой ритм, своя дорога.\n\n"
+        "Можешь рассказать, в какие моменты тебе труднее всего не сравнивать?"
+    )
+    await callback.answer()
+
+
+# ---------- 💬 Просто хочу поговорить ----------
+@router.callback_query(F.data == "esteem_talk")
+async def handle_esteem_talk(callback: CallbackQuery):
+    await callback.message.answer(
+        "Конечно 🌿\n"
+        "Иногда не нужно искать ответы — просто немного тепла и присутствия уже достаточно.\n\n"
+        "Я рядом, можешь написать, что чувствуешь прямо сейчас."
     )
     await callback.answer()
