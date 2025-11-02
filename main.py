@@ -6,28 +6,20 @@ from aiogram.types import Update
 import aiogram
 from datetime import datetime, timedelta
 
-from bot_instance import bot, dp
+from bot_instance import bot, dp  # <-- используем существующий экземпляр
 from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
 from cloudpayments import verify_signature
 from database import SessionLocal
 from models import get_user_by_telegram_id
 from ui import main_menu
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
-
-from aiogram_handlers import router as affirmation_router  # импорт твоего router
-
-bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher(storage=MemoryStorage())
-
-dp.include_router(affirmation_router)
+# Подключаем router для аффирмации
+from aiogram_handlers import router as affirmation_router
 
 # ----------------------
 # Подключаем роутеры
 # ----------------------
+dp.include_router(affirmation_router)
 dp.include_routers(
     admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
     gptchat.router,
@@ -37,7 +29,6 @@ dp.include_routers(
 
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
-
 
 # ----------------------
 # Корневой эндпоинт
