@@ -3,6 +3,7 @@ scheduler_affirmations.py
 
 Ежедневная рассылка аффирмаций всем пользователям в 09:00 Asia/Almaty.
 Отправка 1 сообщения в секунду, чтобы не перегружать Telegram API.
+Ведётся краткий отчёт в логах: всего / получили / ошибки / заблокировали.
 """
 
 import asyncio
@@ -14,6 +15,7 @@ from bot_instance import bot
 
 from html import escape
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.exceptions import BotBlocked, ChatNotFound, RetryAfter, TelegramAPIError
 
 AFFIRMATIONS_FILE = "affirmations.txt"
 SEND_SLEEP_SECONDS = 1.0  # 1 сообщение в секунду — безопасно
@@ -35,7 +37,8 @@ def _fetch_all_user_ids():
 
 async def send_affirmations():
     """Основная функция рассылки"""
-    print("⏰ [Affirmations] start:", datetime.utcnow().isoformat())
+    start_ts = datetime.utcnow()
+    print("⏰ [Affirmations] start:", start_ts.isoformat())
 
     # Читаем все аффирмации из файла
     try:
@@ -56,7 +59,12 @@ async def send_affirmations():
         print("❗ Ошибка получения пользователей из БД:", e)
         return
 
-    print(f"🔍 Найдено пользователей для рассылки: {len(user_ids)}")
+    total_users = len(user_ids)
+    sent_count = 0
+    failed_count = 0
+    blocked_count = 0
+
+    print(f"🔍 Найдено пользователей для рассылки: {total_users}")
 
     # Клавиатура с callback (будет одинаковая для всех пользователей)
     kb = InlineKeyboardMarkup(row_width=1)
@@ -71,18 +79,50 @@ async def send_affirmations():
                 f"<i>{safe}</i>\n\n"
                 "Если хочешь обсудить это — нажми кнопку ниже и начни диалог."
             )
-    
+
             await bot.send_message(
                 tg_id,
                 formatted,
                 parse_mode="HTML",
                 reply_markup=kb
             )
+            sent_count += 1
             await asyncio.sleep(SEND_SLEEP_SECONDS)
-        except Exception as e:
-            print(f"⚠️ Ошибка при отправке пользователю {tg_id}: {e}")
 
-    print("✅ [Affirmations] done:", datetime.utcnow().isoformat())
+        except RetryAfter as e:
+            # Telegram просит сделать паузу — подождём и пометим как временная ошибка
+            wait = getattr(e, "retry_after", 5)
+            print(f"⏳ RetryAfter при отправке {tg_id}: ждем {wait}s")
+            await asyncio.sleep(wait)
+            failed_count += 1
+
+        except BotBlocked:
+            print(f"⛔ Пользователь {tg_id} заблокировал бота.")
+            blocked_count += 1
+
+        except ChatNotFound as e:
+            print(f"🚫 Чат не найден для {tg_id}: {e}")
+            failed_count += 1
+
+        except TelegramAPIError as e:
+            # Общие ошибки Telegram API (например, Bad Request)
+            print(f"🚫 Ошибка Telegram API для {tg_id}: {type(e).__name__}: {e}")
+            failed_count += 1
+
+        except Exception as e:
+            print(f"⚠️ Неожиданная ошибка при отправке {tg_id}: {type(e).__name__}: {e}")
+            failed_count += 1
+
+    end_ts = datetime.utcnow()
+    print("✅ [Affirmations] done:", end_ts.isoformat())
+    print(
+        "📊 [Affirmations report]\n"
+        f"Всего пользователей: {total_users}\n"
+        f"✅ Получили сообщение: {sent_count}\n"
+        f"🚫 Не получили (ошибка): {failed_count}\n"
+        f"⛔ Заблокировали бота: {blocked_count}\n"
+        f"⏱ Время выполнения: {(end_ts - start_ts).total_seconds():.1f}s"
+    )
 
 
 def start_scheduler():
