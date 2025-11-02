@@ -15,7 +15,8 @@ from bot_instance import bot
 
 from html import escape
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.exceptions import BotBlocked, ChatNotFound, RetryAfter, TelegramAPIError
+from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest, TelegramRetryAfter, TelegramNetworkError
+
 
 AFFIRMATIONS_FILE = "affirmations.txt"
 SEND_SLEEP_SECONDS = 1.0  # 1 сообщение в секунду — безопасно
@@ -79,7 +80,7 @@ async def send_affirmations():
                 f"<i>{safe}</i>\n\n"
                 "Если хочешь обсудить это — нажми кнопку ниже и начни диалог."
             )
-
+    
             await bot.send_message(
                 tg_id,
                 formatted,
@@ -88,29 +89,27 @@ async def send_affirmations():
             )
             sent_count += 1
             await asyncio.sleep(SEND_SLEEP_SECONDS)
-
-        except RetryAfter as e:
-            # Telegram просит сделать паузу — подождём и пометим как временная ошибка
+    
+        except TelegramRetryAfter as e:
             wait = getattr(e, "retry_after", 5)
-            print(f"⏳ RetryAfter при отправке {tg_id}: ждем {wait}s")
+            print(f"⏳ Telegram просит подождать {wait} секунд.")
             await asyncio.sleep(wait)
             failed_count += 1
-
-        except BotBlocked:
+    
+        except TelegramForbiddenError:
             print(f"⛔ Пользователь {tg_id} заблокировал бота.")
             blocked_count += 1
-
-        except ChatNotFound as e:
-            print(f"🚫 Чат не найден для {tg_id}: {e}")
+    
+        except TelegramBadRequest as e:
+            print(f"🚫 Ошибка: чат не найден или некорректный запрос ({tg_id}): {e}")
             failed_count += 1
-
-        except TelegramAPIError as e:
-            # Общие ошибки Telegram API (например, Bad Request)
-            print(f"🚫 Ошибка Telegram API для {tg_id}: {type(e).__name__}: {e}")
+    
+        except TelegramNetworkError as e:
+            print(f"🚫 Сетевая ошибка Telegram API ({tg_id}): {e}")
             failed_count += 1
-
+    
         except Exception as e:
-            print(f"⚠️ Неожиданная ошибка при отправке {tg_id}: {type(e).__name__}: {e}")
+            print(f"⚠️ Неизвестная ошибка при отправке {tg_id}: {type(e).__name__}: {e}")
             failed_count += 1
 
     end_ts = datetime.utcnow()
