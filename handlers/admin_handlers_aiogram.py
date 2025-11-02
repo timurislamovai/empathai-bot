@@ -115,6 +115,46 @@ async def admin_referrals(message: types.Message):
 
     await message.answer(message_text)
 
+# 📊 /stats_topics — статистика выбора тем
+@router.message(Command("stats_topics"))
+async def handle_stats_topics(message: types.Message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return await message.answer("🚫 У вас нет доступа к этой команде.")
+
+    try:
+        db = SessionLocal()
+
+        # Таблица topic_stats из models.py
+        from models import TopicStat
+
+        stats = db.query(TopicStat).all()
+        if not stats:
+            return await message.answer("📊 Пока нет данных по выбору тем.")
+
+        emoji_map = {
+            "topic_anxiety": "🌫 Тревога и беспокойство",
+            "topic_relationships": "💔 Отношения и чувства",
+            "topic_selfesteem": "🌱 Самооценка и уверенность",
+            "topic_burnout": "😴 Усталость и выгорание",
+            "topic_chat": "✨ Просто хочу поговорить"
+        }
+
+        text = "📊 *Статистика выбора тем:*\n\n"
+        total = 0
+        for stat in stats:
+            label = emoji_map.get(stat.topic, stat.topic)
+            text += f"{label} — {stat.count}\n"
+            total += stat.count
+
+        text += f"\n📈 Всего выборов тем: {total}"
+
+        await message.answer(text, parse_mode="Markdown")
+
+    except Exception as e:
+        print("❌ Ошибка в /stats_topics:", e)
+        await message.answer("⚠️ Ошибка при выводе статистики.")
+
+
 # ♾ /give_unlimited <id> — выдать безлимит
 @router.message(Command("give_unlimited"))
 async def give_unlimited(message: types.Message):
