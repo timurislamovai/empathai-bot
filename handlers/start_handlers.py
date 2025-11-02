@@ -17,7 +17,7 @@ def topics_keyboard():
 
 
 # ---------- ОБРАБОТЧИК ВЫБОРА ТЕМ ----------
-@router.callback_query(F.data.startswith("topic_") & (F.data != "topic_anxiety"))
+@router.callback_query(F.data.startswith("topic_") & (F.data != "topic_anxiety") & (F.data != "topic_relationships"))
 async def handle_topic_selection(callback: CallbackQuery):
 
     topic = callback.data
