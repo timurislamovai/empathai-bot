@@ -86,3 +86,32 @@ def update_user_subscription(db: Session, user: User, plan: str):
     user.subscription_expires_at = expires
     user.free_messages_used = 0
     db.commit()
+
+# ---------- СТАТИСТИКА ВЫБОРА ТЕМ ----------
+
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import Session
+
+# 📊 Таблица для хранения количества выборов каждой темы
+class TopicStat(Base):
+    __tablename__ = "topic_stats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    topic = Column(String, unique=True)   # ключ темы, например "topic_anxiety"
+    count = Column(Integer, default=0)    # сколько раз выбрали
+
+
+# 📈 Увеличиваем счётчик для темы
+def increment_topic_stat(db: Session, topic_key: str):
+    stat = db.query(TopicStat).filter_by(topic=topic_key).first()
+    if not stat:
+        stat = TopicStat(topic=topic_key, count=1)
+        db.add(stat)
+    else:
+        stat.count += 1
+    db.commit()
+
+
+# 📊 Получаем все темы и их количество
+def get_all_stats(db: Session):
+    return db.query(TopicStat).all()
