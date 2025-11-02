@@ -1,8 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-
 import random
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
@@ -23,7 +21,8 @@ def topics_keyboard():
 async def handle_topic_selection(callback: CallbackQuery):
     topic = callback.data
 
-    elif topic == "topic_relationships":
+    # остальные темы (тревога обрабатывается отдельно)
+    if topic == "topic_relationships":
         await callback.message.answer(
             "Отношения — это важно 💛\n"
             "Хочешь рассказать, что происходит, или просто обсудить, что чувствуешь?\n\n"
@@ -66,17 +65,9 @@ anxiety_breathing = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 
-# ---------- ДОПОЛНЕНИЕ В ОБРАБОТЧИК ВЫБОРА ТЕМЫ ----------
-# (замени существующий блок topic_anxiety на этот)
+# ---------- ТРЕВОГА И БЕСПОКОЙСТВО ----------
 @router.callback_query(F.data == "topic_anxiety")
-async def handle_anxiety(callback):
-    anxiety_options = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🔹 Да, давай", callback_data="anxiety_yes"),
-            InlineKeyboardButton(text="🔹 Просто хочу поговорить", callback_data="anxiety_talk")
-        ]
-    ])
-
+async def handle_anxiety(callback: CallbackQuery):
     await callback.message.answer(
         "Иногда тревога просто хочет, чтобы её услышали 🌿\n"
         "Хочешь, я помогу тебе немного успокоиться?",
@@ -85,10 +76,9 @@ async def handle_anxiety(callback):
     await callback.answer()
 
 
-
 # ---------- "ДА, ДАВАЙ" (дыхательная техника) ----------
 @router.callback_query(F.data == "anxiety_yes")
-async def handle_anxiety_yes(callback):
+async def handle_anxiety_yes(callback: CallbackQuery):
     await callback.message.answer(
         "🌬 Хорошо.\n"
         "Вот простая техника дыхания, которая помогает немного отпустить напряжение:\n\n"
@@ -104,7 +94,7 @@ async def handle_anxiety_yes(callback):
 
 # ---------- "ДА, СТАЛО ЛЕГЧЕ" ----------
 @router.callback_query(F.data == "anxiety_relax_done")
-async def handle_anxiety_relax_done(callback):
+async def handle_anxiety_relax_done(callback: CallbackQuery):
     responses = [
         "🌿 Рад(а), что тебе стало чуть спокойнее. Иногда достаточно просто немного замедлиться.\n\nЕсли чувствуешь, что хочешь продолжить — я рядом.",
         "💫 Отлично. Даже несколько осознанных вдохов уже делают день легче.\n\nХочешь, немного поговорим о том, как сохранять это состояние дольше?",
@@ -118,7 +108,7 @@ async def handle_anxiety_relax_done(callback):
 
 # ---------- "НЕТ, СДЕЛАТЬ ЕЩЁ РАЗ" ----------
 @router.callback_query(F.data == "anxiety_repeat")
-async def handle_anxiety_repeat(callback):
+async def handle_anxiety_repeat(callback: CallbackQuery):
     await callback.message.answer(
         "Хорошо 🌬\n"
         "Повтори технику ещё раз:\n\n"
@@ -133,7 +123,7 @@ async def handle_anxiety_repeat(callback):
 
 # ---------- "ПРОСТО ХОЧУ ПОГОВОРИТЬ" ----------
 @router.callback_query(F.data == "anxiety_talk")
-async def handle_anxiety_talk(callback):
+async def handle_anxiety_talk(callback: CallbackQuery):
     await callback.message.answer(
         "Конечно 🌿\n"
         "Иногда важно просто немного побыть в разговоре, где можно быть собой.\n\n"
