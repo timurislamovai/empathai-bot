@@ -164,3 +164,13 @@ try:
         print("✅ Affirmations scheduler подключен (ежедневно 09:00 Asia/Almaty)")
 except Exception as e:
     print("⚠️ Ошибка при запуске планировщика аффирмаций:", e)
+
+# --- Запуск планировщика  реактивации (рассылка тем, кто не активен 6+ дней) ---
+try:
+    from scheduler_reactivation import start_scheduler as start_reactivation
+    @app.on_event("startup")
+    async def startup_reactivation():
+        start_reactivation()
+        print("✅ Reactivation scheduler подключен (ежедневно 22:00 Asia/Almaty)")
+except Exception as e:
+    print("⚠️ Ошибка при запуске планировщика реактивации:", e)
