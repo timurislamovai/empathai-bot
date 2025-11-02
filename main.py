@@ -14,7 +14,7 @@ from models import get_user_by_telegram_id
 from ui import main_menu
 
 # Подключаем router для аффирмации
-from aiogram_handlers import router as affirmation_router
+from handlers.aiogram_handlers import router as affirmation_router
 
 # ----------------------
 # Подключаем роутеры
