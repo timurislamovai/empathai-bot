@@ -23,8 +23,10 @@ dp.include_routers(
     admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
     gptchat.router,
     menu_handlers.router,
-    aiogram_handlers.router
+    aiogram_handlers.router,
+    start_handlers.router,  # 👈 Добавляем наш новый обработчик тем
 )
+
 
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
