@@ -23,13 +23,6 @@ def topics_keyboard():
 async def handle_topic_selection(callback: CallbackQuery):
     topic = callback.data
 
-    if topic == "topic_anxiety":
-        await callback.message.answer(
-            "Иногда тревога просто хочет, чтобы её услышали 🌿\n"
-            "Хочешь, я помогу тебе немного успокоиться?\n\n"
-            "🔹 Да, давай\n🔹 Просто хочу поговорить"
-        )
-
     elif topic == "topic_relationships":
         await callback.message.answer(
             "Отношения — это важно 💛\n"
@@ -77,12 +70,20 @@ anxiety_breathing = InlineKeyboardMarkup(inline_keyboard=[
 # (замени существующий блок topic_anxiety на этот)
 @router.callback_query(F.data == "topic_anxiety")
 async def handle_anxiety(callback):
+    anxiety_options = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔹 Да, давай", callback_data="anxiety_yes"),
+            InlineKeyboardButton(text="🔹 Просто хочу поговорить", callback_data="anxiety_talk")
+        ]
+    ])
+
     await callback.message.answer(
         "Иногда тревога просто хочет, чтобы её услышали 🌿\n"
         "Хочешь, я помогу тебе немного успокоиться?",
         reply_markup=anxiety_options
     )
     await callback.answer()
+
 
 
 # ---------- "ДА, ДАВАЙ" (дыхательная техника) ----------
