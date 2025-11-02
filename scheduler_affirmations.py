@@ -12,6 +12,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from database import SessionLocal
 from bot_instance import bot
 
+from html import escape
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 AFFIRMATIONS_FILE = "affirmations.txt"
 SEND_SLEEP_SECONDS = 1.0  # 1 сообщение в секунду — безопасно
 
@@ -55,10 +58,26 @@ async def send_affirmations():
 
     print(f"🔍 Найдено пользователей для рассылки: {len(user_ids)}")
 
+    # Клавиатура с callback (будет одинаковая для всех пользователей)
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton("💬 Поговорить с Илой", callback_data="start_chat_from_affirmation"))
+
     for tg_id in user_ids:
         try:
-            text = random.choice(lines)
-            await bot.send_message(tg_id, text)
+            raw = random.choice(lines)
+            safe = escape(raw)
+            formatted = (
+                "🌞 <b>Аффирмация дня от Илы</b> 🌿\n\n"
+                f"<i>{safe}</i>\n\n"
+                "Если хочешь обсудить это — нажми кнопку ниже и начни диалог."
+            )
+    
+            await bot.send_message(
+                tg_id,
+                formatted,
+                parse_mode="HTML",
+                reply_markup=kb
+            )
             await asyncio.sleep(SEND_SLEEP_SECONDS)
         except Exception as e:
             print(f"⚠️ Ошибка при отправке пользователю {tg_id}: {e}")
