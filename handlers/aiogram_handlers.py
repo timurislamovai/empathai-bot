@@ -8,7 +8,12 @@ from database import SessionLocal
 from openai_api import reset_user_thread
 from referral import generate_cabinet_message
 from cloudpayments import generate_payment_link
+
+from aiogram import types
+from bot_instance import dp, bot
+
 import os
+
 
 router = Router()
 
@@ -131,3 +136,27 @@ async def handle_start(message: types.Message):
         "🔞 Бот доступен только для пользователей от 18 лет.",
         reply_markup=main_menu()
     )
+
+@dp.callback_query_handler(lambda c: c.data == "start_chat_from_affirmation")
+async def start_chat_from_affirmation(callback_query: types.CallbackQuery):
+    """Обработка кнопки 'Поговорить с Илой' под аффирмацией"""
+    user_id = callback_query.from_user.id
+
+    # Убираем кнопку из исходного сообщения (чтобы не нажимали повторно)
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=user_id,
+            message_id=callback_query.message.message_id,
+            reply_markup=None
+        )
+    except Exception:
+        pass  # не критично, если сообщение уже нельзя отредактировать
+
+    # Отправляем приветственное сообщение
+    await bot.send_message(
+        chat_id=user_id,
+        text="🌿 Рада, что ты решил поговорить! Расскажи, что чувствуешь или что волнует тебя сегодня."
+    )
+
+    # Telegram ожидает ответ, чтобы убрать "часики" на кнопке
+    await callback_query.answer()
