@@ -19,7 +19,6 @@ from handlers.aiogram_handlers import router as affirmation_router
 # ----------------------
 # Подключаем роутеры
 # ----------------------
-dp.include_router(affirmation_router)
 dp.include_routers(
     admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
     gptchat.router,
