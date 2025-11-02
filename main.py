@@ -7,7 +7,7 @@ import aiogram
 from datetime import datetime, timedelta
 
 from bot_instance import bot, dp  # <-- используем существующий экземпляр
-from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram
+from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram, start_handlers
 from cloudpayments import verify_signature
 from database import SessionLocal
 from models import get_user_by_telegram_id
