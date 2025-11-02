@@ -52,18 +52,15 @@ async def handle_topic_selection(callback: CallbackQuery):
 
 # ---------- КНОПКИ ДЛЯ ТРЕВОГИ ----------
 anxiety_options = InlineKeyboardMarkup(inline_keyboard=[
-    [
-        InlineKeyboardButton(text="🔹 Да, давай", callback_data="anxiety_yes"),
-        InlineKeyboardButton(text="🔹 Просто хочу поговорить", callback_data="anxiety_talk")
-    ]
+    [InlineKeyboardButton(text="🔹 Да, давай", callback_data="anxiety_yes")],
+    [InlineKeyboardButton(text="🔹 Просто хочу поговорить", callback_data="anxiety_talk")]
 ])
 
 anxiety_breathing = InlineKeyboardMarkup(inline_keyboard=[
-    [
-        InlineKeyboardButton(text="💫 Да, стало легче", callback_data="anxiety_relax_done"),
-        InlineKeyboardButton(text="🔁 Нет, сделать ещё раз", callback_data="anxiety_repeat")
-    ]
+    [InlineKeyboardButton(text="💫 Да, стало легче", callback_data="anxiety_relax_done")],
+    [InlineKeyboardButton(text="🔁 Нет, сделать ещё раз", callback_data="anxiety_repeat")]
 ])
+
 
 
 # ---------- ТРЕВОГА И БЕСПОКОЙСТВО ----------
