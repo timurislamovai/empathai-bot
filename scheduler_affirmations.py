@@ -15,11 +15,18 @@ from bot_instance import bot
 
 from html import escape
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest, TelegramRetryAfter, TelegramNetworkError
-
+from aiogram.exceptions import (
+    TelegramForbiddenError,
+    TelegramBadRequest,
+    TelegramRetryAfter,
+    TelegramNetworkError,
+)
 
 AFFIRMATIONS_FILE = "affirmations.txt"
-SEND_SLEEP_SECONDS = 1.0  # 1 сообщение в секунду — безопасно
+SEND_SLEEP_SECONDS = 1.5  # 1 сообщение в 1,5 секунду — безопасно
+
+# TEST_RUN = True  # <-- включи для локальной/ручной проверки (не конфликтует с планировщиком)
+
 
 def _fetch_all_user_ids():
     """Берём всех пользователей из базы и возвращаем список их telegram_id."""
@@ -29,8 +36,9 @@ def _fetch_all_user_ids():
         users = session.query(User).all()
         ids = []
         for u in users:
-            if getattr(u, "telegram_id", None):
-                ids.append(u.telegram_id)
+            tg = getattr(u, "telegram_id", None)
+            if tg:
+                ids.append(tg)
         return ids
     finally:
         session.close()
@@ -68,10 +76,14 @@ async def send_affirmations():
     print(f"🔍 Найдено пользователей для рассылки: {total_users}")
 
     # Клавиатура с callback (будет одинаковая для всех пользователей)
-    kb = InlineKeyboardMarkup(inline_keyboard=[], row_width=1)
-    kb.add(InlineKeyboardButton("💬 Поговорить с Илой", callback_data="start_chat_from_affirmation"))
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="💬 Поговорить с Илой", callback_data="start_chat_from_affirmation")]
+        ],
+        # row_width можно опустить, но оставлю, если потребуется
+    )
 
-    for tg_id in user_ids:
+    for idx, tg_id in enumerate(user_ids, start=1):
         try:
             raw = random.choice(lines)
             safe = escape(raw)
@@ -80,7 +92,8 @@ async def send_affirmations():
                 f"<i>{safe}</i>\n\n"
                 "Если хочешь обсудить это — нажми кнопку ниже и начни диалог."
             )
-    
+
+            # отправляем
             await bot.send_message(
                 tg_id,
                 formatted,
@@ -88,26 +101,31 @@ async def send_affirmations():
                 reply_markup=kb
             )
             sent_count += 1
+
+            # небольшой лог каждые 50 сообщений (чтобы не засорять логи)
+            if sent_count % 50 == 0 or sent_count <= 5:
+                print(f"✉️ [Affirmations] Отправлено {sent_count}/{total_users} (последний: {tg_id})")
+
             await asyncio.sleep(SEND_SLEEP_SECONDS)
-    
+
         except TelegramRetryAfter as e:
             wait = getattr(e, "retry_after", 5)
-            print(f"⏳ Telegram просит подождать {wait} секунд.")
+            print(f"⏳ Telegram просит подождать {wait} секунд. (user {tg_id})")
             await asyncio.sleep(wait)
             failed_count += 1
-    
+
         except TelegramForbiddenError:
             print(f"⛔ Пользователь {tg_id} заблокировал бота.")
             blocked_count += 1
-    
+
         except TelegramBadRequest as e:
             print(f"🚫 Ошибка: чат не найден или некорректный запрос ({tg_id}): {e}")
             failed_count += 1
-    
+
         except TelegramNetworkError as e:
             print(f"🚫 Сетевая ошибка Telegram API ({tg_id}): {e}")
             failed_count += 1
-    
+
         except Exception as e:
             print(f"⚠️ Неизвестная ошибка при отправке {tg_id}: {type(e).__name__}: {e}")
             failed_count += 1
@@ -127,6 +145,7 @@ async def send_affirmations():
 def start_scheduler():
     """Запускает ежедневную рассылку аффирмаций (09:00 по Алматы)"""
     scheduler = AsyncIOScheduler(timezone="Asia/Almaty")
-    scheduler.add_job(send_affirmations, "cron", hour=12, minute=26)
+    # ставим на 09:00 Asia/Almaty
+    scheduler.add_job(send_affirmations, "cron", hour=12, minute=37)
     scheduler.start()
     print("🕒 Affirmations scheduler started: daily at 09:00 Asia/Almaty")
