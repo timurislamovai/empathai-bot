@@ -68,7 +68,7 @@ async def send_affirmations():
     print(f"🔍 Найдено пользователей для рассылки: {total_users}")
 
     # Клавиатура с callback (будет одинаковая для всех пользователей)
-    kb = InlineKeyboardMarkup(row_width=1)
+    kb = InlineKeyboardMarkup(inline_keyboard=[], row_width=1)
     kb.add(InlineKeyboardButton("💬 Поговорить с Илой", callback_data="start_chat_from_affirmation"))
 
     for tg_id in user_ids:
@@ -127,6 +127,6 @@ async def send_affirmations():
 def start_scheduler():
     """Запускает ежедневную рассылку аффирмаций (09:00 по Алматы)"""
     scheduler = AsyncIOScheduler(timezone="Asia/Almaty")
-    scheduler.add_job(send_affirmations, "cron", hour=9, minute=0)
+    scheduler.add_job(send_affirmations, "cron", hour=12, minute=21)
     scheduler.start()
     print("🕒 Affirmations scheduler started: daily at 09:00 Asia/Almaty")
