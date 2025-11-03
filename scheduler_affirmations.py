@@ -146,6 +146,6 @@ def start_scheduler():
     """Запускает ежедневную рассылку аффирмаций (09:00 по Алматы)"""
     scheduler = AsyncIOScheduler(timezone="Asia/Almaty")
     # ставим на 09:00 Asia/Almaty
-    scheduler.add_job(send_affirmations, "cron", hour=12, minute=37)
+    scheduler.add_job(send_affirmations, "cron", hour=09, minute=00)
     scheduler.start()
     print("🕒 Affirmations scheduler started: daily at 09:00 Asia/Almaty")
