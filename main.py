@@ -38,6 +38,40 @@ print("🗄 Проверка и создание таблиц (если отсу
 Base.metadata.create_all(bind=engine)
 print("✅ Все таблицы синхронизированы.")
 
+# --- Проверка и добавление недостающих колонок в таблицу users ---
+from sqlalchemy import inspect, text
+
+def add_missing_user_columns():
+    with engine.connect() as conn:
+        inspector = inspect(engine)
+        columns = [col["name"] for col in inspector.get_columns("users")]
+
+        alter_statements = []
+
+        # 🔗 Добавляем отсутствующие колонки по мере необходимости
+        if "referrer_code" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN referrer_code VARCHAR;")
+        if "referral_code" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN referral_code VARCHAR;")
+        if "is_unlimited" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN is_unlimited BOOLEAN DEFAULT FALSE;")
+        if "has_paid" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN has_paid BOOLEAN DEFAULT FALSE;")
+        if "subscription_expires_at" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMP;")
+        if "first_seen_at" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN first_seen_at TIMESTAMP;")
+        if "total_messages" not in columns:
+            alter_statements.append("ALTER TABLE users ADD COLUMN total_messages INTEGER DEFAULT 0;")
+
+        for stmt in alter_statements:
+            print(f"🧩 Добавляем недостающую колонку: {stmt}")
+            conn.execute(text(stmt))
+
+        conn.commit()
+        print("✅ Проверка и обновление структуры users завершено.")
+
+add_missing_user_columns()
 
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
