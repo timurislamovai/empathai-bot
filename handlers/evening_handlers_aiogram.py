@@ -63,6 +63,7 @@ def get_question(is_premium: bool):
 
 @router.callback_query(lambda c: c.data == CB_FINISH_DAY)
 async def start_evening_ritual(query: types.CallbackQuery):
+    print("🔥 [DEBUG] Нажата кнопка 'Завершить день'")  # для Railway логов
     user_id = query.from_user.id
     is_premium = await is_user_premium(user_id)
     question = get_question(is_premium)
@@ -71,6 +72,7 @@ async def start_evening_ritual(query: types.CallbackQuery):
         reply_markup=question_keyboard()
     )
     await query.answer()
+
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(CB_EMOTION_PREFIX))
