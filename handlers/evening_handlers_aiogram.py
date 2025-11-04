@@ -60,13 +60,6 @@ def get_question(is_premium: bool):
 
 # --------- Хэндлеры ---------
 
-@router.message(Command("evening_test"))  # 👈 заменяем старую проверку
-async def test_evening(message: types.Message):
-    await message.answer(
-        "День подходит к концу.\nХочешь подвести маленький итог вместе?",
-        reply_markup=invitation_keyboard()
-    )
-
 
 @router.callback_query(lambda c: c.data == CB_FINISH_DAY)
 async def start_evening_ritual(query: types.CallbackQuery):
