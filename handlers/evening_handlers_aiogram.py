@@ -4,6 +4,7 @@ import json
 import random
 from pathlib import Path
 from aiogram import Router, types
+from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
@@ -59,7 +60,7 @@ def get_question(is_premium: bool):
 
 # --------- Хэндлеры ---------
 
-@router.message(lambda m: m.text == "/evening_test")
+@router.message(Command("evening_test"))  # 👈 заменяем старую проверку
 async def test_evening(message: types.Message):
     await message.answer(
         "День подходит к концу.\nХочешь подвести маленький итог вместе?",
