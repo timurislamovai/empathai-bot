@@ -65,7 +65,7 @@ def get_question(is_premium: bool):
 async def start_evening_ritual(query: types.CallbackQuery):
     print("🔥 [DEBUG] Нажата кнопка 'Завершить день'")  # для Railway логов
     user_id = query.from_user.id
-    is_premium = await is_user_premium(user_id)
+    is_premium = is_user_premium(user_id)
     question = get_question(is_premium)
     await query.message.edit_text(
         f"{question}\n\nМожешь просто выбрать состояние — или нажать «Хочу написать», если хочешь выразиться.",
@@ -81,7 +81,7 @@ async def handle_emotion(query: types.CallbackQuery):
     try:
         user_id = query.from_user.id
         emotion_key = query.data.split(":")[1]
-        is_premium = await is_user_premium(user_id)
+        is_premium = is_user_premium(user_id)
         today = datetime.date.today()
 
         reply_text = EMOTION_MAP[emotion_key]["reply"]
@@ -106,7 +106,7 @@ async def handle_write_note(query: types.CallbackQuery, state: FSMContext):
     db = SessionLocal()
     try:
         user_id = query.from_user.id
-        is_premium = await is_user_premium(user_id)
+        is_premium = is_user_premium(user_id)
         today = datetime.date.today()
 
         new_log = EveningRitualLog(
