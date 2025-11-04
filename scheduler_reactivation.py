@@ -148,7 +148,7 @@ async def send_reactivation_messages():
     start_ts = datetime.utcnow()
     print("⏰ [Reactivation] start:", start_ts.isoformat())
 
-    cutoff = datetime.utcnow() - timedelta(days=6)
+    cutoff = datetime.utcnow() - timedelta(days=7)
     loop = asyncio.get_running_loop()
 
     # получаем пользователей безопасно (в sync режиме внутри run_in_executor)
@@ -224,13 +224,26 @@ async def send_reactivation_messages():
 
 # --- Запуск планировщика ---
 def start_scheduler():
-    """Запуск планировщика: каждый день в 22:00 по времени Asia/Almaty"""
+    """
+    Запуск планировщика реактивации раз в 3 дня (22:00 по времени Asia/Almaty).
+    Отправляет только тем, кто не писал ≥7 дней и не получал реактивацию последние 3 дня.
+    """
     try:
         scheduler = AsyncIOScheduler(timezone="Asia/Almaty")
-        # scheduler expects coroutine (we pass coroutine function directly)
-        scheduler.add_job(send_reactivation_messages, "cron", hour=22, minute=0)
+
+        # Запуск каждый 3-й день в 22:00
+        scheduler.add_job(
+            send_reactivation_messages,
+            "cron",
+            hour=22,
+            minute=0,
+            day="*/3",  # каждые 3 дня
+        )
+
         scheduler.start()
-        print("🕒 Reactivation scheduler started: daily at 22:00 Asia/Almaty")
+        print("🕒 Reactivation scheduler started: every 3 days at 22:00 Asia/Almaty")
+
     except Exception as e:
         print("⚠️ Ошибка при запуске планировщика реактивации:", e)
         traceback.print_exc()
+
