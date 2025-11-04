@@ -240,7 +240,7 @@ async def startup_schedulers():
 
     try:
         start_evening_ritual()
-        print("✅ Evening ritual scheduler подключен (ежедневно 22:22 Asia/Almaty)")
+        print("✅ Evening ritual scheduler подключен (ежедневно 23:00 Asia/Almaty)")
     except Exception as e:
         print("⚠️ Ошибка при запуске вечернего ритуала:", e)
 
