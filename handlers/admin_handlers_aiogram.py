@@ -9,6 +9,9 @@ from asyncio import sleep
 from datetime import timedelta
 from aiogram.exceptions import TelegramForbiddenError
 
+# 🌙 /evening_test — запуск вечернего ритуала вручную
+from handlers.evening_handlers_aiogram import invitation_keyboard
+
 
 router = Router()
 
@@ -282,3 +285,13 @@ async def handle_admin_ping_inactive(message: types.Message):
             continue
 
     await message.answer(f"✅ Сообщение отправлено {count_sent} пользователям.")
+
+# 🌙 /evening_test — запуск вечернего ритуала вручную
+
+@router.message(Command("evening_test"))
+async def handle_evening_test(message: types.Message):
+    """Позволяет вручную запустить вечерний ритуал"""
+    await message.answer(
+        "День подходит к концу.\nХочешь подвести маленький итог вместе?",
+        reply_markup=invitation_keyboard()
+    )
