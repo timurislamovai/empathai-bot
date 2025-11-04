@@ -4,9 +4,9 @@ from datetime import datetime, date
 from database import SessionLocal
 from models import User, EveningRitualLog
 from bot_instance import bot
-from pytz import timezone
+from zoneinfo import ZoneInfo
 
-ASIA_ALMATY = timezone("Asia/Almaty")
+ASIA_ALMATY = ZoneInfo("Asia/Almaty")
 
 # --- Основная функция рассылки ---
 def send_evening_invitation():
