@@ -1,6 +1,7 @@
 # handlers/evening_handlers_aiogram.py
 import datetime
 import json
+import asyncio 
 import random
 from pathlib import Path
 from aiogram import Router, types
@@ -95,7 +96,14 @@ async def handle_emotion(query: types.CallbackQuery):
         db.add(new_log)
         db.commit()
 
-        # 🌙 Финальные фразы-дополнения
+        # 💫 Шаг 1 — показываем реакцию на эмоцию
+        await query.message.edit_text(reply_text)
+        await query.answer()
+
+        # 🌙 Шаг 2 — небольшая пауза для эффекта "вдоха"
+        await asyncio.sleep(1.8)
+
+        # 🌘 Шаг 3 — мягкое завершение дня
         closing_lines = [
             "💭 *Сегодня достаточно.*\n_Завтра подарит тебе новые силы._",
             "🌘 *Ты сделал(а) всё, что нужно.*\n_Остальное — для утра._",
@@ -103,13 +111,10 @@ async def handle_emotion(query: types.CallbackQuery):
         ]
         closing_text = random.choice(closing_lines)
 
-        await query.message.edit_text(
-            f"{reply_text}\n\n{closing_text}",
-            parse_mode="Markdown"
-        )
-        await query.answer()
+        await query.message.answer(closing_text, parse_mode="Markdown")
 
-        # 💫 Финальное сообщение (зависит от тарифа)
+        # 🌔 Шаг 4 — финальные слова, разные для premium и free
+        await asyncio.sleep(1.2)
         if is_premium:
             final_text = (
                 "✨ Ты сделал(а) шаг к осознанности.\n"
@@ -129,8 +134,6 @@ async def handle_emotion(query: types.CallbackQuery):
         print(f"❌ Ошибка при обработке эмоции: {e}")
     finally:
         db.close()
-
-
 
 
 @router.callback_query(lambda c: c.data == CB_WRITE_NOTE)
