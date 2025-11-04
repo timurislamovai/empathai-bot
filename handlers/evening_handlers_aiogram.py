@@ -7,10 +7,9 @@ from aiogram import Router, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_async_session
+from database import SessionLocal
 from models import EveningRitualLog
-from utils import is_user_premium  # если у тебя есть такая утилита
+from utils import is_user_premium
 
 router = Router()
 
@@ -81,46 +80,54 @@ async def start_evening_ritual(query: types.CallbackQuery):
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(CB_EMOTION_PREFIX))
-async def handle_emotion(query: types.CallbackQuery, session: AsyncSession = get_async_session()):
-    user_id = query.from_user.id
-    emotion_key = query.data.split(":")[1]
-    is_premium = await is_user_premium(user_id)
-    today = datetime.date.today()
+async def handle_emotion(query: types.CallbackQuery):
+    db = SessionLocal()
+    try:
+        user_id = query.from_user.id
+        emotion_key = query.data.split(":")[1]
+        is_premium = await is_user_premium(user_id)
+        today = datetime.date.today()
 
-    reply_text = EMOTION_MAP[emotion_key]["reply"]
-    new_log = EveningRitualLog(
-        user_id=user_id,
-        date=today,
-        emotion=emotion_key,
-        action="emotion_selected",
-        is_premium=is_premium
-    )
-    session.add(new_log)
-    await session.commit()
+        reply_text = EMOTION_MAP[emotion_key]["reply"]
+        new_log = EveningRitualLog(
+            user_id=user_id,
+            date=today,
+            emotion=emotion_key,
+            action="emotion_selected",
+            is_premium=is_premium
+        )
+        db.add(new_log)
+        db.commit()
 
-    await query.message.edit_text(f"{reply_text}\n\nСегодня достаточно. Завтра — новая возможность.")
-    await query.answer()
+        await query.message.edit_text(f"{reply_text}\n\nСегодня достаточно. Завтра — новая возможность.")
+        await query.answer()
+    finally:
+        db.close()
 
 
 @router.callback_query(lambda c: c.data == CB_WRITE_NOTE)
-async def handle_write_note(query: types.CallbackQuery, state: FSMContext, session: AsyncSession = get_async_session()):
-    user_id = query.from_user.id
-    is_premium = await is_user_premium(user_id)
-    today = datetime.date.today()
+async def handle_write_note(query: types.CallbackQuery, state: FSMContext):
+    db = SessionLocal()
+    try:
+        user_id = query.from_user.id
+        is_premium = await is_user_premium(user_id)
+        today = datetime.date.today()
 
-    new_log = EveningRitualLog(
-        user_id=user_id,
-        date=today,
-        emotion=None,
-        action="wrote_note",
-        is_premium=is_premium
-    )
-    session.add(new_log)
-    await session.commit()
+        new_log = EveningRitualLog(
+            user_id=user_id,
+            date=today,
+            emotion=None,
+            action="wrote_note",
+            is_premium=is_premium
+        )
+        db.add(new_log)
+        db.commit()
 
-    await query.message.edit_text("Опиши свой день в одном предложении (до 80 символов).")
-    await state.set_state(EveningState.waiting_for_note)
-    await query.answer()
+        await query.message.edit_text("Опиши свой день в одном предложении (до 80 символов).")
+        await state.set_state(EveningState.waiting_for_note)
+        await query.answer()
+    finally:
+        db.close()
 
 
 @router.message(EveningState.waiting_for_note)
