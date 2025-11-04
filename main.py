@@ -157,22 +157,21 @@ async def telegram_webhook(request: Request):
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# --- Запуск планировщика аффирмаций ---
-try:
-    from scheduler_affirmations import start_scheduler as start_affirmations
-    @app.on_event("startup")
-    async def startup_affirmations():
+# --- Запуск планировщиков рассылок ---
+from scheduler_affirmations import start_scheduler as start_affirmations
+from scheduler_reactivation import start_scheduler as start_reactivation
+
+@app.on_event("startup")
+async def startup_schedulers():
+    try:
         start_affirmations()
         print("✅ Affirmations scheduler подключен (ежедневно 09:00 Asia/Almaty)")
-except Exception as e:
-    print("⚠️ Ошибка при запуске планировщика аффирмаций:", e)
+    except Exception as e:
+        print("⚠️ Ошибка при запуске планировщика аффирмаций:", e)
 
-# --- Запуск планировщика  реактивации (рассылка тем, кто не активен 6+ дней) ---
-try:
-    from scheduler_reactivation import start_scheduler as start_reactivation
-    @app.on_event("startup")
-    async def startup_reactivation():
+    try:
         start_reactivation()
         print("✅ Reactivation scheduler подключен (ежедневно 22:00 Asia/Almaty)")
-except Exception as e:
-    print("⚠️ Ошибка при запуске планировщика реактивации:", e)
+    except Exception as e:
+        print("⚠️ Ошибка при запуске планировщика реактивации:", e)
+
