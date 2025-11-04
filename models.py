@@ -3,7 +3,7 @@ from database import Base
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
-
+# ---------- ПОЛЬЗОВАТЕЛИ ----------
 class User(Base):
     __tablename__ = "users"
 
@@ -12,14 +12,21 @@ class User(Base):
     thread_id = Column(String)
     free_messages_used = Column(Integer, default=0)
     last_message_date = Column(Date, default=None)
-    referral_earned = Column(Float, default=0.0)
-    referral_paid = Column(Float, default=0.0)
 
     # 💳 Подписка и тариф
     has_paid = Column(Boolean, default=False)
     is_unlimited = Column(Boolean, default=False)
     subscription_expires_at = Column(DateTime, nullable=True)
 
+    # 💸 Финансы и рефералы
+    referral_earned = Column(Float, default=0.0)
+    referral_paid = Column(Float, default=0.0)
+    referrer_code = Column(String, nullable=True)   # кто пригласил
+    referral_code = Column(String, nullable=True)   # собственный код пользователя
+
+    # 🕒 Логирование
+    first_seen_at = Column(DateTime, default=datetime.utcnow)
+    total_messages = Column(Integer, default=0)
 
 
 # ---------- ВЕЧЕРНИЙ РИТУАЛ ----------
@@ -32,29 +39,11 @@ class EveningRitualLog(Base):
     emotion = Column(String, nullable=True)
     action = Column(String, nullable=False)
     is_premium = Column(Boolean, default=False)
-
-
-    # 👇 Дополнительные поля для аналитики:
-    first_seen_at = Column(DateTime, default=datetime.utcnow)
-    last_message_at = Column(DateTime, default=datetime.utcnow)
-    total_messages = Column(Integer, default=0)
-
-    referrer_code = Column(String, nullable=True)    # Реферальный код
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # ✅ Новые поля для рефералов:
-    ref_count = Column(Integer, default=0)
-    ref_earned = Column(Integer, default=0)
 
-    # ✅ Для безлимитного доступа
-    is_unlimited = Column(Boolean, default=False)
-
-    # ✅ Новые поля для подписки:
-    has_paid = Column(Boolean, default=False)
-    subscription_expires_at = Column(DateTime, nullable=True)
-
-
-def get_user_by_telegram_id(db: Session, telegram_id: int):  # ✅
+# ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
+def get_user_by_telegram_id(db: Session, telegram_id: int):
     return db.query(User).filter(User.telegram_id == telegram_id).first()
 
 
@@ -63,7 +52,6 @@ def create_user(db: Session, telegram_id: int, referrer_code: str = None):
         telegram_id=telegram_id,
         referrer_code=referrer_code,
         first_seen_at=datetime.utcnow(),
-        last_message_at=datetime.utcnow(),
         free_messages_used=0,
         total_messages=0,
         thread_id=None
@@ -82,7 +70,7 @@ def update_user_thread_id(db: Session, user: User, thread_id: str):
 def increment_message_count(db: Session, user: User):
     user.free_messages_used += 1
     db.commit()
-last_message_date = Column(Date, default=None)
+
 
 def reset_user_thread(db: Session, user: User):
     user.thread_id = None
@@ -91,34 +79,27 @@ def reset_user_thread(db: Session, user: User):
 
 def update_user_subscription(db: Session, user: User, plan: str):
     now = datetime.utcnow()
-
     if plan == "monthly":
         expires = now + timedelta(days=30)
     elif plan == "yearly":
         expires = now + timedelta(days=365)
     else:
-        expires = now  # fallback на случай ошибки
-
+        expires = now
     user.has_paid = True
     user.subscription_expires_at = expires
     user.free_messages_used = 0
     db.commit()
 
+
 # ---------- СТАТИСТИКА ВЫБОРА ТЕМ ----------
-
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Session
-
-# 📊 Таблица для хранения количества выборов каждой темы
 class TopicStat(Base):
     __tablename__ = "topic_stats"
 
     id = Column(Integer, primary_key=True, index=True)
-    topic = Column(String, unique=True)   # ключ темы, например "topic_anxiety"
-    count = Column(Integer, default=0)    # сколько раз выбрали
+    topic = Column(String, unique=True)
+    count = Column(Integer, default=0)
 
 
-# 📈 Увеличиваем счётчик для темы
 def increment_topic_stat(db: Session, topic_key: str):
     stat = db.query(TopicStat).filter_by(topic=topic_key).first()
     if not stat:
@@ -129,7 +110,5 @@ def increment_topic_stat(db: Session, topic_key: str):
     db.commit()
 
 
-# 📊 Получаем все темы и их количество
 def get_all_stats(db: Session):
     return db.query(TopicStat).all()
-
