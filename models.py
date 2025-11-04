@@ -15,6 +15,12 @@ class User(Base):
     referral_earned = Column(Float, default=0.0)
     referral_paid = Column(Float, default=0.0)
 
+    # 💳 Подписка и тариф
+    has_paid = Column(Boolean, default=False)
+    is_unlimited = Column(Boolean, default=False)
+    subscription_expires_at = Column(DateTime, nullable=True)
+
+
 
 # ---------- ВЕЧЕРНИЙ РИТУАЛ ----------
 class EveningRitualLog(Base):
