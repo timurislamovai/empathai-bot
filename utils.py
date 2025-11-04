@@ -74,3 +74,28 @@ def get_stats_summary(session):
         f"🔗 Пришли по реф. ссылке: {referred_users}\n"
     )
     return stats.strip()
+    
+
+
+# ---------- Проверка подписки пользователя ----------
+from database import SessionLocal
+
+def is_user_premium(user_id: int) -> bool:
+    """
+    Проверяет, является ли пользователь премиум-подписчиком.
+    Пока возвращает False (заглушка).
+    В будущем можно будет проверять поле user.is_unlimited или has_paid.
+    """
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.telegram_id == user_id).first()
+        if not user:
+            return False
+        # 🔹 Здесь можно заменить на реальную проверку, если у пользователя есть поле тарифа:
+        # return user.is_unlimited or user.has_paid
+        return user.has_paid or user.is_unlimited  # если оба поля есть
+    except Exception as e:
+        print(f"Ошибка проверки Premium: {e}")
+        return False
+    finally:
+        db.close()
