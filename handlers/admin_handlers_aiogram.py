@@ -9,6 +9,8 @@ from asyncio import sleep
 from datetime import timedelta
 from aiogram.exceptions import TelegramForbiddenError
 
+from scheduler_reactivation import send_reactivation_messages
+
 # 🌙 /evening_test — запуск вечернего ритуала вручную
 from handlers.evening_handlers_aiogram import invitation_keyboard
 
@@ -295,3 +297,22 @@ async def handle_evening_test(message: types.Message):
         "День подходит к концу.\nХочешь подвести маленький итог вместе?",
         reply_markup=invitation_keyboard()
     )
+from scheduler_reactivation import send_reactivation_messages
+
+#  — запуск рассылки реактивации вручную
+
+@router.message(Command("test_reactivation"))
+async def handle_test_reactivation(message: types.Message):
+    """Ручной запуск рассылки реактивации (только для админов)"""
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return await message.answer("🚫 У вас нет доступа к этой команде.")
+
+    await message.answer("⏳ Запускаю тестовую рассылку реактивации...")
+    try:
+        await send_reactivation_messages()
+        await message.answer("✅ Тестовая рассылка реактивации завершена. Смотри отчёт в логах Railway.")
+    except Exception as e:
+        import traceback
+        print("❌ Ошибка при тестовой реактивации:", e)
+        traceback.print_exc()
+        await message.answer(f"⚠️ Ошибка: {e}")
