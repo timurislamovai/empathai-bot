@@ -1,15 +1,15 @@
 # scheduler_reactivation.py
 """
-Автоматическая рассылка напоминаний неактивным пользователям (6+ дней).
-Запускается ежедневно в 22:00 по времени Asia/Almaty.
-Отправка проходит с троттлингом 1 сообщение/сек и подробным отчётом в логах.
+Устойчивый планировщик рассылки реактивации (6+ дней).
+Запускается ежедневно в 22:00 Asia/Almaty.
 """
 
 import asyncio
 import random
+import traceback
 from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from database import SessionLocal
+from database import SessionLocal, engine
 from bot_instance import bot
 
 # импорт клавиатуры тем
@@ -33,7 +33,6 @@ except Exception:
     )
 
 # --- Константы ---
-
 REACTIVATION_MESSAGES = [
     (
         "🌿 Привет, {name}!\n\n"
@@ -51,49 +50,95 @@ REACTIVATION_MESSAGES = [
 
 SEND_SLEEP_SECONDS = 1.0  # 1 сообщение/сек — безопасный троттлинг
 
+# --- Вспомогательные функции ---
 
-# --- Получение списка неактивных пользователей ---
 def _fetch_inactive_users(cutoff_dt):
+    """
+    Возвращает список словарей: {id, telegram_id, first_name}
+    Защищено от ошибок схемы: если прямой селект столбцов падает, пытаем получить
+    список через ORM и getattr на каждый объект.
+    """
     session = SessionLocal()
     try:
-        from models import User
-        users = session.query(User).all()
-        selected = []
-        for u in users:
-            tg = getattr(u, "telegram_id", None)
-            if not tg:
-                continue
+        # Попробуем сначала безопасно запросить только нужные колонки (если они есть)
+        try:
+            # select specific columns reduces chance of attribute access errors
+            rows = session.query(
+                # SQLAlchemy will throw if column doesn't exist, so wrap in try
+                ).all()  # intentionally empty — we'll try alternate approach below
+        except Exception:
+            # fallback: выбрать все и делать getattr (устойчивее к изменениям)
+            pass
 
-            # Проверяем время последнего взаимодействия
-            lmd = getattr(u, "last_message_at", None) or getattr(u, "last_message_date", None)
-            lrs = getattr(u, "last_reactivation_sent", None)
+        users = []
+        # делаем ORM-выборку по кускам, чтобы не держать большие объёмы памяти
+        try:
+            from models import User
+            all_users = session.query(User).yield_per(200).all()
+        except Exception as e:
+            # если чтение всех объектов конструкцией .all() упало — логируем и пробуем raw SQL
+            print("❗ Ошибка при ORM-выборке пользователей:", e)
+            traceback.print_exc()
+            try:
+                # fallback raw SQL: минимальный запрос для безопасности
+                res = session.execute("SELECT id, telegram_id, first_name, last_message_at, last_message_date, last_reactivation_sent FROM users")
+                for row in res:
+                    uid, tg, fname, lma, lmd, lrs = row
+                    users.append({"id": uid, "telegram_id": tg, "first_name": fname, "last_message": lma or lmd, "last_reactivation_sent": lrs})
+                return users
+            except Exception as e2:
+                print("❗ Ошибка при raw SQL SELECT users:", e2)
+                traceback.print_exc()
+                return []
 
-            inactive = lmd is None or lmd < cutoff_dt
-            can_send = lrs is None or lrs < cutoff_dt
+        # теперь фильтруем уже на python-уровне
+        for u in all_users:
+            try:
+                tg = getattr(u, "telegram_id", None)
+                if not tg:
+                    continue
 
-            if inactive and can_send:
-                selected.append(
-                    {
-                        "id": u.id,
+                # Берём последнее взаимодействие — сначала last_message_at, затем last_message_date
+                lmd = getattr(u, "last_message_at", None) or getattr(u, "last_message_date", None)
+                lrs = getattr(u, "last_reactivation_sent", None)
+
+                # Считаем неактивным если нет ласт-мержа или он раньше cutoff
+                inactive = lmd is None or (isinstance(lmd, datetime) and lmd < cutoff_dt) or (not isinstance(lmd, datetime) and lmd and datetime.combine(lmd, datetime.min.time()) < cutoff_dt)
+                can_send = lrs is None or (isinstance(lrs, datetime) and lrs < cutoff_dt)
+
+                if inactive and can_send:
+                    users.append({
+                        "id": getattr(u, "id", None),
                         "telegram_id": tg,
                         "first_name": getattr(u, "first_name", None),
-                    }
-                )
-        return selected
+                    })
+            except Exception as e:
+                # Пропускаем проблемного пользователя, но логируем
+                print(f"⚠️ Проблема при обработке пользователя (id:{getattr(u,'id', None)}): {e}")
+                traceback.print_exc()
+                continue
+
+        return users
+
     finally:
         session.close()
 
 
-# --- Отметка, что пользователю отправлено сообщение ---
 def _mark_reactivation_sent(telegram_id, now_dt):
     session = SessionLocal()
     try:
         from models import User
         user = session.query(User).filter_by(telegram_id=telegram_id).first()
         if user:
-            user.last_reactivation_sent = now_dt
-            session.add(user)
-            session.commit()
+            # пытаемся установить поле; если его нет — игнорируем
+            try:
+                user.last_reactivation_sent = now_dt
+                session.add(user)
+                session.commit()
+            except Exception as e:
+                print(f"⚠️ Не удалось пометить last_reactivation_sent для {telegram_id}: {e}")
+                traceback.print_exc()
+                session.rollback()
     finally:
         session.close()
 
@@ -106,10 +151,12 @@ async def send_reactivation_messages():
     cutoff = datetime.utcnow() - timedelta(days=6)
     loop = asyncio.get_running_loop()
 
+    # получаем пользователей безопасно (в sync режиме внутри run_in_executor)
     try:
         users = await loop.run_in_executor(None, _fetch_inactive_users, cutoff)
     except Exception as e:
-        print("❗ Ошибка при получении списка пользователей:", e)
+        print("❗ Ошибка при получении списка пользователей (run_in_executor):", type(e).__name__, e)
+        traceback.print_exc()
         return
 
     total = len(users)
@@ -121,41 +168,46 @@ async def send_reactivation_messages():
 
     for u in users:
         tg = u.get("telegram_id")
-        name = u.get("first_name") or "друг"  # если нет имени — обращаемся нейтрально
+        name = u.get("first_name") or "друг"
         try:
             msg_template = random.choice(REACTIVATION_MESSAGES)
             msg = msg_template.format(name=name)
-            print(f"✉️ [Reactivation] Отправка пользователю {tg} ({name})")
 
-            # Отправляем сообщение с клавиатурой тем
+            print(f"✉️ [Reactivation] Отправка пользователю (tg masked) ...")  # не пишем id
             await bot.send_message(tg, msg, reply_markup=topics_keyboard())
 
-            # Помечаем как отправленное
+            # Помечаем как отправленное в отдельном потоке
             now_dt = datetime.utcnow()
-            await loop.run_in_executor(None, _mark_reactivation_sent, tg, now_dt)
+            try:
+                await loop.run_in_executor(None, _mark_reactivation_sent, tg, now_dt)
+            except Exception as e:
+                print(f"⚠️ Не удалось пометить отправку для {tg}: {e}")
+                traceback.print_exc()
+
             sent += 1
             await asyncio.sleep(SEND_SLEEP_SECONDS)
 
         except TelegramRetryAfter as e:
             wait = getattr(e, "retry_after", 5)
-            print(f"⏳ Telegram просит подождать {wait}s (пользователь {tg})")
+            print(f"⏳ Telegram просит подождать {wait}s (backoff)")
             await asyncio.sleep(wait)
             failed += 1
 
         except TelegramForbiddenError:
-            print(f"⛔ Пользователь {tg} заблокировал бота.")
+            print(f"⛔ Пользователь заблокировал бота.")
             blocked += 1
 
         except TelegramBadRequest as e:
-            print(f"🚫 Ошибка ChatNotFound/BadRequest ({tg}): {e}")
+            print(f"🚫 Ошибка ChatNotFound/BadRequest: {e}")
             failed += 1
 
         except TelegramNetworkError as e:
-            print(f"🚫 Сетевая ошибка Telegram API ({tg}): {e}")
+            print(f"🚫 Сетевая ошибка Telegram API: {e}")
             failed += 1
 
         except Exception as e:
-            print(f"⚠️ Неизвестная ошибка ({tg}): {type(e).__name__}: {e}")
+            print(f"⚠️ Неизвестная ошибка при отправке: {type(e).__name__}: {e}")
+            traceback.print_exc()
             failed += 1
 
     end_ts = datetime.utcnow()
@@ -175,8 +227,10 @@ def start_scheduler():
     """Запуск планировщика: каждый день в 22:00 по времени Asia/Almaty"""
     try:
         scheduler = AsyncIOScheduler(timezone="Asia/Almaty")
+        # scheduler expects coroutine (we pass coroutine function directly)
         scheduler.add_job(send_reactivation_messages, "cron", hour=22, minute=0)
         scheduler.start()
         print("🕒 Reactivation scheduler started: daily at 22:00 Asia/Almaty")
     except Exception as e:
         print("⚠️ Ошибка при запуске планировщика реактивации:", e)
+        traceback.print_exc()
