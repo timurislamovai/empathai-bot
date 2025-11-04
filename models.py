@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Float, Boolean
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Float, Boolean, Date
 from database import Base
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import Date
 
 
 class User(Base):
@@ -15,6 +14,18 @@ class User(Base):
     last_message_date = Column(Date, default=None)
     referral_earned = Column(Float, default=0.0)
     referral_paid = Column(Float, default=0.0)
+
+
+# ---------- ВЕЧЕРНИЙ РИТУАЛ ----------
+class EveningRitualLog(Base):
+    __tablename__ = "evening_ritual_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False)
+    date = Column(Date, nullable=False)
+    emotion = Column(String, nullable=True)
+    action = Column(String, nullable=False)
+    is_premium = Column(Boolean, default=False)
 
 
     # 👇 Дополнительные поля для аналитики:
@@ -115,3 +126,4 @@ def increment_topic_stat(db: Session, topic_key: str):
 # 📊 Получаем все темы и их количество
 def get_all_stats(db: Session):
     return db.query(TopicStat).all()
+
