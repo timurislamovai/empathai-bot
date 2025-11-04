@@ -61,18 +61,50 @@ def get_question(is_premium: bool):
 
 # --------- Хэндлеры ---------
 
+# 🌙 Шаг 1 — Первое сообщение “начало ритуала”
+@router.message(lambda m: m.text == "/evening_test")
+async def test_evening(message: types.Message):
+    start_text = (
+        "🌙 *День подходит к концу...*\n\n"
+        "Ты прожил(а) ещё один день — со своими мыслями, чувствами, моментами.\n"
+        "Хочешь подвести маленький итог вместе со мной? 💫"
+    )
 
+    await message.answer(
+        start_text,
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✨ Завершить день", callback_data=CB_FINISH_DAY)]
+        ])
+    )
+
+
+# 🌿 Шаг 2 — Второе сообщение “вопрос вечера + выбор эмоции”
 @router.callback_query(lambda c: c.data == CB_FINISH_DAY)
 async def start_evening_ritual(query: types.CallbackQuery):
-    print("🔥 [DEBUG] Нажата кнопка 'Завершить день'")  # для Railway логов
-    user_id = query.from_user.id
-    is_premium = is_user_premium(user_id)
-    question = get_question(is_premium)
-    await query.message.edit_text(
-        f"{question}\n\nМожешь просто выбрать состояние — или нажать «Хочу написать», если хочешь выразиться.",
-        reply_markup=question_keyboard()
-    )
-    await query.answer()
+    try:
+        user_id = query.from_user.id
+        is_premium = is_user_premium(user_id)
+
+        # ✨ Новый текст, наполненный эмоцией
+        question_text = (
+            "🕯 *Что сегодня было трудно, но ты с этим справился(ась)?*\n\n"
+            "_Выбери состояние, которое ближе тебе сейчас —_\n"
+            "_или напиши свои мысли, если хочешь выразиться._"
+        )
+
+        # 💫 Отправляем новое сообщение (а не редактируем старое)
+        await query.message.answer(
+            question_text,
+            parse_mode="Markdown",
+            reply_markup=question_keyboard()
+        )
+
+        # Закрываем callback, чтобы Telegram не крутил “часики”
+        await query.answer()
+
+    except Exception as e:
+        print(f"❌ Ошибка при запуске вечернего ритуала: {e}")
 
 
 
