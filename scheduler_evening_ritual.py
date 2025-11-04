@@ -4,7 +4,7 @@ from datetime import datetime
 from bot_instance import bot
 from database import SessionLocal
 from models import User
-from pytz import timezone
+from zoneinfo import ZoneInfo
 
 ASIA_ALMATY = timezone("Asia/Almaty")
 
@@ -46,6 +46,6 @@ def start_scheduler():
     def run_async():
         asyncio.run_coroutine_threadsafe(task_wrapper(), loop)
 
-    scheduler.add_job(run_async, "cron", hour=23, minute=38)
+    scheduler.add_job(run_async, "cron", hour=23, minute=43)
     scheduler.start()
     print("✅ Evening ritual scheduler запущен (22:22 Asia/Almaty)")
