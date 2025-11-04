@@ -2,34 +2,50 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import traceback
 import json
-from aiogram.types import Update
 import aiogram
+from aiogram.types import Update
 from datetime import datetime, timedelta
 
-from bot_instance import bot, dp  # <-- используем существующий экземпляр
-from handlers import gptchat, menu_handlers, aiogram_handlers, admin_handlers_aiogram, start_handlers
+# 🧠 Инициализация и основные объекты
+from bot_instance import bot, dp
+
+# 🧩 Импорты всех хэндлеров
+from handlers import (
+    gptchat,
+    menu_handlers,
+    aiogram_handlers,
+    admin_handlers_aiogram,
+    start_handlers,
+    evening_handlers_aiogram  # важно, чтобы этот модуль был в handlers/
+)
+
+# 💳 CloudPayments
 from cloudpayments import verify_signature
+
+# 🗄️ База данных и модели
 from database import SessionLocal
 from models import get_user_by_telegram_id
+
+# 🎨 Интерфейс
 from ui import main_menu
 
-# Подключаем router для аффирмации
-from handlers.aiogram_handlers import router as affirmation_router
-
-# ✅ Подключаем router для вечернего ритуала
-from handlers.evening_handlers_aiogram import router as evening_router
+# 🕯 Планировщики
+from scheduler_affirmations import start_scheduler as start_affirmations
+from scheduler_reactivation import start_scheduler as start_reactivation
+from scheduler_evening_ritual import start_scheduler as start_evening_ritual
 
 # ----------------------
 # Подключаем роутеры
 # ----------------------
 dp.include_routers(
-    admin_handlers_aiogram.router,  # ← ПЕРВЫМ!
+    admin_handlers_aiogram.router,  # ← всегда первым
     gptchat.router,
     menu_handlers.router,
     aiogram_handlers.router,
     start_handlers.router,
-    evening_router,  # 👈 Добавляем наш новый обработчик вечернего ритуала
+    evening_handlers_aiogram.router,  # ← теперь используется напрямую из импорта
 )
+
 
 # --- Создание таблиц при первом запуске ---
 from database import engine, Base
@@ -204,11 +220,12 @@ async def telegram_webhook(request: Request):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- Запуск планировщиков рассылок ---
-from scheduler_affirmations import start_scheduler as start_affirmations
-from scheduler_reactivation import start_scheduler as start_reactivation
 
 @app.on_event("startup")
 async def startup_schedulers():
+    """
+    Запуск всех планировщиков (утренние аффирмации, реактивация, вечерний ритуал).
+    """
     try:
         start_affirmations()
         print("✅ Affirmations scheduler подключен (ежедневно 09:00 Asia/Almaty)")
@@ -220,4 +237,11 @@ async def startup_schedulers():
         print("✅ Reactivation scheduler подключен (ежедневно 22:00 Asia/Almaty)")
     except Exception as e:
         print("⚠️ Ошибка при запуске планировщика реактивации:", e)
+
+    try:
+        start_evening_ritual()
+        print("✅ Evening ritual scheduler подключен (ежедневно 22:22 Asia/Almaty)")
+    except Exception as e:
+        print("⚠️ Ошибка при запуске вечернего ритуала:", e)
+
 
