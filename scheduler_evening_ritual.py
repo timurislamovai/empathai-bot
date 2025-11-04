@@ -1,74 +1,51 @@
-# scheduler_evening_ritual.py
+import asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, date
-from database import SessionLocal
-from models import User, EveningRitualLog
+from datetime import datetime
 from bot_instance import bot
-from zoneinfo import ZoneInfo
+from database import SessionLocal
+from models import User
+from pytz import timezone
 
-ASIA_ALMATY = ZoneInfo("Asia/Almaty")
+ASIA_ALMATY = timezone("Asia/Almaty")
 
-# --- Основная функция рассылки ---
-def send_evening_invitation():
+# 🌙 Основная функция рассылки
+async def send_evening_ritual():
     db = SessionLocal()
     try:
-        today = date.today()
         users = db.query(User).all()
-        count_sent = 0
+        print(f"🌙 Запуск вечернего ритуала — всего пользователей: {len(users)}")
 
         for user in users:
-            # 💤 Пропускаем неактивных
-            if not user.telegram_id:
-                continue
-
-            # 🔒 Проверка: был ли уже вечерний ритуал сегодня
-            already_done = (
-                db.query(EveningRitualLog)
-                .filter(EveningRitualLog.user_id == user.id)
-                .filter(EveningRitualLog.date == today)
-                .count() > 0
-            )
-            if already_done:
-                print(f"⏩ Пропущен {user.telegram_id} — ритуал уже пройден сегодня.")
-                continue
-
-            # 🔕 Пропускаем, если пользователь давно неактивен (7+ дней)
-            if user.last_message_date and (today - user.last_message_date).days > 7:
-                continue
-
-            # 🌙 Текст приглашения
-            text = (
-                "🌙 *День подходит к концу...*\n\n"
-                "Ты прожил(а) ещё один день — со своими мыслями, чувствами, моментами.\n"
-                "Хочешь подвести маленький итог вместе со мной? 💫"
-            )
-
             try:
-                bot.loop.create_task(bot.send_message(
+                await bot.send_message(
                     chat_id=int(user.telegram_id),
-                    text=text,
+                    text="🌙 *День подходит к концу...*\n\n"
+                         "Ты прожил(а) ещё один день — со своими мыслями, чувствами, моментами.\n"
+                         "Хочешь подвести маленький итог вместе со мной? 💫",
                     parse_mode="Markdown",
-                    reply_markup={
-                        "inline_keyboard": [
-                            [{"text": "✨ Завершить день", "callback_data": "finish_day"}]
-                        ]
-                    }
-                ))
-                count_sent += 1
+                    reply_markup=None
+                )
+                await asyncio.sleep(0.3)  # чтобы не попасть под rate-limit
             except Exception as e:
                 print(f"⚠️ Ошибка при отправке ритуала пользователю {user.telegram_id}: {e}")
 
-        print(f"🌙 Рассылка вечернего ритуала завершена. Отправлено {count_sent} сообщений.")
+        print("🌙 Рассылка вечернего ритуала завершена.")
 
-    except Exception as e:
-        print(f"❌ Ошибка в send_evening_invitation: {e}")
     finally:
         db.close()
 
 
-# --- Планировщик ---
+# 🌘 Планировщик (фиксация loop'а)
 def start_scheduler():
     scheduler = BackgroundScheduler(timezone=ASIA_ALMATY)
-    scheduler.add_job(send_evening_invitation, "cron", hour=22, minute=22)
+    loop = asyncio.get_event_loop()
+
+    async def task_wrapper():
+        await send_evening_ritual()
+
+    def run_async():
+        asyncio.run_coroutine_threadsafe(task_wrapper(), loop)
+
+    scheduler.add_job(run_async, "cron", hour=23, minute=38)
     scheduler.start()
-    print("🕒 Evening ritual scheduler started: daily at 22:22 Asia/Almaty")
+    print("✅ Evening ritual scheduler запущен (22:22 Asia/Almaty)")
