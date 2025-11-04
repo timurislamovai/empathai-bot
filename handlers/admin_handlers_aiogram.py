@@ -307,12 +307,20 @@ async def handle_test_reactivation(message: types.Message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return await message.answer("🚫 У вас нет доступа к этой команде.")
 
-    await message.answer("⏳ Запускаю тестовую рассылку реактивации...")
-    try:
-        await send_reactivation_messages()
-        await message.answer("✅ Тестовая рассылка реактивации завершена. Смотри отчёт в логах Railway.")
-    except Exception as e:
-        import traceback
-        print("❌ Ошибка при тестовой реактивации:", e)
-        traceback.print_exc()
-        await message.answer(f"⚠️ Ошибка: {e}")
+    await message.answer("🚀 Тестовая рассылка реактивации запущена в фоне.\n"
+                         "Посмотри результат в логах Railway через пару минут.")
+
+    import asyncio
+    import traceback
+
+    async def background_reactivation():
+        try:
+            await send_reactivation_messages()
+            print("✅ Тестовая рассылка реактивации завершена успешно.")
+        except Exception as e:
+            print("❌ Ошибка при тестовой реактивации:", e)
+            traceback.print_exc()
+
+    # 🔹 Запускаем в фоне, чтобы команда не зависала
+    asyncio.create_task(background_reactivation())
+
