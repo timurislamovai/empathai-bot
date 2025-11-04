@@ -46,17 +46,20 @@ async def handle_gpt_message(message: types.Message):
         user = create_user(db, int(telegram_id))
         print(f"[👤] Автоматически создан пользователь в GPT: {telegram_id}")
 
+    from datetime import date
+
     # 🌿 Welcome-back сценарий: если прошло 6+ дней с последнего сообщения
-    if user.last_message_at:
-        days_inactive = (datetime.utcnow() - user.last_message_at).days
+    if user.last_message_date:
+        days_inactive = (date.today() - user.last_message_date).days
         if days_inactive >= 6:
             await message.answer(
                 "🌿 Рада снова тебя видеть! Хочешь продолжить с того места, где мы остановились?"
             )
-
+    
     # ⏰ Обновим дату последней активности
-    user.last_message_at = datetime.utcnow()
+    user.last_message_date = date.today()
     db.commit()
+
     
     text = message.text or ""
 
