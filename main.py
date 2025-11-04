@@ -16,6 +16,9 @@ from ui import main_menu
 # Подключаем router для аффирмации
 from handlers.aiogram_handlers import router as affirmation_router
 
+# ✅ Подключаем router для вечернего ритуала
+from handlers.evening_handlers_aiogram import router as evening_router
+
 # ----------------------
 # Подключаем роутеры
 # ----------------------
@@ -24,12 +27,14 @@ dp.include_routers(
     gptchat.router,
     menu_handlers.router,
     aiogram_handlers.router,
-    start_handlers.router,  # 👈 Добавляем наш новый обработчик тем
+    start_handlers.router,
+    evening_router,  # 👈 Добавляем наш новый обработчик вечернего ритуала
 )
 
 
 app = FastAPI()
 print("💡 AIOGRAM VERSION:", aiogram.__version__)
+
 
 # ----------------------
 # Корневой эндпоинт
