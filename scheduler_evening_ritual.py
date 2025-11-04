@@ -49,6 +49,6 @@ def start_scheduler():
         asyncio.run_coroutine_threadsafe(task_wrapper(), loop)
 
     # ⏰ Время запуска — 22:22 по времени Алматы
-    scheduler.add_job(run_async, "cron", hour=22, minute=22)
+    scheduler.add_job(run_async, "cron", hour=23, minute=51)
     scheduler.start()
     print("✅ Evening ritual scheduler запущен (22:22 Asia/Almaty)")
